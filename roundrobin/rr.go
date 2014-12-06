@@ -1,0 +1,214 @@
+// package roundrobing implements dynamic weighted round robin load balancer http handler
+package roundrobin
+
+import (
+	"fmt"
+	"net/http"
+	"net/url"
+	"sync"
+)
+
+// Weight is an optional functional argument that sets weight of the server
+func Weight(w int) serverSetter {
+	return func(s *server) error {
+		if w < 0 {
+			return fmt.Errorf("Weight should be >= 0")
+		}
+		s.weight = w
+		return nil
+	}
+}
+
+// ErrorHandler is a functional argument that sets error handler of the server
+func ErrorHandler(h http.Handler) rrSetter {
+	return func(s *RoundRobin) error {
+		s.errHandler = h
+		return nil
+	}
+}
+
+type RoundRobin struct {
+	mutex      *sync.Mutex
+	next       http.Handler
+	errHandler http.Handler
+	// Current index (starts from -1)
+	index         int
+	servers       []*server
+	currentWeight int
+}
+
+func New(next http.Handler, opts ...rrSetter) (*RoundRobin, error) {
+	rr := &RoundRobin{
+		next:    next,
+		index:   -1,
+		mutex:   &sync.Mutex{},
+		servers: []*server{},
+	}
+	for _, o := range opts {
+		if err := o(rr); err != nil {
+			return nil, err
+		}
+	}
+	return rr, nil
+}
+
+func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	srv, err := r.nextServer()
+	if err != nil {
+		r.errHandler.ServeHTTP(w, req)
+		return
+	}
+	req.URL = copyURL(srv.url)
+	r.next.ServeHTTP(w, req)
+}
+
+func (r *RoundRobin) nextServer() (*server, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if len(r.servers) == 0 {
+		return nil, fmt.Errorf("No servers")
+	}
+
+	// The algo below may look messy, but is actually very simple
+	// it calculates the GCD  and subtracts it on every iteration, what interleaves servers
+	// and allows us not to build an iterator every time we readjust weights
+
+	// GCD across all enabled servers
+	gcd := r.weightGcd()
+	// Maximum weight across all enabled servers
+	max := r.maxWeight()
+
+	for {
+		r.index = (r.index + 1) % len(r.servers)
+		if r.index == 0 {
+			r.currentWeight = r.currentWeight - gcd
+			if r.currentWeight <= 0 {
+				r.currentWeight = max
+				if r.currentWeight == 0 {
+					return nil, fmt.Errorf("All servers have 0 weight")
+				}
+			}
+		}
+		srv := r.servers[r.index]
+		if srv.weight >= r.currentWeight {
+			return srv, nil
+		}
+	}
+
+	// We did full circle and found no available servers
+	return nil, fmt.Errorf("No available servers!")
+}
+
+func (r *RoundRobin) RemoveServer(u *url.URL) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	e, index := r.findServerByURL(u)
+	if e == nil {
+		return fmt.Errorf("Server not found")
+	}
+	r.servers = append(r.servers[:index], r.servers[index+1:]...)
+	r.resetState()
+	return nil
+}
+
+// In case if server is already present in the load balancer, returns error
+func (rr *RoundRobin) UpsertServer(u *url.URL, options ...serverSetter) error {
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
+
+	if u == nil {
+		return fmt.Errorf("Server URL can't be nil")
+	}
+
+	if s, _ := rr.findServerByURL(u); s != nil {
+		return fmt.Errorf("Server %v already exists", u)
+	}
+
+	srv := &server{url: copyURL(u)}
+	for _, o := range options {
+		if err := o(srv); err != nil {
+			return err
+		}
+	}
+
+	if srv.weight == 0 {
+		srv.weight = defaultWeight
+	}
+
+	rr.servers = append(rr.servers, srv)
+	rr.resetState()
+	return nil
+}
+
+func (r *RoundRobin) resetIterator() {
+	r.index = -1
+	r.currentWeight = 0
+}
+
+func (r *RoundRobin) resetState() {
+	r.resetIterator()
+}
+
+func (r *RoundRobin) findServerByURL(u *url.URL) (*server, int) {
+	if len(r.servers) == 0 {
+		return nil, -1
+	}
+	for i, s := range r.servers {
+		if u.Path == s.url.Path && u.Host == s.url.Host && u.Scheme == s.url.Scheme {
+			return s, i
+		}
+	}
+	return nil, -1
+}
+
+func (rr *RoundRobin) maxWeight() int {
+	max := -1
+	for _, s := range rr.servers {
+		if s.weight > max {
+			max = s.weight
+		}
+	}
+	return max
+}
+
+func (rr *RoundRobin) weightGcd() int {
+	divisor := -1
+	for _, s := range rr.servers {
+		if divisor == -1 {
+			divisor = s.weight
+		} else {
+			divisor = gcd(divisor, s.weight)
+		}
+	}
+	return divisor
+}
+
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+type serverSetter func(*server) error
+type rrSetter func(*RoundRobin) error
+
+// Set additional parameters for the server can be supplied when adding server
+type server struct {
+	url *url.URL
+	// Relative weight for the enpoint to other enpoints in the load balancer
+	weight int
+}
+
+// This is really a convenience, so users can add servers with smaller weights if they did not set it initially
+const defaultWeight = 10
+
+func copyURL(i *url.URL) *url.URL {
+	out := *i
+	if i.User != nil {
+		out.User = &(*i.User)
+	}
+	return &out
+}
