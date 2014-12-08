@@ -3,7 +3,6 @@
 // * Reads the entire request and response into buffer, optionally buffering it to disk for large requests
 // * Checks the limits for the requests and responses, rejecting in case if the limit was exceeded
 // * Changes request content-transfer-encoding from chunked and provides total size to the handlers
-
 package streamer
 
 import (
@@ -32,6 +31,30 @@ type Streamer struct {
 
 	next       http.Handler
 	errHandler http.Handler
+}
+
+// New returns a new streamer middleware. New() function supports optional functional arguments.
+//
+//  streamer.New(handler) // returns streamer that buffers up to 1MB of request and response in memory and buffers to disk after that
+//  streamer.New(handler, streamer.MaxBodyBytes(2 * 1024 * 1024), streamer.MaxMemBytes(50 * 1024 * 1024)) // up to 2MB in RAM, max request size is 50MB
+//
+func New(next http.Handler, setters ...optSetter) (*Streamer, error) {
+	strm := &Streamer{
+		next: next,
+
+		maxRequestBodyBytes: DefaultMaxBodyBytes,
+		memRequestBodyBytes: DefaultMemBodyBytes,
+
+		maxResponseBodyBytes: DefaultMaxBodyBytes,
+		memResponseBodyBytes: DefaultMemBodyBytes,
+	}
+	for _, s := range setters {
+		if err := s(strm); err != nil {
+			return nil, err
+		}
+	}
+
+	return strm, nil
 }
 
 type optSetter func(s *Streamer) error
@@ -82,25 +105,6 @@ func MemResponseBodyBytes(m int64) optSetter {
 		s.memResponseBodyBytes = m
 		return nil
 	}
-}
-
-func New(next http.Handler, setters ...optSetter) (*Streamer, error) {
-	strm := &Streamer{
-		next: next,
-
-		maxRequestBodyBytes: DefaultMaxBodyBytes,
-		memRequestBodyBytes: DefaultMemBodyBytes,
-
-		maxResponseBodyBytes: DefaultMaxBodyBytes,
-		memResponseBodyBytes: DefaultMemBodyBytes,
-	}
-	for _, s := range setters {
-		if err := s(strm); err != nil {
-			return nil, err
-		}
-	}
-
-	return strm, nil
 }
 
 func (s *Streamer) Wrap(next http.Handler) error {
