@@ -177,7 +177,6 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer reader.Close()
 
 	copyHeaders(w.Header(), b.Header())
-
 	w.WriteHeader(b.code)
 	io.Copy(w, reader)
 }
