@@ -7,9 +7,18 @@ import (
 	"github.com/mailgun/timetools"
 )
 
+type rcOptSetter func(*RollingCounter) error
+
+func CounterClock(c timetools.TimeProvider) rcOptSetter {
+	return func(r *RollingCounter) error {
+		r.clock = c
+		return nil
+	}
+}
+
 // Calculates in memory failure rate of an endpoint using rolling window of a predefined size
 type RollingCounter struct {
-	timeProvider   timetools.TimeProvider
+	clock          timetools.TimeProvider
 	resolution     time.Duration
 	values         []int
 	countedBuckets int // how many samples in different buckets have we collected so far
@@ -17,9 +26,10 @@ type RollingCounter struct {
 	lastUpdated    time.Time
 }
 
-// NewRollingCounter creates a counter with fixed amount of buckets that are rotated every resolition period.
+// NewCounter creates a counter with fixed amount of buckets that are rotated every resolution period.
 // E.g. 10 buckets with 1 second means that every new second the bucket is refreshed, so it maintains 10 second rolling window.
-func NewCounter(buckets int, resolution time.Duration, timeProvider timetools.TimeProvider) (*RollingCounter, error) {
+// By default creates a bucket with 10 buckets and 1 second resolution
+func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (*RollingCounter, error) {
 	if buckets <= 0 {
 		return nil, fmt.Errorf("Buckets should be >= 0")
 	}
@@ -27,12 +37,24 @@ func NewCounter(buckets int, resolution time.Duration, timeProvider timetools.Ti
 		return nil, fmt.Errorf("Resolution should be larger than a second")
 	}
 
-	return &RollingCounter{
-		resolution:   resolution,
-		timeProvider: timeProvider,
-		values:       make([]int, buckets),
-		lastBucket:   -1,
-	}, nil
+	rc := &RollingCounter{
+		lastBucket: -1,
+		resolution: resolution,
+
+		values: make([]int, buckets),
+	}
+
+	for _, o := range options {
+		if err := o(rc); err != nil {
+			return nil, err
+		}
+	}
+
+	if rc.clock == nil {
+		rc.clock = &timetools.RealTime{}
+	}
+
+	return rc, nil
 }
 
 func (c *RollingCounter) Reset() {
@@ -71,7 +93,7 @@ func (c *RollingCounter) Inc() {
 }
 
 func (c *RollingCounter) incBucketValue() {
-	now := c.timeProvider.UtcNow()
+	now := c.clock.UtcNow()
 	bucket := c.getBucket(now)
 	c.values[bucket]++
 	c.lastUpdated = now
@@ -93,7 +115,7 @@ func (c *RollingCounter) getBucket(t time.Time) int {
 
 // Reset buckets that were not updated
 func (c *RollingCounter) cleanup() {
-	now := c.timeProvider.UtcNow()
+	now := c.clock.UtcNow()
 	for i := 0; i < len(c.values); i++ {
 		now = now.Add(time.Duration(-1*i) * c.resolution)
 		if now.Truncate(c.resolution).After(c.lastUpdated.Truncate(c.resolution)) {

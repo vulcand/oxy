@@ -1,12 +1,10 @@
 package memmetrics
 
 import (
-	"fmt"
-	"net/http"
+	"net"
 	"time"
 
 	"github.com/mailgun/timetools"
-	"github.com/mailgun/vulcan/request"
 	. "gopkg.in/check.v1"
 )
 
@@ -23,50 +21,34 @@ func (s *RRSuite) SetUpSuite(c *C) {
 }
 
 func (s *RRSuite) TestDefaults(c *C) {
-	rr, err := NewRoundTripMetrics(RoundTripOptions{TimeProvider: s.tm})
+	rr, err := NewRoundTripMetrics(RoundTripClock(s.tm))
 	c.Assert(err, IsNil)
 	c.Assert(rr, NotNil)
 
-	rr.RecordMetrics(makeAttempt(O{err: fmt.Errorf("o"), duration: time.Second}))
-	rr.RecordMetrics(makeAttempt(O{statusCode: 500, duration: 2 * time.Second}))
-	rr.RecordMetrics(makeAttempt(O{statusCode: 200, duration: time.Second}))
-	rr.RecordMetrics(makeAttempt(O{statusCode: 200, duration: time.Second}))
+	rr.Record(200, &net.OpError{}, time.Second)
+	rr.Record(500, nil, 2*time.Second)
+	rr.Record(200, nil, time.Second)
+	rr.Record(200, nil, time.Second)
 
-	c.Assert(rr.GetNetworkErrorCount(), Equals, int64(1))
-	c.Assert(rr.GetTotalCount(), Equals, int64(4))
-	c.Assert(rr.GetStatusCodesCounts(), DeepEquals, map[int]int64{500: 1, 200: 2})
-	c.Assert(rr.GetNetworkErrorRatio(), Equals, float64(1)/float64(4))
-	c.Assert(rr.GetResponseCodeRatio(500, 501, 200, 300), Equals, 0.5)
+	c.Assert(rr.NetworkErrorCount(), Equals, int64(1))
+	c.Assert(rr.TotalCount(), Equals, int64(4))
+	c.Assert(rr.StatusCodesCounts(), DeepEquals, map[int]int64{500: 1, 200: 3})
+	c.Assert(rr.NetworkErrorRatio(), Equals, float64(1)/float64(4))
+	c.Assert(rr.ResponseCodeRatio(500, 501, 200, 300), Equals, 1.0/3.0)
 
-	h, err := rr.GetLatencyHistogram()
+	h, err := rr.LatencyHistogram()
 	c.Assert(err, IsNil)
 	c.Assert(int(h.LatencyAtQuantile(100)/time.Second), Equals, 2)
 
 	rr.Reset()
-	c.Assert(rr.GetNetworkErrorCount(), Equals, int64(0))
-	c.Assert(rr.GetTotalCount(), Equals, int64(0))
-	c.Assert(rr.GetStatusCodesCounts(), DeepEquals, map[int]int64{})
-	c.Assert(rr.GetNetworkErrorRatio(), Equals, float64(0))
-	c.Assert(rr.GetResponseCodeRatio(500, 501, 200, 300), Equals, float64(0))
+	c.Assert(rr.NetworkErrorCount(), Equals, int64(0))
+	c.Assert(rr.TotalCount(), Equals, int64(0))
+	c.Assert(rr.StatusCodesCounts(), DeepEquals, map[int]int64{})
+	c.Assert(rr.NetworkErrorRatio(), Equals, float64(0))
+	c.Assert(rr.ResponseCodeRatio(500, 501, 200, 300), Equals, float64(0))
 
-	h, err = rr.GetLatencyHistogram()
+	h, err = rr.LatencyHistogram()
 	c.Assert(err, IsNil)
 	c.Assert(h.LatencyAtQuantile(100), Equals, time.Duration(0))
-}
 
-func makeAttempt(o O) *request.BaseAttempt {
-	a := &request.BaseAttempt{
-		Error:    o.err,
-		Duration: o.duration,
-	}
-	if o.statusCode != 0 {
-		a.Response = &http.Response{StatusCode: o.statusCode}
-	}
-	return a
-}
-
-type O struct {
-	statusCode int
-	err        error
-	duration   time.Duration
 }

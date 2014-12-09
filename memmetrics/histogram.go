@@ -26,15 +26,12 @@ func NewHDRHistogram(low, high int64, sigfigs int) (h *HDRHistogram, err error) 
 			err = fmt.Errorf("%s", msg)
 		}
 	}()
-
-	hdr := hdrhistogram.New(low, high, sigfigs)
-	h = &HDRHistogram{
+	return &HDRHistogram{
 		low:     low,
 		high:    high,
 		sigfigs: sigfigs,
-		h:       hdr,
-	}
-	return h, err
+		h:       hdrhistogram.New(low, high, sigfigs),
+	}, nil
 }
 
 // Returns latency at quantile with microsecond precision
@@ -60,36 +57,18 @@ func (h *HDRHistogram) RecordValues(v, n int64) error {
 }
 
 func (h *HDRHistogram) Merge(other *HDRHistogram) error {
+	if other == nil {
+		return fmt.Errorf("other is nil")
+	}
 	h.h.Merge(other.h)
 	return nil
 }
 
 type rhOptSetter func(r *RollingHDRHistogram) error
 
-func Clock(clock timetools.TimeProvider) rhOptSetter {
+func RollingClock(clock timetools.TimeProvider) rhOptSetter {
 	return func(r *RollingHDRHistogram) error {
 		r.clock = clock
-		return nil
-	}
-}
-
-func MinValue(low int) rhOptSetter {
-	return func(r *RollingHDRHistogram) error {
-		r.low = low
-		return nil
-	}
-}
-
-func MaxValue(max int) rhOptSetter {
-	return func(r *RollingHDRHistogram) error {
-		r.high = high
-		return nil
-	}
-}
-
-func SigFigs(v int) rhOptSetter {
-	return func(r *RollingHDRHistogram) error {
-		r.sigfigs = sigfigs
 		return nil
 	}
 }
@@ -97,41 +76,37 @@ func SigFigs(v int) rhOptSetter {
 // RollingHistogram holds multiple histograms and rotates every period.
 // It provides resulting histogram as a result of a call of 'Merged' function.
 type RollingHDRHistogram struct {
-	low      int
-	high     int
-	sigfigs  int
-	idx      int
-	lastRoll time.Time
-	period   time.Duration
-	buckets  []*HDRHistogram
-	clock    timetools.TimeProvider
+	idx         int
+	lastRoll    time.Time
+	period      time.Duration
+	bucketCount int
+	low         int64
+	high        int64
+	sigfigs     int
+	buckets     []*HDRHistogram
+	clock       timetools.TimeProvider
 }
 
-func NewRollingHDRHistogram(bucketCount int, period time.Duration, settings ...rhOptSetter) (*RollingHDRHistogram, error) {
-	rh := &rollingHistogram{
-		buckets: buckets,
-		period:  period,
+func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, bucketCount int, options ...rhOptSetter) (*RollingHDRHistogram, error) {
+	rh := &RollingHDRHistogram{
+		bucketCount: bucketCount,
+		period:      period,
+		low:         low,
+		high:        high,
+		sigfigs:     sigfigs,
 	}
 
-	for _, s := range settings {
-		if err := s(rh); err != nil {
+	for _, o := range options {
+		if err := o(rh); err != nil {
 			return nil, err
 		}
 	}
 
-	if rh.low == 0 {
-		rh.low = histMin
+	if rh.clock == nil {
+		rh.clock = &timetools.RealTime{}
 	}
 
-	if rh.high == 0 {
-		rh.high = histMax
-	}
-
-	if rh.sigfigs == 0 {
-		rw.sigfigs = histSignificantFigures
-	}
-
-	buckets := make([]Histogram, bucketCount)
+	buckets := make([]*HDRHistogram, rh.bucketCount)
 	for i := range buckets {
 		h, err := NewHDRHistogram(low, high, sigfigs)
 		if err != nil {
@@ -139,13 +114,13 @@ func NewRollingHDRHistogram(bucketCount int, period time.Duration, settings ...r
 		}
 		buckets[i] = h
 	}
-
+	rh.buckets = buckets
 	return rh, nil
 }
 
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
-	r.lastRoll = r.timeProvider.UtcNow()
+	r.lastRoll = r.clock.UtcNow()
 	for _, b := range r.buckets {
 		b.Reset()
 	}
@@ -157,7 +132,7 @@ func (r *RollingHDRHistogram) rotate() {
 }
 
 func (r *RollingHDRHistogram) Merged() (*HDRHistogram, error) {
-	m, err := r.maker()
+	m, err := NewHDRHistogram(r.low, r.high, r.sigfigs)
 	if err != nil {
 		return m, err
 	}
@@ -170,9 +145,9 @@ func (r *RollingHDRHistogram) Merged() (*HDRHistogram, error) {
 }
 
 func (r *RollingHDRHistogram) getHist() *HDRHistogram {
-	if r.timeProvider.UtcNow().Sub(r.lastRoll) >= r.period {
+	if r.clock.UtcNow().Sub(r.lastRoll) >= r.period {
 		r.rotate()
-		r.lastRoll = r.timeProvider.UtcNow()
+		r.lastRoll = r.clock.UtcNow()
 	}
 	return r.buckets[r.idx]
 }

@@ -49,11 +49,13 @@ func (s *HistogramSuite) TestMergeNil(c *C) {
 }
 
 func (s *HistogramSuite) TestRotation(c *C) {
-	h, err := NewRollingHistogram(
-		NewHDRHistogramFn(1, 3600000, 3),
-		2,           // 2 histograms in a window
+	h, err := NewRollingHDRHistogram(
+		1,           // min value
+		3600000,     // max value
+		3,           // significant figurwes
 		time.Second, // 1 second is a rolling period
-		s.tm)
+		2,           // 2 histograms in a window
+		RollingClock(s.tm))
 
 	c.Assert(err, IsNil)
 	c.Assert(h, NotNil)
@@ -81,11 +83,13 @@ func (s *HistogramSuite) TestRotation(c *C) {
 }
 
 func (s *HistogramSuite) TestReset(c *C) {
-	h, err := NewRollingHistogram(
-		NewHDRHistogramFn(1, 3600000, 3),
-		2,           // 2 histograms in a window
+	h, err := NewRollingHDRHistogram(
+		1,           // min value
+		3600000,     // max value
+		3,           // significant figurwes
 		time.Second, // 1 second is a rolling period
-		s.tm)
+		2,           // 2 histograms in a window
+		RollingClock(s.tm))
 
 	c.Assert(err, IsNil)
 	c.Assert(h, NotNil)

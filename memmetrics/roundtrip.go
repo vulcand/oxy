@@ -1,11 +1,10 @@
 package memmetrics
 
 import (
+	"net"
 	"time"
 
-	"github.com/mailgun/log"
 	"github.com/mailgun/timetools"
-	"github.com/mailgun/vulcan/request"
 )
 
 // RoundTripMetrics provides aggregated performance metrics for HTTP requests processing
@@ -14,54 +13,72 @@ import (
 // are a rolling window histograms with defined precision as well.
 // See RoundTripOptions for more detail on parameters.
 type RoundTripMetrics struct {
-	o           *RoundTripOptions
 	total       *RollingCounter
 	netErrors   *RollingCounter
 	statusCodes map[int]*RollingCounter
-	histogram   RollingHistogram
+	histogram   *RollingHDRHistogram
+
+	newCounter NewCounterFn
+	newHist    NewRollingHistogramFn
+	clock      timetools.TimeProvider
 }
 
-type RoundTripOptions struct {
-	// CounterBuckets - how many buckets to allocate for rolling counter. Defaults to 10 buckets.
-	CounterBuckets int
-	// CounterResolution specifies the resolution for a single bucket
-	// (e.g. time.Second means that bucket will be counted for a second).
-	// defaults to time.Second
-	CounterResolution time.Duration
-	// HistMin - minimum non 0 value for a histogram (default 1)
-	HistMin int64
-	// HistMax - maximum value that can be recorded for a histogram (default 3,600,000,000)
-	HistMax int64
-	// HistSignificantFigures - defines precision for a value. e.g. 3 - 0.1%X precision, default is 2 - 1% precision for X
-	HistSignificantFigures int
-	// HistBuckets - how many sub histogram to keep in a rolling histogram, default is 6
-	HistBuckets int
-	// HistPeriod - rotation period for a histogram, default is 10 seconds
-	HistPeriod time.Duration
-	// TimeProvider - to provide time provider in tests, default is RealTime
-	TimeProvider timetools.TimeProvider
+type rrOptSetter func(r *RoundTripMetrics) error
+
+type NewCounterFn func() (*RollingCounter, error)
+type NewRollingHistogramFn func() (*RollingHDRHistogram, error)
+
+func RoundTripCounter(new NewCounterFn) rrOptSetter {
+	return func(r *RoundTripMetrics) error {
+		r.newCounter = new
+		return nil
+	}
+}
+
+func RoundTripHistogram(new NewRollingHistogramFn) rrOptSetter {
+	return func(r *RoundTripMetrics) error {
+		r.newHist = new
+		return nil
+	}
+}
+
+func RoundTripClock(clock timetools.TimeProvider) rrOptSetter {
+	return func(r *RoundTripMetrics) error {
+		r.clock = clock
+		return nil
+	}
 }
 
 // NewRoundTripMetrics returns new instance of metrics collector.
-func NewRoundTripMetrics(o RoundTripOptions) (*RoundTripMetrics, error) {
-	o = setDefaults(o)
-
-	h, err := NewRollingHistogram(
-		// this will create subhistograms
-		NewHDRHistogramFn(o.HistMin, o.HistMax, o.HistSignificantFigures),
-		// number of buckets in a rolling histogram
-		o.HistBuckets,
-		// rolling period for a histogram
-		o.HistPeriod,
-		o.TimeProvider)
-	if err != nil {
-		return nil, err
-	}
-
+func NewRoundTripMetrics(settings ...rrOptSetter) (*RoundTripMetrics, error) {
 	m := &RoundTripMetrics{
 		statusCodes: make(map[int]*RollingCounter),
-		histogram:   h,
-		o:           &o,
+	}
+	for _, s := range settings {
+		if err := s(m); err != nil {
+			return nil, err
+		}
+	}
+
+	if m.clock == nil {
+		m.clock = &timetools.RealTime{}
+	}
+
+	if m.newCounter == nil {
+		m.newCounter = func() (*RollingCounter, error) {
+			return NewCounter(counterBuckets, counterResolution, CounterClock(m.clock))
+		}
+	}
+
+	if m.newHist == nil {
+		m.newHist = func() (*RollingHDRHistogram, error) {
+			return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets, RollingClock(m.clock))
+		}
+	}
+
+	h, err := m.newHist()
+	if err != nil {
+		return nil, err
 	}
 
 	netErrors, err := m.newCounter()
@@ -74,19 +91,15 @@ func NewRoundTripMetrics(o RoundTripOptions) (*RoundTripMetrics, error) {
 		return nil, err
 	}
 
+	m.histogram = h
 	m.netErrors = netErrors
 	m.total = total
 	return m, nil
 }
 
-// GetOptions returns settings used for this instance
-func (m *RoundTripMetrics) GetOptions() *RoundTripOptions {
-	return m.o
-}
-
 // GetNetworkErrorRatio calculates the amont of network errors such as time outs and dropped connection
 // that occured in the given time window compared to the total requests count.
-func (m *RoundTripMetrics) GetNetworkErrorRatio() float64 {
+func (m *RoundTripMetrics) NetworkErrorRatio() float64 {
 	if m.total.Count() == 0 {
 		return 0
 	}
@@ -94,7 +107,7 @@ func (m *RoundTripMetrics) GetNetworkErrorRatio() float64 {
 }
 
 // GetResponseCodeRatio calculates ratio of count(startA to endA) / count(startB to endB)
-func (m *RoundTripMetrics) GetResponseCodeRatio(startA, endA, startB, endB int) float64 {
+func (m *RoundTripMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 	a := int64(0)
 	b := int64(0)
 	for code, v := range m.statusCodes {
@@ -111,26 +124,27 @@ func (m *RoundTripMetrics) GetResponseCodeRatio(startA, endA, startB, endB int) 
 	return 0
 }
 
-// RecordMetrics updates internal metrics collection based on the data from passed request.
-func (m *RoundTripMetrics) RecordMetrics(a request.Attempt) {
+func (m *RoundTripMetrics) Record(code int, err error, duration time.Duration) {
 	m.total.Inc()
-	m.recordNetError(a)
-	m.recordLatency(a)
-	m.recordStatusCode(a)
+	if _, ok := err.(net.Error); ok {
+		m.netErrors.Inc()
+	}
+	m.recordStatusCode(code)
+	m.recordLatency(duration)
 }
 
 // GetTotalCount returns total count of processed requests collected.
-func (m *RoundTripMetrics) GetTotalCount() int64 {
+func (m *RoundTripMetrics) TotalCount() int64 {
 	return m.total.Count()
 }
 
 // GetNetworkErrorCount returns total count of processed requests observed
-func (m *RoundTripMetrics) GetNetworkErrorCount() int64 {
+func (m *RoundTripMetrics) NetworkErrorCount() int64 {
 	return m.netErrors.Count()
 }
 
 // GetStatusCodesCounts returns map with counts of the response codes
-func (m *RoundTripMetrics) GetStatusCodesCounts() map[int]int64 {
+func (m *RoundTripMetrics) StatusCodesCounts() map[int]int64 {
 	sc := make(map[int]int64)
 	for k, v := range m.statusCodes {
 		if v.Count() != 0 {
@@ -141,7 +155,7 @@ func (m *RoundTripMetrics) GetStatusCodesCounts() map[int]int64 {
 }
 
 // GetLatencyHistogram computes and returns resulting histogram with latencies observed.
-func (m *RoundTripMetrics) GetLatencyHistogram() (Histogram, error) {
+func (m *RoundTripMetrics) LatencyHistogram() (*HDRHistogram, error) {
 	return m.histogram.Merged()
 }
 
@@ -152,38 +166,27 @@ func (m *RoundTripMetrics) Reset() {
 	m.statusCodes = make(map[int]*RollingCounter)
 }
 
-func (m *RoundTripMetrics) newCounter() (*RollingCounter, error) {
-	return NewRollingCounter(m.o.CounterBuckets, m.o.CounterResolution, m.o.TimeProvider)
+func (m *RoundTripMetrics) recordNetError() error {
+	m.netErrors.Inc()
+	return nil
 }
 
-func (m *RoundTripMetrics) recordNetError(a request.Attempt) {
-	if IsNetworkError(a) {
-		m.netErrors.Inc()
-	}
+func (m *RoundTripMetrics) recordLatency(d time.Duration) error {
+	return m.histogram.RecordLatencies(d, 1)
 }
 
-func (m *RoundTripMetrics) recordLatency(a request.Attempt) {
-	if err := m.histogram.RecordLatencies(a.GetDuration(), 1); err != nil {
-		log.Errorf("Failed to record latency: %v", err)
-	}
-}
-
-func (m *RoundTripMetrics) recordStatusCode(a request.Attempt) {
-	if a.GetResponse() == nil {
-		return
-	}
-	statusCode := a.GetResponse().StatusCode
+func (m *RoundTripMetrics) recordStatusCode(statusCode int) error {
 	if c, ok := m.statusCodes[statusCode]; ok {
 		c.Inc()
-		return
+		return nil
 	}
 	c, err := m.newCounter()
 	if err != nil {
-		log.Errorf("failed to create a counter: %v", err)
-		return
+		return err
 	}
 	c.Inc()
 	m.statusCodes[statusCode] = c
+	return nil
 }
 
 const (
@@ -195,31 +198,3 @@ const (
 	histBuckets            = 6                // number of sub-histograms in a rolling histogram
 	histPeriod             = 10 * time.Second // roll time
 )
-
-func setDefaults(o RoundTripOptions) RoundTripOptions {
-	if o.CounterBuckets == 0 {
-		o.CounterBuckets = counterBuckets
-	}
-	if o.CounterResolution == 0 {
-		o.CounterResolution = time.Second
-	}
-	if o.HistMin == 0 {
-		o.HistMin = histMin
-	}
-	if o.HistMax == 0 {
-		o.HistMax = histMax
-	}
-	if o.HistBuckets == 0 {
-		o.HistBuckets = histBuckets
-	}
-	if o.HistSignificantFigures == 0 {
-		o.HistSignificantFigures = histSignificantFigures
-	}
-	if o.HistPeriod == 0 {
-		o.HistPeriod = histPeriod
-	}
-	if o.TimeProvider == nil {
-		o.TimeProvider = &timetools.RealTime{}
-	}
-	return o
-}

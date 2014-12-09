@@ -6,27 +6,48 @@ import (
 	"github.com/mailgun/timetools"
 )
 
-// RatioCounter calculates a ratio of a/a+b over a rolling window of predefined buckets
-type RatioCounter struct {
-	a *RollingCounter
-	b *RollingCounter
+type ratioOptSetter func(r *RatioCounter) error
+
+func RatioClock(clock timetools.TimeProvider) ratioOptSetter {
+	return func(r *RatioCounter) error {
+		r.clock = clock
+		return nil
+	}
 }
 
-func NewRatioCounter(buckets int, resolution time.Duration, timeProvider timetools.TimeProvider) (*RatioCounter, error) {
-	a, err := NewCounter(buckets, resolution, timeProvider)
+// RatioCounter calculates a ratio of a/a+b over a rolling window of predefined buckets
+type RatioCounter struct {
+	clock timetools.TimeProvider
+	a     *RollingCounter
+	b     *RollingCounter
+}
+
+func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptSetter) (*RatioCounter, error) {
+	rc := &RatioCounter{}
+
+	for _, o := range options {
+		if err := o(rc); err != nil {
+			return nil, err
+		}
+	}
+
+	if rc.clock == nil {
+		rc.clock = &timetools.RealTime{}
+	}
+
+	a, err := NewCounter(buckets, resolution, CounterClock(rc.clock))
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := NewCounter(buckets, resolution, timeProvider)
+	b, err := NewCounter(buckets, resolution, CounterClock(rc.clock))
 	if err != nil {
 		return nil, err
 	}
 
-	return &RatioCounter{
-		a: a,
-		b: b,
-	}, nil
+	rc.a = a
+	rc.b = b
+	return rc, nil
 }
 
 func (r *RatioCounter) Reset() {
