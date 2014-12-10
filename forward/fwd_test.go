@@ -3,6 +3,7 @@ package forward
 import (
 	"bytes"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -192,4 +193,58 @@ func (s *FwdSuite) TestCustomLogger(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 	c.Assert(strings.Contains(buf.String(), srv.URL), Equals, true)
+}
+
+func (s *FwdSuite) TestEscapedURL(c *C) {
+	var outURL string
+	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+		outURL = req.RequestURI
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	f, err := New()
+	c.Assert(err, IsNil)
+
+	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	path := "/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b"
+
+	request, err := http.NewRequest("GET", proxy.URL, nil)
+	parsed := testutils.ParseURI(proxy.URL)
+	parsed.Opaque = path
+	request.URL = parsed
+	re, err := http.DefaultClient.Do(request)
+	c.Assert(err, IsNil)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	c.Assert(outURL, Equals, path)
+}
+
+func (s *FwdSuite) TestForwardedProto(c *C) {
+	var proto string
+	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+		proto = req.Header.Get(XForwardedProto)
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	f, err := New()
+	c.Assert(err, IsNil)
+
+	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	tproxy := httptest.NewUnstartedServer(proxy)
+	tproxy.StartTLS()
+	defer tproxy.Close()
+
+	re, _, err := testutils.Get(tproxy.URL)
+	c.Assert(err, IsNil)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	c.Assert(proto, Equals, "https")
 }
