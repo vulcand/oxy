@@ -113,6 +113,16 @@ func (r *RoundRobin) RemoveServer(u *url.URL) error {
 	return nil
 }
 
+func (rr *RoundRobin) ServerWeight(u *url.URL) (int, bool) {
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
+
+	if s, _ := rr.findServerByURL(u); s != nil {
+		return s.weight, true
+	}
+	return -1, false
+}
+
 // In case if server is already present in the load balancer, returns error
 func (rr *RoundRobin) UpsertServer(u *url.URL, options ...serverSetter) error {
 	rr.mutex.Lock()
@@ -156,7 +166,7 @@ func (r *RoundRobin) findServerByURL(u *url.URL) (*server, int) {
 		return nil, -1
 	}
 	for i, s := range r.servers {
-		if u.Path == s.url.Path && u.Host == s.url.Host && u.Scheme == s.url.Scheme {
+		if sameURL(u, s.url) {
 			return s, i
 		}
 	}
@@ -211,4 +221,15 @@ func copyURL(i *url.URL) *url.URL {
 		out.User = &(*i.User)
 	}
 	return &out
+}
+
+func sameURL(a, b *url.URL) bool {
+	return a.Path == b.Path && a.Host == b.Host && a.Scheme == b.Scheme
+}
+
+type balancerHandler interface {
+	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	ServerWeight(u *url.URL) (int, bool)
+	RemoveServer(u *url.URL) error
+	UpsertServer(u *url.URL, options ...serverSetter) error
 }

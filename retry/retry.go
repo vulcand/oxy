@@ -2,6 +2,8 @@ package retry
 
 import (
 	"net/http"
+
+	"github.com/mailgun/oxy/netutils"
 )
 
 type Retry struct {
@@ -35,7 +37,7 @@ func New(next http.Handler, predicate string, settings ...optSetter) (*Retry, er
 func (r *Retry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := &context{r: req}
 	for i := 0; i < r.maxAttempts; i++ {
-		pw := &proxyWriter{w: w}
+		pw := &netutils.ProxyWriter{W: w}
 		r.next.ServeHTTP(pw, req)
 		c.attempt = i + 1
 		if !r.predicate(c) {
@@ -63,21 +65,3 @@ func ErrorHandler(h http.Handler) optSetter {
 type optSetter func(r *Retry) error
 
 const DefaultMaxAttempts = 10
-
-type proxyWriter struct {
-	w    http.ResponseWriter
-	code int
-}
-
-func (p *proxyWriter) Header() http.Header {
-	return p.w.Header()
-}
-
-func (p *proxyWriter) Write(buf []byte) (int, error) {
-	return p.w.Write(buf)
-}
-
-func (p *proxyWriter) WriteHeader(code int) {
-	p.code = code
-	p.WriteHeader(code)
-}

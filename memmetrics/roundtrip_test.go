@@ -21,7 +21,7 @@ func (s *RRSuite) SetUpSuite(c *C) {
 }
 
 func (s *RRSuite) TestDefaults(c *C) {
-	rr, err := NewRoundTripMetrics(RoundTripClock(s.tm))
+	rr, err := NewRTMetrics(RTClock(s.tm))
 	c.Assert(err, IsNil)
 	c.Assert(rr, NotNil)
 

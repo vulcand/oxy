@@ -7,12 +7,12 @@ import (
 	"github.com/mailgun/timetools"
 )
 
-// RoundTripMetrics provides aggregated performance metrics for HTTP requests processing
+// RTMetrics provides aggregated performance metrics for HTTP requests processing
 // such as round trip latency, response codes counters network error and total requests.
 // all counters are collected as rolling window counters with defined precision, histograms
 // are a rolling window histograms with defined precision as well.
-// See RoundTripOptions for more detail on parameters.
-type RoundTripMetrics struct {
+// See RTOptions for more detail on parameters.
+type RTMetrics struct {
 	total       *RollingCounter
 	netErrors   *RollingCounter
 	statusCodes map[int]*RollingCounter
@@ -23,35 +23,36 @@ type RoundTripMetrics struct {
 	clock      timetools.TimeProvider
 }
 
-type rrOptSetter func(r *RoundTripMetrics) error
+type rrOptSetter func(r *RTMetrics) error
 
+type NewRTMetricsFn func() (*RTMetrics, error)
 type NewCounterFn func() (*RollingCounter, error)
 type NewRollingHistogramFn func() (*RollingHDRHistogram, error)
 
-func RoundTripCounter(new NewCounterFn) rrOptSetter {
-	return func(r *RoundTripMetrics) error {
+func RTCounter(new NewCounterFn) rrOptSetter {
+	return func(r *RTMetrics) error {
 		r.newCounter = new
 		return nil
 	}
 }
 
-func RoundTripHistogram(new NewRollingHistogramFn) rrOptSetter {
-	return func(r *RoundTripMetrics) error {
+func RTHistogram(new NewRollingHistogramFn) rrOptSetter {
+	return func(r *RTMetrics) error {
 		r.newHist = new
 		return nil
 	}
 }
 
-func RoundTripClock(clock timetools.TimeProvider) rrOptSetter {
-	return func(r *RoundTripMetrics) error {
+func RTClock(clock timetools.TimeProvider) rrOptSetter {
+	return func(r *RTMetrics) error {
 		r.clock = clock
 		return nil
 	}
 }
 
-// NewRoundTripMetrics returns new instance of metrics collector.
-func NewRoundTripMetrics(settings ...rrOptSetter) (*RoundTripMetrics, error) {
-	m := &RoundTripMetrics{
+// NewRTMetrics returns new instance of metrics collector.
+func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
+	m := &RTMetrics{
 		statusCodes: make(map[int]*RollingCounter),
 	}
 	for _, s := range settings {
@@ -99,7 +100,7 @@ func NewRoundTripMetrics(settings ...rrOptSetter) (*RoundTripMetrics, error) {
 
 // GetNetworkErrorRatio calculates the amont of network errors such as time outs and dropped connection
 // that occured in the given time window compared to the total requests count.
-func (m *RoundTripMetrics) NetworkErrorRatio() float64 {
+func (m *RTMetrics) NetworkErrorRatio() float64 {
 	if m.total.Count() == 0 {
 		return 0
 	}
@@ -107,7 +108,7 @@ func (m *RoundTripMetrics) NetworkErrorRatio() float64 {
 }
 
 // GetResponseCodeRatio calculates ratio of count(startA to endA) / count(startB to endB)
-func (m *RoundTripMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
+func (m *RTMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 	a := int64(0)
 	b := int64(0)
 	for code, v := range m.statusCodes {
@@ -124,7 +125,7 @@ func (m *RoundTripMetrics) ResponseCodeRatio(startA, endA, startB, endB int) flo
 	return 0
 }
 
-func (m *RoundTripMetrics) Record(code int, err error, duration time.Duration) {
+func (m *RTMetrics) Record(code int, err error, duration time.Duration) {
 	m.total.Inc()
 	if _, ok := err.(net.Error); ok {
 		m.netErrors.Inc()
@@ -134,17 +135,17 @@ func (m *RoundTripMetrics) Record(code int, err error, duration time.Duration) {
 }
 
 // GetTotalCount returns total count of processed requests collected.
-func (m *RoundTripMetrics) TotalCount() int64 {
+func (m *RTMetrics) TotalCount() int64 {
 	return m.total.Count()
 }
 
 // GetNetworkErrorCount returns total count of processed requests observed
-func (m *RoundTripMetrics) NetworkErrorCount() int64 {
+func (m *RTMetrics) NetworkErrorCount() int64 {
 	return m.netErrors.Count()
 }
 
 // GetStatusCodesCounts returns map with counts of the response codes
-func (m *RoundTripMetrics) StatusCodesCounts() map[int]int64 {
+func (m *RTMetrics) StatusCodesCounts() map[int]int64 {
 	sc := make(map[int]int64)
 	for k, v := range m.statusCodes {
 		if v.Count() != 0 {
@@ -155,27 +156,27 @@ func (m *RoundTripMetrics) StatusCodesCounts() map[int]int64 {
 }
 
 // GetLatencyHistogram computes and returns resulting histogram with latencies observed.
-func (m *RoundTripMetrics) LatencyHistogram() (*HDRHistogram, error) {
+func (m *RTMetrics) LatencyHistogram() (*HDRHistogram, error) {
 	return m.histogram.Merged()
 }
 
-func (m *RoundTripMetrics) Reset() {
+func (m *RTMetrics) Reset() {
 	m.histogram.Reset()
 	m.total.Reset()
 	m.netErrors.Reset()
 	m.statusCodes = make(map[int]*RollingCounter)
 }
 
-func (m *RoundTripMetrics) recordNetError() error {
+func (m *RTMetrics) recordNetError() error {
 	m.netErrors.Inc()
 	return nil
 }
 
-func (m *RoundTripMetrics) recordLatency(d time.Duration) error {
+func (m *RTMetrics) recordLatency(d time.Duration) error {
 	return m.histogram.RecordLatencies(d, 1)
 }
 
-func (m *RoundTripMetrics) recordStatusCode(statusCode int) error {
+func (m *RTMetrics) recordStatusCode(statusCode int) error {
 	if c, ok := m.statusCodes[statusCode]; ok {
 		c.Inc()
 		return nil
