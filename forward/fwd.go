@@ -1,18 +1,15 @@
 // package forwarder implements http handler that forwards requests to remote server
 // and serves back the response
-package forwarder
+package forward
 
 import (
 	"io"
 	"net/http"
 	"net/url"
 	"os"
-)
 
-// Router tells forwarder where to route the request
-type Router interface {
-	Route(r *http.Request) (*url.URL, error)
-}
+	"github.com/mailgun/oxy/netutils"
+)
 
 // ReqRewriter can alter request headers and body
 type ReqRewriter interface {
@@ -45,15 +42,12 @@ func ErrorHandler(h http.Handler) optSetter {
 
 type Forwarder struct {
 	errHandler   http.Handler
-	router       Router
 	roundTripper http.RoundTripper
 	rewriter     ReqRewriter
 }
 
-func New(router Router, setters ...optSetter) (*Forwarder, error) {
-	f := &Forwarder{
-		router: router,
-	}
+func New(setters ...optSetter) (*Forwarder, error) {
+	f := &Forwarder{}
 	for _, s := range setters {
 		if err := s(f); err != nil {
 			return nil, err
@@ -68,24 +62,19 @@ func New(router Router, setters ...optSetter) (*Forwarder, error) {
 			h = "localhost"
 		}
 		f.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
+
 	}
 	return f, nil
 }
 
-func (l *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	u, err := l.router.Route(req)
+func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	response, err := f.roundTripper.RoundTrip(f.copyRequest(req, req.URL))
 	if err != nil {
-		l.errHandler.ServeHTTP(w, req)
+		f.errHandler.ServeHTTP(w, req)
 		return
 	}
 
-	response, err := l.roundTripper.RoundTrip(l.copyRequest(req, u))
-	if err != nil {
-		l.errHandler.ServeHTTP(w, req)
-		return
-	}
-
-	copyHeaders(w.Header(), response.Header)
+	netutils.CopyHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
 	io.Copy(w, response.Body)
 	response.Body.Close()
@@ -109,14 +98,6 @@ func (l *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
 	outReq.Close = false
 
 	outReq.Header = make(http.Header)
-	copyHeaders(outReq.Header, req.Header)
+	netutils.CopyHeaders(outReq.Header, req.Header)
 	return outReq
-}
-
-func copyHeaders(dst, src http.Header) {
-	for k, vv := range src {
-		for _, v := range vv {
-			dst.Add(k, v)
-		}
-	}
 }

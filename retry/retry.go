@@ -1,6 +1,7 @@
 package retry
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/mailgun/oxy/netutils"
@@ -38,6 +39,20 @@ func (r *Retry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := &context{r: req}
 	for i := 0; i < r.maxAttempts; i++ {
 		pw := &netutils.ProxyWriter{W: w}
+
+		// this is not the first attempt, we need to rewind the body
+		if i != 0 {
+			seeker, ok := req.Body.(io.Seeker)
+			if !ok {
+				r.errHandler.ServeHTTP(w, req)
+				return
+			}
+			_, err := seeker.Seek(0, 0)
+			if err != nil {
+				r.errHandler.ServeHTTP(w, req)
+				return
+			}
+		}
 		r.next.ServeHTTP(pw, req)
 		c.attempt = i + 1
 		if !r.predicate(c) {

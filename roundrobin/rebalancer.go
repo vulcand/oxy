@@ -163,7 +163,7 @@ func (rb *Rebalancer) upsertServer(u *url.URL, weight int) {
 	if s, i := rb.findServer(u); i != -1 {
 		s.origWeight = weight
 	}
-	rb.servers = append(rb.servers, &rbServer{url: copyURL(u), origWeight: weight, curWeight: weight})
+	rb.servers = append(rb.servers, &rbServer{url: netutils.CopyURL(u), origWeight: weight, curWeight: weight})
 }
 
 func (r *Rebalancer) findServer(u *url.URL) (*rbServer, int) {

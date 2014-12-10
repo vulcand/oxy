@@ -1,9 +1,11 @@
-package forwarder
+package forward
 
 import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/mailgun/oxy/netutils"
 )
 
 // Rewriter is responsible for removing hop-by-hop headers and setting forwarding headers
@@ -37,5 +39,5 @@ func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 
 	// Remove hop-by-hop headers to the backend.  Especially important is "Connection" because we want a persistent
 	// connection, regardless of what the client sent to us.
-	removeHeaders(HopHeaders, req.Header)
+	netutils.RemoveHeaders(req.Header, HopHeaders...)
 }

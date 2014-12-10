@@ -1,4 +1,4 @@
-package forwarder
+package forward
 
 const (
 	XForwardedProto    = "X-Forwarded-Proto"

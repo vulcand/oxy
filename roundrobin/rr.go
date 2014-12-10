@@ -1,4 +1,4 @@
-// package roundrobing implements dynamic weighted round robin load balancer http handler
+// package roundrobin implements dynamic weighted round robin load balancer http handler
 package roundrobin
 
 import (
@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+
+	"github.com/mailgun/oxy/netutils"
 )
 
 // Weight is an optional functional argument that sets weight of the server
@@ -58,7 +60,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.errHandler.ServeHTTP(w, req)
 		return
 	}
-	req.URL = copyURL(srv.url)
+	req.URL = netutils.CopyURL(srv.url)
 	r.next.ServeHTTP(w, req)
 }
 
@@ -136,7 +138,7 @@ func (rr *RoundRobin) UpsertServer(u *url.URL, options ...serverSetter) error {
 		return fmt.Errorf("Server %v already exists", u)
 	}
 
-	srv := &server{url: copyURL(u)}
+	srv := &server{url: netutils.CopyURL(u)}
 	for _, o := range options {
 		if err := o(srv); err != nil {
 			return err
@@ -214,14 +216,6 @@ type server struct {
 
 // This is really a convenience, so users can add servers with smaller weights if they did not set it initially
 const defaultWeight = 10
-
-func copyURL(i *url.URL) *url.URL {
-	out := *i
-	if i.User != nil {
-		out.User = &(*i.User)
-	}
-	return &out
-}
 
 func sameURL(a, b *url.URL) bool {
 	return a.Path == b.Path && a.Host == b.Host && a.Scheme == b.Scheme
