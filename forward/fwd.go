@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
-	"github.com/mailgun/oxy/netutils"
+	"github.com/mailgun/oxy/utils"
 )
 
 // ReqRewriter can alter request headers and body
@@ -40,10 +41,18 @@ func ErrorHandler(h http.Handler) optSetter {
 	}
 }
 
+func Logger(l utils.Logger) optSetter {
+	return func(f *Forwarder) error {
+		f.log = l
+		return nil
+	}
+}
+
 type Forwarder struct {
 	errHandler   http.Handler
 	roundTripper http.RoundTripper
 	rewriter     ReqRewriter
+	log          utils.Logger
 }
 
 func New(setters ...optSetter) (*Forwarder, error) {
@@ -62,28 +71,40 @@ func New(setters ...optSetter) (*Forwarder, error) {
 			h = "localhost"
 		}
 		f.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
-
 	}
+	if f.errHandler == nil {
+		f.errHandler = &utils.BadGatewayHandler{}
+	}
+	if f.log == nil {
+		f.log = &utils.NOPLogger{}
+	}
+
 	return f, nil
 }
 
 func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	start := time.Now().UTC()
 	response, err := f.roundTripper.RoundTrip(f.copyRequest(req, req.URL))
 	if err != nil {
+		f.log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
 		f.errHandler.ServeHTTP(w, req)
 		return
 	}
 
-	netutils.CopyHeaders(w.Header(), response.Header)
+	f.log.Infof("Forward to %v, code: %v, duration: %v",
+		req.URL, response.StatusCode, time.Now().UTC().Sub(start))
+
+	utils.CopyHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
 	io.Copy(w, response.Body)
 	response.Body.Close()
 }
 
-func (l *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
+func (f *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
 	outReq := new(http.Request)
 	*outReq = *req // includes shallow copies of maps, but we handle this below
 
+	outReq.URL = utils.CopyURL(req.URL)
 	outReq.URL.Scheme = u.Scheme
 	outReq.URL.Host = u.Host
 	outReq.URL.Opaque = req.RequestURI
@@ -98,6 +119,10 @@ func (l *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
 	outReq.Close = false
 
 	outReq.Header = make(http.Header)
-	netutils.CopyHeaders(outReq.Header, req.Header)
+	utils.CopyHeaders(outReq.Header, req.Header)
+
+	if f.rewriter != nil {
+		f.rewriter.Rewrite(outReq)
+	}
 	return outReq
 }

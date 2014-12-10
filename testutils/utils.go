@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/mailgun/oxy/netutils"
+	"github.com/mailgun/oxy/utils"
 )
 
 func NewTestServer(handler http.HandlerFunc) *httptest.Server {
@@ -31,25 +31,75 @@ func ParseURI(uri string) *url.URL {
 	return out
 }
 
-type Opts struct {
+type reqOpts struct {
 	Host    string
 	Method  string
 	Body    string
 	Headers http.Header
 }
 
-func MakeRequest(url string, opts Opts) (*http.Response, []byte, error) {
-	method := "GET"
-	if opts.Method != "" {
-		method = opts.Method
+type reqOptSetter func(o *reqOpts) error
+
+func Method(m string) reqOptSetter {
+	return func(o *reqOpts) error {
+		o.Method = m
+		return nil
 	}
-	request, _ := http.NewRequest(method, url, strings.NewReader(opts.Body))
-	if opts.Headers != nil {
-		netutils.CopyHeaders(request.Header, opts.Headers)
+}
+
+func Host(h string) reqOptSetter {
+	return func(o *reqOpts) error {
+		o.Host = h
+		return nil
+	}
+}
+
+func Body(b string) reqOptSetter {
+	return func(o *reqOpts) error {
+		o.Body = b
+		return nil
+	}
+}
+
+func Header(name, val string) reqOptSetter {
+	return func(o *reqOpts) error {
+		if o.Headers == nil {
+			o.Headers = make(http.Header)
+		}
+		o.Headers.Add(name, val)
+		return nil
+	}
+}
+
+func Headers(h http.Header) reqOptSetter {
+	return func(o *reqOpts) error {
+		if o.Headers == nil {
+			o.Headers = make(http.Header)
+		}
+		utils.CopyHeaders(o.Headers, h)
+		return nil
+	}
+}
+
+func MakeRequest(url string, opts ...reqOptSetter) (*http.Response, []byte, error) {
+	o := &reqOpts{}
+	for _, s := range opts {
+		if err := s(o); err != nil {
+			return nil, nil, err
+		}
 	}
 
-	if len(opts.Host) != 0 {
-		request.Host = opts.Host
+	method := "GET"
+	if o.Method == "" {
+		o.Method = "GET"
+	}
+	request, _ := http.NewRequest(method, url, strings.NewReader(o.Body))
+	if o.Headers != nil {
+		utils.CopyHeaders(request.Header, o.Headers)
+	}
+
+	if len(o.Host) != 0 {
+		request.Host = o.Host
 	}
 
 	var tr *http.Transport
@@ -78,7 +128,7 @@ func MakeRequest(url string, opts Opts) (*http.Response, []byte, error) {
 	return response, nil, err
 }
 
-func Get(url string, o Opts) (*http.Response, []byte, error) {
-	o.Method = "GET"
-	return MakeRequest(url, o)
+func Get(url string, opts ...reqOptSetter) (*http.Response, []byte, error) {
+	opts = append(opts, Method("GET"))
+	return MakeRequest(url, opts...)
 }

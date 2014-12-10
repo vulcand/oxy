@@ -1,4 +1,4 @@
-package netutils
+package utils
 
 import (
 	"net/http"

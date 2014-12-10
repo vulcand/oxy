@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/mailgun/oxy/netutils"
+	"github.com/mailgun/oxy/utils"
 )
 
 type Retry struct {
@@ -38,7 +38,7 @@ func New(next http.Handler, predicate string, settings ...optSetter) (*Retry, er
 func (r *Retry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := &context{r: req}
 	for i := 0; i < r.maxAttempts; i++ {
-		pw := &netutils.ProxyWriter{W: w}
+		pw := &utils.ProxyWriter{W: w}
 
 		// this is not the first attempt, we need to rewind the body
 		if i != 0 {

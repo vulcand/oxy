@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/mailgun/oxy/memmetrics"
-	"github.com/mailgun/oxy/netutils"
+	"github.com/mailgun/oxy/utils"
 	"github.com/mailgun/timetools"
 )
 
@@ -98,7 +98,7 @@ func NewRebalancer(handler balancerHandler, opts ...rbOptSetter) (*Rebalancer, e
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	pw := &netutils.ProxyWriter{W: w}
+	pw := &utils.ProxyWriter{W: w}
 	start := rb.clock.UtcNow()
 	rb.next.ServeHTTP(pw, req)
 	rb.recordMetrics(req.URL, pw.Code, rb.clock.UtcNow().Sub(start))
@@ -163,7 +163,7 @@ func (rb *Rebalancer) upsertServer(u *url.URL, weight int) {
 	if s, i := rb.findServer(u); i != -1 {
 		s.origWeight = weight
 	}
-	rb.servers = append(rb.servers, &rbServer{url: netutils.CopyURL(u), origWeight: weight, curWeight: weight})
+	rb.servers = append(rb.servers, &rbServer{url: utils.CopyURL(u), origWeight: weight, curWeight: weight})
 }
 
 func (r *Rebalancer) findServer(u *url.URL) (*rbServer, int) {

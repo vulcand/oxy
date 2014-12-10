@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/mailgun/oxy/netutils"
+	"github.com/mailgun/oxy/utils"
 )
 
 // Weight is an optional functional argument that sets weight of the server
@@ -60,7 +60,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.errHandler.ServeHTTP(w, req)
 		return
 	}
-	req.URL = netutils.CopyURL(srv.url)
+	req.URL = utils.CopyURL(srv.url)
 	r.next.ServeHTTP(w, req)
 }
 
@@ -138,7 +138,7 @@ func (rr *RoundRobin) UpsertServer(u *url.URL, options ...serverSetter) error {
 		return fmt.Errorf("Server %v already exists", u)
 	}
 
-	srv := &server{url: netutils.CopyURL(u)}
+	srv := &server{url: utils.CopyURL(u)}
 	for _, o := range options {
 		if err := o(srv); err != nil {
 			return err
