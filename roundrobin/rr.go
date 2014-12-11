@@ -52,7 +52,7 @@ func New(next http.Handler, opts ...rrSetter) (*RoundRobin, error) {
 		}
 	}
 	if rr.errHandler == nil {
-		rr.errHandler = &utils.DefaultHandler{}
+		rr.errHandler = utils.DefaultHandler
 	}
 	return rr, nil
 }

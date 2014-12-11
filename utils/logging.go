@@ -5,6 +5,8 @@ import (
 	"log"
 )
 
+var NullLogger Logger = &NOPLogger{}
+
 // Logger defines a simple logging interface
 type Logger interface {
 	Infof(format string, args ...interface{})

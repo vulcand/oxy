@@ -1,4 +1,4 @@
-// package streamer provides a special http.Handler middleware that solves several problems when dealing with http requests:
+// package stream provides a special http.Handler middleware that solves several problems when dealing with http requests:
 //
 // * Reads the entire request and response into buffer, optionally buffering it to disk for large requests
 //
@@ -6,7 +6,7 @@
 //
 // * Changes request content-transfer-encoding from chunked and provides total size to the handlers
 //
-package streamer
+package stream
 
 import (
 	"fmt"
@@ -14,6 +14,7 @@ import (
 	"net/http"
 
 	"github.com/mailgun/multibuf"
+	"github.com/mailgun/oxy/utils"
 )
 
 const (
@@ -22,6 +23,8 @@ const (
 	// No limit by default
 	DefaultMaxBodyBytes = -1
 )
+
+var errHandler utils.ErrorHandler = &SizeErrHandler{}
 
 // Streamer is responsible for streaming requests and responses
 // It buffers large reqeuests and responses to disk,
@@ -33,7 +36,8 @@ type Streamer struct {
 	memResponseBodyBytes int64
 
 	next       http.Handler
-	errHandler http.Handler
+	errHandler utils.ErrorHandler
+	log        utils.Logger
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments.
@@ -56,14 +60,29 @@ func New(next http.Handler, setters ...optSetter) (*Streamer, error) {
 			return nil, err
 		}
 	}
+	if strm.errHandler == nil {
+		strm.errHandler = errHandler
+	}
+
+	if strm.log == nil {
+		strm.log = utils.NullLogger
+	}
 
 	return strm, nil
 }
 
 type optSetter func(s *Streamer) error
 
+// Logger
+func Logger(l utils.Logger) optSetter {
+	return func(s *Streamer) error {
+		s.log = l
+		return nil
+	}
+}
+
 // ErrorHandler is a functional argument that sets error handler of the server
-func ErrorHandler(h http.Handler) optSetter {
+func ErrorHandler(h utils.ErrorHandler) optSetter {
 	return func(s *Streamer) error {
 		s.errHandler = h
 		return nil
@@ -119,8 +138,9 @@ func (s *Streamer) Wrap(next http.Handler) error {
 }
 
 func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if s.isOverLimit(req) {
-		s.errHandler.ServeHTTP(w, req)
+	if err := s.checkLimit(req); err != nil {
+		s.log.Infof("request body over limit: %v", err)
+		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 
@@ -128,9 +148,10 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// to read into memory and disk. This reader returns an error if the total request size exceeds the
 	// prefefined MaxSizeBytes. This can occur if we got chunked request, in this case ContentLength would be set to -1
 	// and the reader would be unbounded bufio in the http.Server
+
 	body, err := multibuf.New(req.Body, multibuf.MaxBytes(s.maxRequestBodyBytes), multibuf.MemBytes(s.memRequestBodyBytes))
 	if err != nil || body == nil {
-		s.errHandler.ServeHTTP(w, req)
+		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 
@@ -146,17 +167,18 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// set without content length or using chunked TransferEncoding
 	totalSize, err := body.Size()
 	if err != nil {
-		s.errHandler.ServeHTTP(w, req)
+		s.log.Errorf("failed to get size, err %v", err)
+		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
-	req.ContentLength = totalSize
+	outreq.ContentLength = totalSize
 	// remove TransferEncoding that could have been previously set because we have transformed the request from chunked encoding
-	req.TransferEncoding = []string{}
+	outreq.TransferEncoding = []string{}
 
 	// We create a special writer that will limit the response size, buffer it to disk if necessary
 	writer, err := multibuf.NewWriterOnce(multibuf.MaxBytes(s.maxResponseBodyBytes), multibuf.MemBytes(s.memResponseBodyBytes))
 	if err != nil {
-		s.errHandler.ServeHTTP(w, req)
+		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 
@@ -171,7 +193,8 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	reader, err := writer.Reader()
 	if err != nil {
-		s.errHandler.ServeHTTP(w, req)
+		s.log.Errorf("failed to read response, err %v", err)
+		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	defer reader.Close()
@@ -181,11 +204,14 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	io.Copy(w, reader)
 }
 
-func (s *Streamer) isOverLimit(req *http.Request) bool {
+func (s *Streamer) checkLimit(req *http.Request) error {
 	if s.maxRequestBodyBytes <= 0 {
-		return false
+		return nil
 	}
-	return req.ContentLength > s.maxRequestBodyBytes
+	if req.ContentLength > s.maxRequestBodyBytes {
+		return &multibuf.MaxSizeReachedError{MaxSize: s.maxRequestBodyBytes}
+	}
+	return nil
 }
 
 type bufferWriter struct {
@@ -217,4 +243,16 @@ func copyHeaders(dst, src http.Header) {
 			dst.Add(k, v)
 		}
 	}
+}
+
+type SizeErrHandler struct {
+}
+
+func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
+	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
+		return
+	}
+	utils.DefaultHandler.ServeHTTP(w, req, err)
 }

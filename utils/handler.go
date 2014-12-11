@@ -9,10 +9,12 @@ type ErrorHandler interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request, err error)
 }
 
-type DefaultHandler struct {
+var DefaultHandler ErrorHandler = &StdHandler{}
+
+type StdHandler struct {
 }
 
-func (e *DefaultHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
+func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	statusCode := http.StatusInternalServerError
 	if e, ok := err.(net.Error); ok {
 		if e.Timeout() {

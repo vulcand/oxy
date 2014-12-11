@@ -73,10 +73,10 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		f.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
 	}
 	if f.log == nil {
-		f.log = &utils.NOPLogger{}
+		f.log = utils.NullLogger
 	}
 	if f.errHandler == nil {
-		f.errHandler = &utils.DefaultHandler{}
+		f.errHandler = utils.DefaultHandler
 	}
 	return f, nil
 }
