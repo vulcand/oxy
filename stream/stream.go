@@ -18,15 +18,15 @@ Examples of a streaming middleware:
   stream.New(handler)
 
   // This version will buffer up to 2MB in memory and will serialize any extra
-  //to a temporary file, if the request size exceeds 10MB it will reject the request
+  // to a temporary file, if the request size exceeds 10MB it will reject the request
   stream.New(handler,
     MemRequestBodyBytes(2 * 1024 * 1024),
-    MaxRequestBodyBytes(10 * 1024 * 104))
+    MaxRequestBodyBytes(10 * 1024 * 1024))
 
   // Will do the same as above, but with responses
   stream.New(handler,
     MemResponseBodyBytes(2 * 1024 * 1024),
-    MaxResponseBodyBytes(10 * 1024 * 104))
+    MaxResponseBodyBytes(10 * 1024 * 1024))
 
   // Stream will replay the request if the handler returns error at least 3 times
   // before returning the response
@@ -71,11 +71,7 @@ type Streamer struct {
 	log        utils.Logger
 }
 
-// New returns a new streamer middleware. New() function supports optional functional arguments.
-//
-//  streamer.New(handler) // returns streamer that buffers up to 1MB of request and response in memory and buffers to disk after that
-//  streamer.New(handler, streamer.MaxBodyBytes(2 * 1024 * 1024), streamer.MaxMemBytes(50 * 1024 * 1024)) // up to 2MB in RAM, max request size is 50MB
-//
+// New returns a new streamer middleware. New() function supports optional functional arguments
 func New(next http.Handler, setters ...optSetter) (*Streamer, error) {
 	strm := &Streamer{
 		next: next,
@@ -104,6 +100,17 @@ func New(next http.Handler, setters ...optSetter) (*Streamer, error) {
 
 type optSetter func(s *Streamer) error
 
+// Retry provides a predicate that allows stream middleware to replay the request
+// if it matches certain condition, e.g. returns special error code. Available functions are:
+//
+// Attempts() - limits the amount of retry attempts
+// ResponseCode() - returns http response code
+// IsNetworkError() - tests if response code is related to networking error
+//
+// Example of the predicate:
+//
+// `Attempts() <= 2 && ResponseCode() == 502`
+//
 func Retry(predicate string) optSetter {
 	return func(s *Streamer) error {
 		p, err := parseExpression(predicate)
@@ -115,7 +122,7 @@ func Retry(predicate string) optSetter {
 	}
 }
 
-// Logger
+// Logger sets the logger that will be used by this middleware.
 func Logger(l utils.Logger) optSetter {
 	return func(s *Streamer) error {
 		s.log = l
@@ -123,7 +130,7 @@ func Logger(l utils.Logger) optSetter {
 	}
 }
 
-// ErrorHandler is a functional argument that sets error handler of the server
+// ErrorHandler sets error handler of the server
 func ErrorHandler(h utils.ErrorHandler) optSetter {
 	return func(s *Streamer) error {
 		s.errHandler = h
@@ -131,6 +138,7 @@ func ErrorHandler(h utils.ErrorHandler) optSetter {
 	}
 }
 
+// MaxRequestBodyBytes sets the maximum request body size in bytes
 func MaxRequestBodyBytes(m int64) optSetter {
 	return func(s *Streamer) error {
 		if m < 0 {
@@ -141,6 +149,8 @@ func MaxRequestBodyBytes(m int64) optSetter {
 	}
 }
 
+// MaxRequestBody bytes sets the maximum request body to be stored in memory
+// stream middleware will serialize the excess to disk.
 func MemRequestBodyBytes(m int64) optSetter {
 	return func(s *Streamer) error {
 		if m < 0 {
@@ -151,6 +161,7 @@ func MemRequestBodyBytes(m int64) optSetter {
 	}
 }
 
+// MaxResponseBodyBytes sets the maximum request body size in bytes
 func MaxResponseBodyBytes(m int64) optSetter {
 	return func(s *Streamer) error {
 		if m < 0 {
@@ -161,6 +172,8 @@ func MaxResponseBodyBytes(m int64) optSetter {
 	}
 }
 
+// MemResponseBodyBytes sets the maximum request body to be stored in memory
+// stream middleware will serialize the excess to disk.
 func MemResponseBodyBytes(m int64) optSetter {
 	return func(s *Streamer) error {
 		if m < 0 {
@@ -171,10 +184,8 @@ func MemResponseBodyBytes(m int64) optSetter {
 	}
 }
 
+// Wrap sets the next handler to be called by stream handler.
 func (s *Streamer) Wrap(next http.Handler) error {
-	if s.next != nil {
-		return fmt.Errorf("this streamer is already wrapping %T", s.next)
-	}
 	s.next = next
 	return nil
 }
