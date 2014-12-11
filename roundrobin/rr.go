@@ -216,8 +216,7 @@ type server struct {
 	weight int
 }
 
-// This is really a convenience, so users can add servers with smaller weights if they did not set it initially
-const defaultWeight = 10
+const defaultWeight = 1
 
 func sameURL(a, b *url.URL) bool {
 	return a.Path == b.Path && a.Host == b.Host && a.Scheme == b.Scheme

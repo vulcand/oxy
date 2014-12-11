@@ -75,7 +75,7 @@ func (s *RRSuite) TestOneServer(c *C) {
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(s.seq(c, proxy.URL, 3), DeepEquals, []string{"a", "a", "a"})
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "a", "a"})
 }
 
 func (s *RRSuite) TestSimple(c *C) {
@@ -97,7 +97,7 @@ func (s *RRSuite) TestSimple(c *C) {
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(s.seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
 }
 
 func (s *RRSuite) TestRemoveServer(c *C) {
@@ -119,11 +119,11 @@ func (s *RRSuite) TestRemoveServer(c *C) {
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(s.seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
 
 	lb.RemoveServer(testutils.ParseURI(a.URL))
 
-	c.Assert(s.seq(c, proxy.URL, 3), DeepEquals, []string{"b", "b", "b"})
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"b", "b", "b"})
 }
 
 func (s *RRSuite) TestUpsertSame(c *C) {
@@ -142,7 +142,7 @@ func (s *RRSuite) TestUpsertSame(c *C) {
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(s.seq(c, proxy.URL, 3), DeepEquals, []string{"a", "a", "a"})
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "a", "a"})
 }
 
 func (s *RRSuite) TestWeighted(c *C) {
@@ -164,7 +164,7 @@ func (s *RRSuite) TestWeighted(c *C) {
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(s.seq(c, proxy.URL, 6), DeepEquals, []string{"a", "a", "b", "a", "b", "a"})
+	c.Assert(seq(c, proxy.URL, 6), DeepEquals, []string{"a", "a", "b", "a", "b", "a"})
 
 	w, ok := lb.ServerWeight(testutils.ParseURI(a.URL))
 	c.Assert(w, Equals, 3)
@@ -179,7 +179,7 @@ func (s *RRSuite) TestWeighted(c *C) {
 	c.Assert(ok, Equals, false)
 }
 
-func (s *RRSuite) seq(c *C, url string, repeat int) []string {
+func seq(c *C, url string, repeat int) []string {
 	out := []string{}
 	for i := 0; i < repeat; i++ {
 		_, body, err := testutils.Get(url)

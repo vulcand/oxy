@@ -39,10 +39,19 @@ type Rebalancer struct {
 	// next is  internal load balancer next in chain
 	next balancerHandler
 
+	log utils.Logger
+
 	ratings []float64
 
 	// creates new meters
 	newMeter NewMeterFn
+}
+
+func RebalancerLogger(log utils.Logger) rbOptSetter {
+	return func(r *Rebalancer) error {
+		r.log = log
+		return nil
+	}
 }
 
 func RebalancerClock(clock timetools.TimeProvider) rbOptSetter {
@@ -82,6 +91,9 @@ func NewRebalancer(handler balancerHandler, opts ...rbOptSetter) (*Rebalancer, e
 	if rb.backoffDuration == 0 {
 		rb.backoffDuration = 10 * time.Second
 	}
+	if rb.log == nil {
+		rb.log = &utils.NOPLogger{}
+	}
 	if rb.newMeter == nil {
 		rb.newMeter = func() (Meter, error) {
 			rc, err := memmetrics.NewRatioCounter(10, time.Second, memmetrics.RatioClock(rb.clock))
@@ -103,6 +115,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	start := rb.clock.UtcNow()
 	rb.next.ServeHTTP(w, req)
 	rb.recordMetrics(req.URL, pw.Code, rb.clock.UtcNow().Sub(start))
+	rb.adjustWeights()
 }
 
 func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency time.Duration) {
@@ -234,6 +247,7 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 		if srv.good {
 			weight := increase(srv.curWeight)
 			if weight <= FSMMaxWeight {
+				rb.log.Infof("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
 				srv.curWeight = weight
 				changed = true
 			}
@@ -286,10 +300,13 @@ func (rb *Rebalancer) convergeWeights() bool {
 	// If we have previoulsy changed servers try to restore weights to the original state
 	changed := false
 	for _, s := range rb.servers {
-		if s.origWeight != s.curWeight {
-			changed = true
+		if s.origWeight == s.curWeight {
+			continue
 		}
-		s.curWeight = decrease(s.origWeight, s.curWeight)
+		changed = true
+		newWeight := decrease(s.origWeight, s.curWeight)
+		rb.log.Infof("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
+		s.curWeight = newWeight
 	}
 	if !changed {
 		return false
