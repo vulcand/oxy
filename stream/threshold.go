@@ -1,10 +1,10 @@
-package retry
+package stream
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 
+	"github.com/mailgun/oxy/utils"
 	"github.com/mailgun/predicate"
 )
 
@@ -12,7 +12,7 @@ type context struct {
 	r            *http.Request
 	attempt      int
 	responseCode int
-	err          error
+	log          utils.Logger
 }
 
 type hpredicate func(*context) bool
@@ -25,6 +25,10 @@ func parseExpression(in string) (hpredicate, error) {
 			OR:  or,
 			EQ:  eq,
 			NEQ: neq,
+			LT:  lt,
+			GT:  gt,
+			LE:  le,
+			GE:  ge,
 		},
 		Functions: map[string]interface{}{
 			"RequestMethod":  requestMethod,
@@ -74,8 +78,8 @@ func responseCode() toInt {
 // IsNetworkError returns a predicate that returns true if last attempt ended with network error.
 func isNetworkError() hpredicate {
 	return func(c *context) bool {
-		_, ok := c.err.(net.Error)
-		return ok
+		c.log.Infof("code: %v", c.responseCode)
+		return c.responseCode == http.StatusBadGateway || c.responseCode == http.StatusGatewayTimeout
 	}
 }
 
@@ -130,6 +134,54 @@ func neq(m interface{}, value interface{}) (hpredicate, error) {
 	return not(p), nil
 }
 
+// lt returns predicate that tests that value of the mapper function is less than the constant
+func lt(m interface{}, value interface{}) (hpredicate, error) {
+	switch mapper := m.(type) {
+	case toInt:
+		return intLT(mapper, value)
+	}
+	return nil, fmt.Errorf("unsupported argument: %T", m)
+}
+
+// le returns predicate that tests that value of the mapper function is less or equal than the constant
+func le(m interface{}, value interface{}) (hpredicate, error) {
+	l, err := lt(m, value)
+	if err != nil {
+		return nil, err
+	}
+	e, err := eq(m, value)
+	if err != nil {
+		return nil, err
+	}
+	return func(c *context) bool {
+		return l(c) || e(c)
+	}, nil
+}
+
+// gt returns predicate that tests that value of the mapper function is greater than the constant
+func gt(m interface{}, value interface{}) (hpredicate, error) {
+	switch mapper := m.(type) {
+	case toInt:
+		return intGT(mapper, value)
+	}
+	return nil, fmt.Errorf("unsupported argument: %T", m)
+}
+
+// ge returns predicate that tests that value of the mapper function is less or equal than the constant
+func ge(m interface{}, value interface{}) (hpredicate, error) {
+	g, err := gt(m, value)
+	if err != nil {
+		return nil, err
+	}
+	e, err := eq(m, value)
+	if err != nil {
+		return nil, err
+	}
+	return func(c *context) bool {
+		return g(c) || e(c)
+	}, nil
+}
+
 func stringEQ(m toString, val interface{}) (hpredicate, error) {
 	value, ok := val.(string)
 	if !ok {
@@ -147,5 +199,25 @@ func intEQ(m toInt, val interface{}) (hpredicate, error) {
 	}
 	return func(c *context) bool {
 		return m(c) == value
+	}, nil
+}
+
+func intLT(m toInt, val interface{}) (hpredicate, error) {
+	value, ok := val.(int)
+	if !ok {
+		return nil, fmt.Errorf("expected int, got %T", val)
+	}
+	return func(c *context) bool {
+		return m(c) < value
+	}, nil
+}
+
+func intGT(m toInt, val interface{}) (hpredicate, error) {
+	value, ok := val.(int)
+	if !ok {
+		return nil, fmt.Errorf("expected int, got %T", val)
+	}
+	return func(c *context) bool {
+		return m(c) > value
 	}, nil
 }

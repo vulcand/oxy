@@ -22,6 +22,8 @@ const (
 	DefaultMemBodyBytes = 1048576
 	// No limit by default
 	DefaultMaxBodyBytes = -1
+	// Maximum retry attempts
+	DefaultMaxRetryAttempts = 10
 )
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
@@ -34,6 +36,8 @@ type Streamer struct {
 
 	maxResponseBodyBytes int64
 	memResponseBodyBytes int64
+
+	retryPredicate hpredicate
 
 	next       http.Handler
 	errHandler utils.ErrorHandler
@@ -72,6 +76,17 @@ func New(next http.Handler, setters ...optSetter) (*Streamer, error) {
 }
 
 type optSetter func(s *Streamer) error
+
+func Retry(predicate string) optSetter {
+	return func(s *Streamer) error {
+		p, err := parseExpression(predicate)
+		if err != nil {
+			return err
+		}
+		s.retryPredicate = p
+		return nil
+	}
+}
 
 // Logger
 func Logger(l utils.Logger) optSetter {
@@ -148,7 +163,6 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// to read into memory and disk. This reader returns an error if the total request size exceeds the
 	// prefefined MaxSizeBytes. This can occur if we got chunked request, in this case ContentLength would be set to -1
 	// and the reader would be unbounded bufio in the http.Server
-
 	body, err := multibuf.New(req.Body, multibuf.MaxBytes(s.maxRequestBodyBytes), multibuf.MemBytes(s.memRequestBodyBytes))
 	if err != nil || body == nil {
 		s.errHandler.ServeHTTP(w, req, err)
@@ -160,9 +174,6 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// and we don'w want to mess with standard library
 	defer body.Close()
 
-	outreq := *req
-	outreq.Body = body
-
 	// We need to set ContentLength based on known request size. The incoming request may have been
 	// set without content length or using chunked TransferEncoding
 	totalSize, err := body.Size()
@@ -171,37 +182,66 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
-	outreq.ContentLength = totalSize
+
+	outreq := s.copyRequest(req, body, totalSize)
+
+	attempt := 1
+	for {
+		// We create a special writer that will limit the response size, buffer it to disk if necessary
+		writer, err := multibuf.NewWriterOnce(multibuf.MaxBytes(s.maxResponseBodyBytes), multibuf.MemBytes(s.memResponseBodyBytes))
+		if err != nil {
+			s.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+
+		// We are mimicking http.ResponseWriter to replace writer with our special writer
+		b := &bufferWriter{
+			header: make(http.Header),
+			buffer: writer,
+		}
+		defer b.Close()
+
+		s.next.ServeHTTP(b, outreq)
+
+		s.log.Infof("next responded: %v", b.code)
+
+		reader, err := writer.Reader()
+		if err != nil {
+			s.log.Errorf("failed to read response, err %v", err)
+			s.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+		defer reader.Close()
+
+		if (s.retryPredicate == nil || attempt > DefaultMaxRetryAttempts) ||
+			!s.retryPredicate(&context{r: req, attempt: attempt, responseCode: b.code, log: s.log}) {
+			copyHeaders(w.Header(), b.Header())
+			w.WriteHeader(b.code)
+			io.Copy(w, reader)
+			return
+		}
+
+		attempt += 1
+		if _, err := body.Seek(0, 0); err != nil {
+			s.log.Errorf("Failed to rewind: error: %v", err)
+			s.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+		outreq = s.copyRequest(req, body, totalSize)
+		s.log.Infof("retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
+	}
+}
+
+func (s *Streamer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int64) *http.Request {
+	o := *req
+	o.URL = utils.CopyURL(req.URL)
+	o.Header = make(http.Header)
+	utils.CopyHeaders(o.Header, req.Header)
+	o.ContentLength = bodySize
 	// remove TransferEncoding that could have been previously set because we have transformed the request from chunked encoding
-	outreq.TransferEncoding = []string{}
-
-	// We create a special writer that will limit the response size, buffer it to disk if necessary
-	writer, err := multibuf.NewWriterOnce(multibuf.MaxBytes(s.maxResponseBodyBytes), multibuf.MemBytes(s.memResponseBodyBytes))
-	if err != nil {
-		s.errHandler.ServeHTTP(w, req, err)
-		return
-	}
-
-	// We are mimicking http.ResponseWriter to replace writer with our special writer
-	b := &bufferWriter{
-		header: make(http.Header),
-		buffer: writer,
-	}
-	defer b.Close()
-
-	s.next.ServeHTTP(b, &outreq)
-
-	reader, err := writer.Reader()
-	if err != nil {
-		s.log.Errorf("failed to read response, err %v", err)
-		s.errHandler.ServeHTTP(w, req, err)
-		return
-	}
-	defer reader.Close()
-
-	copyHeaders(w.Header(), b.Header())
-	w.WriteHeader(b.code)
-	io.Copy(w, reader)
+	o.TransferEncoding = []string{}
+	o.Body = body
+	return &o
 }
 
 func (s *Streamer) checkLimit(req *http.Request) error {
