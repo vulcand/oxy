@@ -7,10 +7,10 @@ Changes request content-transfer-encoding from chunked and provides total size t
 
 Examples of a streaming middleware:
 
-    // sample HTTP handler
-    handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
-	})
+  // sample HTTP handler
+  handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+    w.Write([]byte("hello"))
+  })
 
     // Stream will read the body in buffer before passing the request to the handler
     // calculate total size of the request and transform it from chunked encoding
