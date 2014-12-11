@@ -68,7 +68,8 @@ func RebalancerMeter(newMeter NewMeterFn) rbOptSetter {
 
 func NewRebalancer(handler balancerHandler, opts ...rbOptSetter) (*Rebalancer, error) {
 	rb := &Rebalancer{
-		mtx: &sync.Mutex{},
+		mtx:  &sync.Mutex{},
+		next: handler,
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -100,7 +101,7 @@ func NewRebalancer(handler balancerHandler, opts ...rbOptSetter) (*Rebalancer, e
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	pw := &utils.ProxyWriter{W: w}
 	start := rb.clock.UtcNow()
-	rb.next.ServeHTTP(pw, req)
+	rb.next.ServeHTTP(w, req)
 	rb.recordMetrics(req.URL, pw.Code, rb.clock.UtcNow().Sub(start))
 }
 
@@ -137,7 +138,10 @@ func (rb *Rebalancer) UpsertServer(u *url.URL, options ...serverSetter) error {
 		return err
 	}
 	weight, _ := rb.next.ServerWeight(u)
-	rb.upsertServer(u, weight)
+	if err := rb.upsertServer(u, weight); err != nil {
+		rb.next.RemoveServer(u)
+		return err
+	}
 	rb.reset()
 	return nil
 }
@@ -159,11 +163,22 @@ func (rb *Rebalancer) removeServer(u *url.URL) error {
 	return nil
 }
 
-func (rb *Rebalancer) upsertServer(u *url.URL, weight int) {
+func (rb *Rebalancer) upsertServer(u *url.URL, weight int) error {
 	if s, i := rb.findServer(u); i != -1 {
 		s.origWeight = weight
 	}
-	rb.servers = append(rb.servers, &rbServer{url: utils.CopyURL(u), origWeight: weight, curWeight: weight})
+	meter, err := rb.newMeter()
+	if err != nil {
+		return err
+	}
+	rbSrv := &rbServer{
+		url:        utils.CopyURL(u),
+		origWeight: weight,
+		curWeight:  weight,
+		meter:      meter,
+	}
+	rb.servers = append(rb.servers, rbSrv)
+	return nil
 }
 
 func (r *Rebalancer) findServer(u *url.URL) (*rbServer, int) {

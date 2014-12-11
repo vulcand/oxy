@@ -12,11 +12,11 @@ import (
 	"github.com/mailgun/oxy/utils"
 )
 
-func NewTestServer(handler http.HandlerFunc) *httptest.Server {
+func NewHandler(handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(handler))
 }
 
-func NewTestResponder(response string) *httptest.Server {
+func NewResponder(response string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(response))
 	}))

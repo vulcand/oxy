@@ -34,7 +34,7 @@ func Rewriter(r ReqRewriter) optSetter {
 }
 
 // ErrorHandler is a functional argument that sets error handler of the server
-func ErrorHandler(h http.Handler) optSetter {
+func ErrorHandler(h utils.ErrorHandler) optSetter {
 	return func(f *Forwarder) error {
 		f.errHandler = h
 		return nil
@@ -49,7 +49,7 @@ func Logger(l utils.Logger) optSetter {
 }
 
 type Forwarder struct {
-	errHandler   http.Handler
+	errHandler   utils.ErrorHandler
 	roundTripper http.RoundTripper
 	rewriter     ReqRewriter
 	log          utils.Logger
@@ -72,13 +72,12 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		}
 		f.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
 	}
-	if f.errHandler == nil {
-		f.errHandler = &utils.BadGatewayHandler{}
-	}
 	if f.log == nil {
 		f.log = &utils.NOPLogger{}
 	}
-
+	if f.errHandler == nil {
+		f.errHandler = &utils.DefaultHandler{}
+	}
 	return f, nil
 }
 
@@ -87,7 +86,7 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	response, err := f.roundTripper.RoundTrip(f.copyRequest(req, req.URL))
 	if err != nil {
 		f.log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
-		f.errHandler.ServeHTTP(w, req)
+		f.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 

@@ -23,6 +23,12 @@ func (p *ProxyWriter) WriteHeader(code int) {
 	p.WriteHeader(code)
 }
 
+func (p *ProxyWriter) Flush() {
+	if f, ok := p.W.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // CopyURL provides update safe copy by avoiding shallow copying User field
 func CopyURL(i *url.URL) *url.URL {
 	out := *i

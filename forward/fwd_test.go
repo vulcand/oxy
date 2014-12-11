@@ -24,7 +24,7 @@ var _ = Suite(&FwdSuite{})
 func (s *FwdSuite) TestForwardHopHeaders(c *C) {
 	called := false
 	var outHeaders http.Header
-	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		called = true
 		outHeaders = req.Header
 		w.Write([]byte("hello"))
@@ -34,7 +34,7 @@ func (s *FwdSuite) TestForwardHopHeaders(c *C) {
 	f, err := New()
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
@@ -58,7 +58,7 @@ func (s *FwdSuite) TestDefaultErrHandler(c *C) {
 	f, err := New()
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI("http://localhost:63450")
 		f.ServeHTTP(w, req)
 	})
@@ -70,13 +70,13 @@ func (s *FwdSuite) TestDefaultErrHandler(c *C) {
 }
 
 func (s *FwdSuite) TestCustomErrHandler(c *C) {
-	f, err := New(ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	f, err := New(ErrorHandler(utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
 		w.WriteHeader(http.StatusTeapot)
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})))
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI("http://localhost:63450")
 		f.ServeHTTP(w, req)
 	})
@@ -91,7 +91,7 @@ func (s *FwdSuite) TestCustomErrHandler(c *C) {
 // Makes sure hop-by-hop headers are removed
 func (s *FwdSuite) TestForwardedHeaders(c *C) {
 	var outHeaders http.Header
-	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		outHeaders = req.Header
 		w.Write([]byte("hello"))
 	})
@@ -100,7 +100,7 @@ func (s *FwdSuite) TestForwardedHeaders(c *C) {
 	f, err := New()
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
@@ -120,7 +120,7 @@ func (s *FwdSuite) TestForwardedHeaders(c *C) {
 
 func (s *FwdSuite) TestCustomRewriter(c *C) {
 	var outHeaders http.Header
-	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		outHeaders = req.Header
 		w.Write([]byte("hello"))
 	})
@@ -129,7 +129,7 @@ func (s *FwdSuite) TestCustomRewriter(c *C) {
 	f, err := New(Rewriter(&HeaderRewriter{TrustForwardHeader: false, Hostname: "hello"}))
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
@@ -147,8 +147,8 @@ func (s *FwdSuite) TestCustomRewriter(c *C) {
 	c.Assert(strings.Contains(outHeaders.Get(XForwardedFor), "192.168.1.1"), Equals, false)
 }
 
-func (s *FwdSuite) TestCustomTransport(c *C) {
-	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+func (s *FwdSuite) TestCustomTransportTimeout(c *C) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		time.Sleep(20 * time.Millisecond)
 		w.Write([]byte("hello"))
 	})
@@ -160,7 +160,7 @@ func (s *FwdSuite) TestCustomTransport(c *C) {
 		}))
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
@@ -168,11 +168,11 @@ func (s *FwdSuite) TestCustomTransport(c *C) {
 
 	re, _, err := testutils.Get(proxy.URL)
 	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusBadGateway)
+	c.Assert(re.StatusCode, Equals, http.StatusGatewayTimeout)
 }
 
 func (s *FwdSuite) TestCustomLogger(c *C) {
-	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
 	defer srv.Close()
@@ -183,7 +183,7 @@ func (s *FwdSuite) TestCustomLogger(c *C) {
 	f, err := New(Logger(l))
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
@@ -197,7 +197,7 @@ func (s *FwdSuite) TestCustomLogger(c *C) {
 
 func (s *FwdSuite) TestEscapedURL(c *C) {
 	var outURL string
-	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		outURL = req.RequestURI
 		w.Write([]byte("hello"))
 	})
@@ -206,7 +206,7 @@ func (s *FwdSuite) TestEscapedURL(c *C) {
 	f, err := New()
 	c.Assert(err, IsNil)
 
-	proxy := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
@@ -226,7 +226,7 @@ func (s *FwdSuite) TestEscapedURL(c *C) {
 
 func (s *FwdSuite) TestForwardedProto(c *C) {
 	var proto string
-	srv := testutils.NewTestServer(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		proto = req.Header.Get(XForwardedProto)
 		w.Write([]byte("hello"))
 	})

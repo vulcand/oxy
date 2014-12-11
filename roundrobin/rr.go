@@ -22,7 +22,7 @@ func Weight(w int) serverSetter {
 }
 
 // ErrorHandler is a functional argument that sets error handler of the server
-func ErrorHandler(h http.Handler) rrSetter {
+func ErrorHandler(h utils.ErrorHandler) rrSetter {
 	return func(s *RoundRobin) error {
 		s.errHandler = h
 		return nil
@@ -32,7 +32,7 @@ func ErrorHandler(h http.Handler) rrSetter {
 type RoundRobin struct {
 	mutex      *sync.Mutex
 	next       http.Handler
-	errHandler http.Handler
+	errHandler utils.ErrorHandler
 	// Current index (starts from -1)
 	index         int
 	servers       []*server
@@ -51,13 +51,16 @@ func New(next http.Handler, opts ...rrSetter) (*RoundRobin, error) {
 			return nil, err
 		}
 	}
+	if rr.errHandler == nil {
+		rr.errHandler = &utils.DefaultHandler{}
+	}
 	return rr, nil
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	srv, err := r.nextServer()
 	if err != nil {
-		r.errHandler.ServeHTTP(w, req)
+		r.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	req.URL = utils.CopyURL(srv.url)
@@ -97,7 +100,6 @@ func (r *RoundRobin) nextServer() (*server, error) {
 			return srv, nil
 		}
 	}
-
 	// We did full circle and found no available servers
 	return nil, fmt.Errorf("No available servers!")
 }
