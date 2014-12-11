@@ -1,10 +1,9 @@
-/* package stream provides http.Handler middleware that solves several problems when dealing with http requests:
+/*
+package stream provides http.Handler middleware that solves several problems when dealing with http requests:
 
-* Reads the entire request and response into buffer, optionally buffering it to disk for large requests
-
-* Checks the limits for the requests and responses, rejecting in case if the limit was exceeded
-
-* Changes request content-transfer-encoding from chunked and provides total size to the handlers
+Reads the entire request and response into buffer, optionally buffering it to disk for large requests.
+Checks the limits for the requests and responses, rejecting in case if the limit was exceeded.
+Changes request content-transfer-encoding from chunked and provides total size to the handlers.
 
 Examples of a streaming middleware:
 
