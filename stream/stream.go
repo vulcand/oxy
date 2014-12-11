@@ -7,22 +7,29 @@ Changes request content-transfer-encoding from chunked and provides total size t
 
 Examples of a streaming middleware:
 
+    // sample HTTP handler
     handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
 
     // Stream will read the body in buffer before passing the request to the handler
-    // calculate total size of the request and transform it from chunked encoding before passing to the server
+    // calculate total size of the request and transform it from chunked encoding
+    // before passing to the server
     stream.New(handler)
 
-   // This version will buffer up to 2MB in memory and will serialize any extra to a temporary file
-   // if the request size exceeds 10MB it will reject the request
-   stream.New(handler, MemRequestBodyBytes(2 * 1024 * 1024), MaxRequestBodyBytes(10 * 1024 * 104))
+   // This version will buffer up to 2MB in memory and will serialize any extra
+   //to a temporary file, if the request size exceeds 10MB it will reject the request
+   stream.New(handler,
+       MemRequestBodyBytes(2 * 1024 * 1024),
+       MaxRequestBodyBytes(10 * 1024 * 104))
 
    // Will do the same as above, but with responses
-   stream.New(handler, MemResponseBodyBytes(2 * 1024 * 1024), MaxResponseBodyBytes(10 * 1024 * 104))
+   stream.New(handler,
+       MemResponseBodyBytes(2 * 1024 * 1024),
+       MaxResponseBodyBytes(10 * 1024 * 104))
 
-  // Stream will replay the request if the handler returns error at least 3 times before returning the response
+  // Stream will replay the request if the handler returns error at least 3 times
+  // before returning the response
   stream.New(handler, `IsNetworkError() && Attempts() <= 2`)
 
 */
