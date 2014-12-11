@@ -25,14 +25,14 @@ type FileLogger struct {
 func NewFileLogger(w io.Writer, lvl LogLevel) *FileLogger {
 	l := &FileLogger{}
 	flag := log.Ldate | log.Ltime | log.Lmicroseconds
-	if lvl >= INFO {
+	if lvl <= INFO {
 		l.info = log.New(w, "INFO: ", flag)
 	}
-	if lvl >= WARN {
+	if lvl <= WARN {
 		l.warn = log.New(w, "WARN: ", flag)
 	}
-	if lvl >= ERROR {
-		l.warn = log.New(w, "ERR: ", flag)
+	if lvl <= ERROR {
+		l.error = log.New(w, "ERR: ", flag)
 	}
 	return l
 }

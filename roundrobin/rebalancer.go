@@ -113,7 +113,8 @@ func NewRebalancer(handler balancerHandler, opts ...rbOptSetter) (*Rebalancer, e
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	pw := &utils.ProxyWriter{W: w}
 	start := rb.clock.UtcNow()
-	rb.next.ServeHTTP(w, req)
+	rb.next.ServeHTTP(pw, req)
+
 	rb.recordMetrics(req.URL, pw.Code, rb.clock.UtcNow().Sub(start))
 	rb.adjustWeights()
 }
@@ -363,7 +364,7 @@ const (
 	// This is the maximum weight that handler will set for the server
 	FSMMaxWeight = 4096
 	// Multiplier for the server weight
-	FSMGrowFactor = 16
+	FSMGrowFactor = 4
 )
 
 type codeMeter struct {

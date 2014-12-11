@@ -20,7 +20,7 @@ func (p *ProxyWriter) Write(buf []byte) (int, error) {
 
 func (p *ProxyWriter) WriteHeader(code int) {
 	p.Code = code
-	p.WriteHeader(code)
+	p.W.WriteHeader(code)
 }
 
 func (p *ProxyWriter) Flush() {

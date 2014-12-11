@@ -30,10 +30,8 @@ func (s *RBSuite) SetUpSuite(c *C) {
 }
 
 func (s *RBSuite) TestRebalancerNormalOperation(c *C) {
-	a := testutils.NewResponder("a")
+	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
 	defer a.Close()
-
-	b := testutils.NewResponder("b")
 	defer b.Close()
 
 	fwd, err := forward.New()
@@ -73,10 +71,8 @@ func (s *RBSuite) TestRebalancerNoServers(c *C) {
 
 // Test scenario when one server goes down after what it recovers
 func (s *RBSuite) TestRebalancerRecovery(c *C) {
-	a := testutils.NewResponder("a")
+	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
 	defer a.Close()
-
-	b := testutils.NewResponder("b")
 	defer b.Close()
 
 	fwd, err := forward.New()
@@ -122,13 +118,9 @@ func (s *RBSuite) TestRebalancerRecovery(c *C) {
 
 // Test scenario when increaing the weight on good endpoints made it worse
 func (s *RBSuite) TestRebalancerCascading(c *C) {
-	a := testutils.NewResponder("a")
+	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
 	defer a.Close()
-
-	b := testutils.NewResponder("b")
 	defer b.Close()
-
-	d := testutils.NewResponder("d")
 	defer d.Close()
 
 	fwd, err := forward.New()
@@ -181,13 +173,9 @@ func (s *RBSuite) TestRebalancerCascading(c *C) {
 
 // Test scenario when all servers started failing
 func (s *RBSuite) TestRebalancerAllBad(c *C) {
-	a := testutils.NewResponder("a")
+	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
 	defer a.Close()
-
-	b := testutils.NewResponder("b")
 	defer b.Close()
-
-	d := testutils.NewResponder("d")
 	defer d.Close()
 
 	fwd, err := forward.New()
@@ -226,13 +214,9 @@ func (s *RBSuite) TestRebalancerAllBad(c *C) {
 
 // Removing the server resets the state
 func (s *RBSuite) TestRebalancerReset(c *C) {
-	a := testutils.NewResponder("a")
+	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
 	defer a.Close()
-
-	b := testutils.NewResponder("b")
 	defer b.Close()
-
-	d := testutils.NewResponder("d")
 	defer d.Close()
 
 	fwd, err := forward.New()
@@ -273,6 +257,38 @@ func (s *RBSuite) TestRebalancerReset(c *C) {
 
 	c.Assert(rb.servers[0].curWeight, Equals, 1)
 	c.Assert(rb.servers[1].curWeight, Equals, 1)
+}
+
+func (s *RBSuite) TestRebalancerLive(c *C) {
+	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
+	defer a.Close()
+	defer b.Close()
+
+	fwd, err := forward.New(forward.Logger(s.log))
+	c.Assert(err, IsNil)
+
+	lb, err := New(fwd)
+	c.Assert(err, IsNil)
+
+	rb, err := NewRebalancer(lb, RebalancerLogger(s.log), RebalancerBackoff(time.Millisecond), RebalancerClock(s.clock))
+	c.Assert(err, IsNil)
+
+	rb.UpsertServer(testutils.ParseURI(a.URL))
+	rb.UpsertServer(testutils.ParseURI(b.URL))
+	rb.UpsertServer(testutils.ParseURI("http://localhost:62345"))
+
+	proxy := httptest.NewServer(rb)
+	defer proxy.Close()
+
+	for i := 0; i < 100; i += 1 {
+		testutils.Get(proxy.URL)
+		s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+	}
+
+	// load balancer changed weights
+	c.Assert(rb.servers[0].curWeight, Equals, FSMMaxWeight)
+	c.Assert(rb.servers[1].curWeight, Equals, FSMMaxWeight)
+	c.Assert(rb.servers[2].curWeight, Equals, 1)
 }
 
 type testMeter struct {
