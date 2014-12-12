@@ -21,7 +21,7 @@ Status
 Quickstart
 -----------
 
-Every handler is ```http.Handler``, so writing and plugging in a middleware is easy. Let us write a simple reverse proxy as an example:
+Every handler is ``http.Handler``, so writing and plugging in a middleware is easy. Let us write a simple reverse proxy as an example:
 
 Simple reverse proxy
 ====================
