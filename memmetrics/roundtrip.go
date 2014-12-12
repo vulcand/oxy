@@ -1,7 +1,7 @@
 package memmetrics
 
 import (
-	"net"
+	"net/http"
 	"time"
 
 	"github.com/mailgun/timetools"
@@ -125,9 +125,9 @@ func (m *RTMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 	return 0
 }
 
-func (m *RTMetrics) Record(code int, err error, duration time.Duration) {
+func (m *RTMetrics) Record(code int, duration time.Duration) {
 	m.total.Inc()
-	if _, ok := err.(net.Error); ok {
+	if code == http.StatusGatewayTimeout || code == http.StatusBadGateway {
 		m.netErrors.Inc()
 	}
 	m.recordStatusCode(code)

@@ -1,7 +1,6 @@
 package memmetrics
 
 import (
-	"net"
 	"time"
 
 	"github.com/mailgun/timetools"
@@ -25,16 +24,16 @@ func (s *RRSuite) TestDefaults(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(rr, NotNil)
 
-	rr.Record(200, &net.OpError{}, time.Second)
-	rr.Record(500, nil, 2*time.Second)
-	rr.Record(200, nil, time.Second)
-	rr.Record(200, nil, time.Second)
+	rr.Record(200, time.Second)
+	rr.Record(502, 2*time.Second)
+	rr.Record(200, time.Second)
+	rr.Record(200, time.Second)
 
 	c.Assert(rr.NetworkErrorCount(), Equals, int64(1))
 	c.Assert(rr.TotalCount(), Equals, int64(4))
-	c.Assert(rr.StatusCodesCounts(), DeepEquals, map[int]int64{500: 1, 200: 3})
+	c.Assert(rr.StatusCodesCounts(), DeepEquals, map[int]int64{502: 1, 200: 3})
 	c.Assert(rr.NetworkErrorRatio(), Equals, float64(1)/float64(4))
-	c.Assert(rr.ResponseCodeRatio(500, 501, 200, 300), Equals, 1.0/3.0)
+	c.Assert(rr.ResponseCodeRatio(500, 503, 200, 300), Equals, 1.0/3.0)
 
 	h, err := rr.LatencyHistogram()
 	c.Assert(err, IsNil)
@@ -45,7 +44,7 @@ func (s *RRSuite) TestDefaults(c *C) {
 	c.Assert(rr.TotalCount(), Equals, int64(0))
 	c.Assert(rr.StatusCodesCounts(), DeepEquals, map[int]int64{})
 	c.Assert(rr.NetworkErrorRatio(), Equals, float64(0))
-	c.Assert(rr.ResponseCodeRatio(500, 501, 200, 300), Equals, float64(0))
+	c.Assert(rr.ResponseCodeRatio(500, 503, 200, 300), Equals, float64(0))
 
 	h, err = rr.LatencyHistogram()
 	c.Assert(err, IsNil)
