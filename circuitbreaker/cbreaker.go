@@ -70,6 +70,13 @@ func New(next http.Handler, expression string, options ...optSetter) (*CircuitBr
 	cb := &CircuitBreaker{
 		m:    &sync.RWMutex{},
 		next: next,
+		// Default values. Might be overwritten by options below.
+		clock:            &timetools.RealTime{},
+		checkPeriod:      defaultCheckPeriod,
+		fallbackDuration: defaultFallbackDuration,
+		recoveryDuration: defaultRecoveryDuration,
+		fallback:         defaultFallback,
+		log:              utils.NullLogger,
 	}
 
 	for _, s := range options {
@@ -89,8 +96,6 @@ func New(next http.Handler, expression string, options ...optSetter) (*CircuitBr
 		return nil, err
 	}
 	cb.metrics = mt
-
-	setDefaults(cb)
 
 	return cb, nil
 }
@@ -232,32 +237,6 @@ func (c *CircuitBreaker) checkAndSet() {
 func (c *CircuitBreaker) setRecovering() {
 	c.setState(stateRecovering, c.clock.UtcNow().Add(c.recoveryDuration))
 	c.rc = newRatioController(c.clock, c.recoveryDuration)
-}
-
-func setDefaults(cb *CircuitBreaker) {
-	if cb.clock == nil {
-		cb.clock = &timetools.RealTime{}
-	}
-
-	if cb.checkPeriod == 0 {
-		cb.checkPeriod = defaultCheckPeriod
-	}
-
-	if cb.fallbackDuration == 0 {
-		cb.fallbackDuration = defaultFallbackDuration
-	}
-
-	if cb.recoveryDuration == 0 {
-		cb.recoveryDuration = defaultRecoveryDuration
-	}
-
-	if cb.fallback == nil {
-		cb.fallback = defaultFallback
-	}
-
-	if cb.log == nil {
-		cb.log = utils.NullLogger
-	}
 }
 
 type optSetter func(*CircuitBreaker) error
