@@ -66,7 +66,7 @@ type CircuitBreaker struct {
 }
 
 // New creates a new CircuitBreaker middleware
-func New(next http.Handler, expression string, options ...optSetter) (*CircuitBreaker, error) {
+func New(next http.Handler, expression string, options ...CircuitBreakerOption) (*CircuitBreaker, error) {
 	cb := &CircuitBreaker{
 		m:    &sync.RWMutex{},
 		next: next,
@@ -260,58 +260,75 @@ func setDefaults(cb *CircuitBreaker) {
 	}
 }
 
-type optSetter func(*CircuitBreaker) error
+// CircuitBreakerOption represents an option you can pass to New.
+// See the documentation for the individual options below.
+type CircuitBreakerOption func(*CircuitBreaker) error
 
-func Clock(clock timetools.TimeProvider) optSetter {
+// Clock allows you to fake che CircuitBreaker's view of the current time.
+// Intended for unit tests.
+func Clock(clock timetools.TimeProvider) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.clock = clock
 		return nil
 	}
 }
 
-func FallbackDuration(d time.Duration) optSetter {
+// FallbackDuration is how long the CircuitBreaker will remain in the Tripped
+// state before trying to recover.
+func FallbackDuration(d time.Duration) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.fallbackDuration = d
 		return nil
 	}
 }
 
-func RecoveryDuration(d time.Duration) optSetter {
+// RecoveryDuration is how long the CircuitBreaker will take to ramp up
+// requests during the Recovering state.
+func RecoveryDuration(d time.Duration) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.recoveryDuration = d
 		return nil
 	}
 }
 
-func CheckPeriod(d time.Duration) optSetter {
+// CheckPeriod is how long the CircuitBreaker will wait between successive
+// checks of the breaker condition.
+func CheckPeriod(d time.Duration) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.checkPeriod = d
 		return nil
 	}
 }
 
-func OnTripped(s SideEffect) optSetter {
+// OnTripped sets a SideEffect to run when entering the Tripped state.
+// Only one SideEffect can be set for this hook.
+func OnTripped(s SideEffect) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.onTripped = s
 		return nil
 	}
 }
 
-func OnStandby(s SideEffect) optSetter {
+// OnTripped sets a SideEffect to run when entering the Standby state.
+// Only one SideEffect can be set for this hook.
+func OnStandby(s SideEffect) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.onStandby = s
 		return nil
 	}
 }
 
-func Fallback(h http.Handler) optSetter {
+// Fallback defines the http.Handler that the CircuitBreaker should route
+// requests to when it prevents a request from taking its normal path.
+func Fallback(h http.Handler) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.fallback = h
 		return nil
 	}
 }
 
-func Logger(l utils.Logger) optSetter {
+// Logger adds logging for the CircuitBreaker.
+func Logger(l utils.Logger) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.log = l
 		return nil
