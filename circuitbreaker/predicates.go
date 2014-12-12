@@ -58,6 +58,7 @@ func latencyAtQuantile(quantile float64) toInt {
 
 func networkErrorRatio() toFloat64 {
 	return func(c *CircuitBreaker) float64 {
+		c.log.Infof("NetworkErrorRatio() == %v", c.metrics.NetworkErrorRatio())
 		return c.metrics.NetworkErrorRatio()
 	}
 }
@@ -107,7 +108,7 @@ func eq(m interface{}, value interface{}) (hpredicate, error) {
 	case toFloat64:
 		return float64EQ(mapper, value)
 	}
-	return nil, fmt.Errorf("unsupported argument: %T", m)
+	return nil, fmt.Errorf("eq: unsupported argument: %T", m)
 }
 
 // neq returns predicate that tests for inequality of the value of the mapper and the constant
@@ -127,7 +128,7 @@ func lt(m interface{}, value interface{}) (hpredicate, error) {
 	case toFloat64:
 		return float64LT(mapper, value)
 	}
-	return nil, fmt.Errorf("unsupported argument: %T", m)
+	return nil, fmt.Errorf("lt: unsupported argument: %T", m)
 }
 
 // le returns predicate that tests that value of the mapper function is less or equal than the constant
@@ -150,8 +151,10 @@ func gt(m interface{}, value interface{}) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
 		return intGT(mapper, value)
+	case toFloat64:
+		return float64GT(mapper, value)
 	}
-	return nil, fmt.Errorf("unsupported argument: %T", m)
+	return nil, fmt.Errorf("gt: unsupported argument: %T", m)
 }
 
 // ge returns predicate that tests that value of the mapper function is less or equal than the constant

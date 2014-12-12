@@ -68,7 +68,8 @@ type CircuitBreaker struct {
 // New creates a new CircuitBreaker middleware
 func New(next http.Handler, expression string, options ...optSetter) (*CircuitBreaker, error) {
 	cb := &CircuitBreaker{
-		m: &sync.RWMutex{},
+		m:    &sync.RWMutex{},
+		next: next,
 	}
 
 	for _, s := range options {
@@ -94,56 +95,53 @@ func New(next http.Handler, expression string, options ...optSetter) (*CircuitBr
 	return cb, nil
 }
 
-// String returns log-friendly representation of the circuit breaker state
-func (c *CircuitBreaker) String() string {
-	switch c.state {
-	case stateTripped, stateRecovering:
-		return fmt.Sprintf("CircuitBreaker(state=%v, until=%v)", c.state, c.until)
-	default:
-		return fmt.Sprintf("CircuitBreaker(state=%v)", c.state)
+func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if c.activateFallback(w, req) {
+		c.fallback.ServeHTTP(w, req)
+		return
 	}
+	c.serve(w, req)
 }
 
-func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// standby mode simply records the metrics and periodically checks the tripping condition
+// updateState updates internal state and returns true if fallback should be used and false otherwise
+func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Request) bool {
+	// Quick check with read locks optimized for normal operation use-case
 	if c.isStandby() {
-		c.serveRequest(w, req)
+		return false
 	}
-
 	// Circuit breaker is in tripped or recovering state
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	c.log.Infof("%v is in error handling state", c)
+	c.log.Infof("%v is in error state", c)
 
 	switch c.state {
 	case stateStandby:
-		// other goroutine has set it to standby state
-		return
+		// someone else has set it to standby just now
+		return false
 	case stateTripped:
 		if c.clock.UtcNow().Before(c.until) {
-			c.fallback.ServeHTTP(w, req)
-			return
+			return true
 		}
 		// We have been in active state enough, enter recovering state
 		c.setRecovering()
 		fallthrough
 	case stateRecovering:
-		// We have been in recovering state enough, enter standby
+		// We have been in recovering state enough, enter standby and allow request
 		if c.clock.UtcNow().After(c.until) {
-			c.serveRequest(w, req)
 			c.setState(stateStandby, c.clock.UtcNow())
-			return
+			return false
 		}
+		// ratio controller allows this request
 		if c.rc.allowRequest() {
-			c.serveRequest(w, req)
-			return
+			return false
 		}
-		c.fallback.ServeHTTP(w, req)
+		return true
 	}
+	return false
 }
 
-func (c *CircuitBreaker) serveRequest(w http.ResponseWriter, req *http.Request) {
+func (c *CircuitBreaker) serve(w http.ResponseWriter, req *http.Request) {
 	start := c.clock.UtcNow()
 	p := &utils.ProxyWriter{W: w}
 
@@ -161,6 +159,16 @@ func (c *CircuitBreaker) isStandby() bool {
 	c.m.RLock()
 	defer c.m.RUnlock()
 	return c.state == stateStandby
+}
+
+// String returns log-friendly representation of the circuit breaker state
+func (c *CircuitBreaker) String() string {
+	switch c.state {
+	case stateTripped, stateRecovering:
+		return fmt.Sprintf("CircuitBreaker(state=%v, until=%v)", c.state, c.until)
+	default:
+		return fmt.Sprintf("CircuitBreaker(state=%v)", c.state)
+	}
 }
 
 // exec executes side effect
@@ -208,12 +216,12 @@ func (c *CircuitBreaker) checkAndSet() {
 	}
 	c.lastCheck = c.clock.UtcNow().Add(c.checkPeriod)
 
-	if !c.condition(c) {
+	if c.state == stateTripped {
+		c.log.Infof("%v skip set tripped", c)
 		return
 	}
 
-	if c.state == stateTripped {
-		c.log.Infof("%v skip set tripped", c)
+	if !c.condition(c) {
 		return
 	}
 
@@ -245,6 +253,10 @@ func setDefaults(cb *CircuitBreaker) {
 
 	if cb.fallback == nil {
 		cb.fallback = defaultFallback
+	}
+
+	if cb.log == nil {
+		cb.log = utils.NullLogger
 	}
 }
 
@@ -295,6 +307,13 @@ func OnStandby(s SideEffect) optSetter {
 func Fallback(h http.Handler) optSetter {
 	return func(c *CircuitBreaker) error {
 		c.fallback = h
+		return nil
+	}
+}
+
+func Logger(l utils.Logger) optSetter {
+	return func(c *CircuitBreaker) error {
+		c.log = l
 		return nil
 	}
 }
