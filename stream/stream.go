@@ -20,17 +20,17 @@ Examples of a streaming middleware:
   // This version will buffer up to 2MB in memory and will serialize any extra
   // to a temporary file, if the request size exceeds 10MB it will reject the request
   stream.New(handler,
-    MemRequestBodyBytes(2 * 1024 * 1024),
-    MaxRequestBodyBytes(10 * 1024 * 1024))
+    stream.MemRequestBodyBytes(2 * 1024 * 1024),
+    stream.MaxRequestBodyBytes(10 * 1024 * 1024))
 
   // Will do the same as above, but with responses
   stream.New(handler,
-    MemResponseBodyBytes(2 * 1024 * 1024),
-    MaxResponseBodyBytes(10 * 1024 * 1024))
+    stream.MemResponseBodyBytes(2 * 1024 * 1024),
+    stream.MaxResponseBodyBytes(10 * 1024 * 1024))
 
   // Stream will replay the request if the handler returns error at least 3 times
   // before returning the response
-  stream.New(handler, `IsNetworkError() && Attempts() <= 2`)
+  stream.New(handler, stream.Retry(`IsNetworkError() && Attempts() <= 2`))
 
 */
 package stream
