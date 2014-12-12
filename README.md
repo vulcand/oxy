@@ -26,7 +26,7 @@ Every handler is ```http.Handler``, so writing and plugging in a middleware is e
 Simple reverse proxy
 ====================
 
-```golang
+```go
 
 import (
   "net/http"
@@ -53,7 +53,7 @@ s.ListenAndServe()
 As a next step, let us add a round robin load-balancer:
 
 
-```golang
+```go
 
 import (
   "net/http"
@@ -79,7 +79,7 @@ s.ListenAndServe()
 What if we want to handle retries and replay the request in case of errors? `stream` handler will help:
 
 
-```golang
+```go
 
 import (
   "net/http"
