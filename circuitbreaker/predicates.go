@@ -58,7 +58,6 @@ func latencyAtQuantile(quantile float64) toInt {
 
 func networkErrorRatio() toFloat64 {
 	return func(c *CircuitBreaker) float64 {
-		c.log.Infof("NetworkErrorRatio() == %v", c.metrics.NetworkErrorRatio())
 		return c.metrics.NetworkErrorRatio()
 	}
 }
