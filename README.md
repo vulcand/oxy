@@ -94,7 +94,7 @@ lb, _ := roundrobin.New(fwd)
 
 // stream will read the request body and will replay the request again in case if forward returned status
 // corresponding to nework error (e.g. Gateway Timeout)
-stream, _ := stream.New(lb, `IsNetworkError() && Attempts() < 2`)
+stream, _ := stream.New(lb, stream.Retry(`IsNetworkError() && Attempts() < 2`))
 
 lb.UpsertServer(url1)
 lb.UpsertServer(url2)
