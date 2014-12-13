@@ -253,7 +253,7 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		if (s.retryPredicate == nil || attempt > DefaultMaxRetryAttempts) ||
 			!s.retryPredicate(&context{r: req, attempt: attempt, responseCode: b.code, log: s.log}) {
-			copyHeaders(w.Header(), b.Header())
+			utils.CopyHeaders(w.Header(), b.Header())
 			w.WriteHeader(b.code)
 			io.Copy(w, reader)
 			return
@@ -313,14 +313,6 @@ func (b *bufferWriter) Write(buf []byte) (int, error) {
 // WriteHeader sets rw.Code.
 func (b *bufferWriter) WriteHeader(code int) {
 	b.code = code
-}
-
-func copyHeaders(dst, src http.Header) {
-	for k, vv := range src {
-		for _, v := range vv {
-			dst.Add(k, v)
-		}
-	}
 }
 
 type SizeErrHandler struct {
