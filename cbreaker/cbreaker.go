@@ -1,4 +1,4 @@
-// package circuitbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
+// package cbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
 //
 // Vulcan circuit breaker watches the error condtion to match
 // after which it activates the fallback scenario, e.g. returns the response code
@@ -23,7 +23,7 @@
 // * OnTripped action is called on transition (Standby -> Tripped)
 // * OnStandby action is called on transition (Recovering -> Standby)
 //
-package circuitbreaker
+package cbreaker
 
 import (
 	"fmt"
