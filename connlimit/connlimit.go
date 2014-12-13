@@ -9,16 +9,11 @@ import (
 	"github.com/mailgun/oxy/utils"
 )
 
-// ExtractSource extracts the source from the request, e.g. it may be client ip, or particular header that
-// identifies the source. amount stands for amount of connections the source consumes, usually 1 for connection limiters
-// error should be returned when source can not be identified
-type ExtractSource func(req *http.Request) (token string, amount int64, err error)
-
 // Limiter tracks concurrent connection per token
 // and is capable of rejecting connections if they are failed
-type Limiter struct {
+type ConnLimiter struct {
 	mutex            *sync.Mutex
-	extract          ExtractSource
+	extract          utils.SourceExtractor
 	connections      map[string]int64
 	maxConnections   int64
 	totalConnections int64
@@ -28,11 +23,11 @@ type Limiter struct {
 	log        utils.Logger
 }
 
-func New(next http.Handler, extract ExtractSource, maxConnections int64, options ...optSetter) (*Limiter, error) {
+func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64, options ...ConnLimitOption) (*ConnLimiter, error) {
 	if extract == nil {
 		return nil, fmt.Errorf("Extract function can not be nil")
 	}
-	cl := &Limiter{
+	cl := &ConnLimiter{
 		mutex:          &sync.Mutex{},
 		extract:        extract,
 		maxConnections: maxConnections,
@@ -54,12 +49,12 @@ func New(next http.Handler, extract ExtractSource, maxConnections int64, options
 	return cl, nil
 }
 
-func (cl *Limiter) Wrap(h http.Handler) {
+func (cl *ConnLimiter) Wrap(h http.Handler) {
 	cl.next = h
 }
 
-func (cl *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	token, amount, err := cl.extract(r)
+func (cl *ConnLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	token, amount, err := cl.extract.Extract(r)
 	if err != nil {
 		cl.log.Errorf("failed to extract source of the connection: %v", err)
 		cl.errHandler.ServeHTTP(w, r, err)
@@ -76,7 +71,7 @@ func (cl *Limiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cl.next.ServeHTTP(w, r)
 }
 
-func (cl *Limiter) acquire(token string, amount int64) error {
+func (cl *ConnLimiter) acquire(token string, amount int64) error {
 	cl.mutex.Lock()
 	defer cl.mutex.Unlock()
 
@@ -90,7 +85,7 @@ func (cl *Limiter) acquire(token string, amount int64) error {
 	return nil
 }
 
-func (cl *Limiter) release(token string, amount int64) {
+func (cl *ConnLimiter) release(token string, amount int64) {
 	cl.mutex.Lock()
 	defer cl.mutex.Unlock()
 
@@ -123,19 +118,19 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }
 
-type optSetter func(l *Limiter) error
+type ConnLimitOption func(l *ConnLimiter) error
 
 // Logger sets the logger that will be used by this middleware.
-func Logger(l utils.Logger) optSetter {
-	return func(cl *Limiter) error {
+func Logger(l utils.Logger) ConnLimitOption {
+	return func(cl *ConnLimiter) error {
 		cl.log = l
 		return nil
 	}
 }
 
 // ErrorHandler sets error handler of the server
-func ErrorHandler(h utils.ErrorHandler) optSetter {
-	return func(cl *Limiter) error {
+func ErrorHandler(h utils.ErrorHandler) ConnLimitOption {
+	return func(cl *ConnLimiter) error {
 		cl.errHandler = h
 		return nil
 	}

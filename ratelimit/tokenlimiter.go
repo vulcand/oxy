@@ -46,19 +46,20 @@ func (rs *RateSet) String() string {
 	return fmt.Sprint(rs.m)
 }
 
-// ConfigMapperFn is a mapper function that is used by the `TokenLimiter`
-// middleware to retrieve `RateSet` from HTTP requests.
-type RateExtractor func(r *http.Request) (*RateSet, error)
+type RateExtractor interface {
+	Extract(r *http.Request) (*RateSet, error)
+}
 
-// ExtractSource extracts the source from the request, e.g. it may be client ip, or particular header that
-// identifies the source. amount stands for amount of connections the source consumes, usually 1 for connection limiters
-// error should be returned when source can not be identified
-type SourceExtractor func(req *http.Request) (token string, amount int64, err error)
+type RateExtractorFunc func(r *http.Request) (*RateSet, error)
+
+func (e RateExtractorFunc) Extract(r *http.Request) (*RateSet, error) {
+	return e(r)
+}
 
 // TokenLimiter implements rate limiting middleware.
 type TokenLimiter struct {
 	defaultRates *RateSet
-	extract      SourceExtractor
+	extract      utils.SourceExtractor
 	extractRates RateExtractor
 	clock        timetools.TimeProvider
 	mutex        sync.Mutex
@@ -70,7 +71,7 @@ type TokenLimiter struct {
 }
 
 // New constructs a `TokenLimiter` middleware instance.
-func New(next http.Handler, extract SourceExtractor, defaultRates *RateSet, opts ...optSetter) (*TokenLimiter, error) {
+func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet, opts ...TokenLimiterOption) (*TokenLimiter, error) {
 	if defaultRates == nil || len(defaultRates.m) == 0 {
 		return nil, fmt.Errorf("Provide default rates")
 	}
@@ -102,7 +103,7 @@ func (tl *TokenLimiter) Wrap(next http.Handler) {
 }
 
 func (tl *TokenLimiter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	source, amount, err := tl.extract(req)
+	source, amount, err := tl.extract.Extract(req)
 	if err != nil {
 		tl.errHandler.ServeHTTP(w, req, err)
 		return
@@ -152,7 +153,7 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 		return tl.defaultRates
 	}
 
-	rates, err := tl.extractRates(req)
+	rates, err := tl.extractRates.Extract(req)
 	if err != nil {
 		tl.log.Errorf("Failed to retrieve rates: %v", err)
 		return tl.defaultRates
@@ -187,10 +188,10 @@ func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }
 
-type optSetter func(l *TokenLimiter) error
+type TokenLimiterOption func(l *TokenLimiter) error
 
 // Logger sets the logger that will be used by this middleware.
-func Logger(l utils.Logger) optSetter {
+func Logger(l utils.Logger) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.log = l
 		return nil
@@ -198,28 +199,28 @@ func Logger(l utils.Logger) optSetter {
 }
 
 // ErrorHandler sets error handler of the server
-func ErrorHandler(h utils.ErrorHandler) optSetter {
+func ErrorHandler(h utils.ErrorHandler) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.errHandler = h
 		return nil
 	}
 }
 
-func ExtractRates(e RateExtractor) optSetter {
+func ExtractRates(e RateExtractor) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.extractRates = e
 		return nil
 	}
 }
 
-func Clock(clock timetools.TimeProvider) optSetter {
+func Clock(clock timetools.TimeProvider) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.clock = clock
 		return nil
 	}
 }
 
-func Capacity(cap int) optSetter {
+func Capacity(cap int) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		if cap <= 0 {
 			return fmt.Errorf("bad capacity: %v", cap)

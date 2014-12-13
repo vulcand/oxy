@@ -174,7 +174,7 @@ func (s *LimiterSuite) TestExtractRates(c *C) {
 		w.Write([]byte("hello"))
 	})
 
-	tl, err := New(handler, headerLimit, rates, Clock(s.clock), ExtractRates(extractRates))
+	tl, err := New(handler, headerLimit, rates, Clock(s.clock), ExtractRates(RateExtractorFunc(extractRates)))
 	c.Assert(err, IsNil)
 
 	srv := httptest.NewServer(tl)
@@ -212,7 +212,7 @@ func (s *LimiterSuite) TestBadRateExtractor(c *C) {
 		w.Write([]byte("hello"))
 	})
 
-	l, err := New(handler, headerLimit, rates, Clock(s.clock), ExtractRates(extractor))
+	l, err := New(handler, headerLimit, rates, Clock(s.clock), ExtractRates(RateExtractorFunc(extractor)))
 	c.Assert(err, IsNil)
 
 	srv := httptest.NewServer(l)
@@ -246,7 +246,7 @@ func (s *LimiterSuite) TestExtractorEmpty(c *C) {
 		w.Write([]byte("hello"))
 	})
 
-	l, err := New(handler, headerLimit, rates, Clock(s.clock), ExtractRates(extractor))
+	l, err := New(handler, headerLimit, rates, Clock(s.clock), ExtractRates(RateExtractorFunc(extractor)))
 	c.Assert(err, IsNil)
 
 	srv := httptest.NewServer(l)
@@ -319,10 +319,13 @@ func (s *LimiterSuite) TestOptions(c *C) {
 	c.Assert(len(buf.String()), Not(Equals), 0)
 }
 
-func headerLimit(req *http.Request) (string, int64, error) {
+func headerLimiter(req *http.Request) (string, int64, error) {
 	return req.Header.Get("Source"), 1, nil
 }
 
-func faultyExtract(req *http.Request) (string, int64, error) {
+func faultyExtractor(req *http.Request) (string, int64, error) {
 	return "", -1, fmt.Errorf("oops")
 }
+
+var headerLimit = utils.ExtractorFunc(headerLimiter)
+var faultyExtract = utils.ExtractorFunc(faultyExtractor)

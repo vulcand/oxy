@@ -110,10 +110,13 @@ func (s *ConnLimiterSuite) TestFaultyExtract(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusInternalServerError)
 }
 
-func headerLimit(req *http.Request) (string, int64, error) {
+func headerLimiter(req *http.Request) (string, int64, error) {
 	return req.Header.Get("Limit"), 1, nil
 }
 
-func faultyExtract(req *http.Request) (string, int64, error) {
+func faultyExtractor(req *http.Request) (string, int64, error) {
 	return "", -1, fmt.Errorf("oops")
 }
+
+var headerLimit = utils.ExtractorFunc(headerLimiter)
+var faultyExtract = utils.ExtractorFunc(faultyExtractor)
