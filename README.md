@@ -6,7 +6,7 @@ Oxy is a Go library with HTTP handlers that enhance HTTP standard library:
 * [Stream](http://godoc.org/github.com/mailgun/oxy/stream) retries and buffers requests and responses 
 * [Forward](http://godoc.org/github.com/mailgun/oxy/forward) forwards requests to remote location and rewrites headers 
 * [Roundrobin](http://godoc.org/github.com/mailgun/oxy/roundrobin) is a round-robin load balancer 
-* [Circuit Breaker](http://godoc.org/github.com/mailgun/oxy/circuitbreaker) Hystrix-style circuit breaker
+* [Circuit Breaker](http://godoc.org/github.com/mailgun/oxy/cbreaker) Hystrix-style circuit breaker
 * [Connlimit](http://godoc.org/github.com/mailgun/oxy/connlimit) Simultaneous connections limiter
 * [Ratelimit](http://godoc.org/github.com/mailgun/oxy/connlimit) Rate limiter (based on tokenbucket algo)
 
