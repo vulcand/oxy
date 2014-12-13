@@ -108,6 +108,10 @@ func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.serve(w, req)
 }
 
+func (c *CircuitBreaker) Wrap(next http.Handler) {
+	c.next = next
+}
+
 // updateState updates internal state and returns true if fallback should be used and false otherwise
 func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Request) bool {
 	// Quick check with read locks optimized for normal operation use-case
