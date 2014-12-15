@@ -118,6 +118,19 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 	return rh, nil
 }
 
+func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
+	if r.bucketCount != o.bucketCount || r.period != o.period || r.low != o.low || r.high != o.high || r.sigfigs != o.sigfigs {
+		return fmt.Errorf("can't merge")
+	}
+
+	for i := range r.buckets {
+		if err := r.buckets[i].Merge(o.buckets[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
 	r.lastRoll = r.clock.UtcNow()

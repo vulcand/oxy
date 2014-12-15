@@ -93,12 +93,12 @@ func (r *RatioCounter) Ratio() float64 {
 	return float64(a) / float64(a+b)
 }
 
-func (r *RatioCounter) IncA() {
-	r.a.Inc()
+func (r *RatioCounter) IncA(v int) {
+	r.a.Inc(v)
 }
 
-func (r *RatioCounter) IncB() {
-	r.b.Inc()
+func (r *RatioCounter) IncB(v int) {
+	r.b.Inc(v)
 }
 
 type TestMeter struct {

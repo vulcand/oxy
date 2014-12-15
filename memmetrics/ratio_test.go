@@ -49,7 +49,7 @@ func (s *FailRateSuite) TestNotReady(c *C) {
 func (s *FailRateSuite) TestNoB(c *C) {
 	fr, err := NewRatioCounter(1, time.Second, RatioClock(s.tm))
 	c.Assert(err, IsNil)
-	fr.IncA()
+	fr.IncA(1)
 	c.Assert(fr.IsReady(), Equals, true)
 	c.Assert(fr.Ratio(), Equals, 1.0)
 }
@@ -57,7 +57,7 @@ func (s *FailRateSuite) TestNoB(c *C) {
 func (s *FailRateSuite) TestNoA(c *C) {
 	fr, err := NewRatioCounter(1, time.Second, RatioClock(s.tm))
 	c.Assert(err, IsNil)
-	fr.IncB()
+	fr.IncB(1)
 	c.Assert(fr.IsReady(), Equals, true)
 	c.Assert(fr.Ratio(), Equals, 0.0)
 }
@@ -67,12 +67,12 @@ func (s *FailRateSuite) TestMultipleBuckets(c *C) {
 	fr, err := NewRatioCounter(3, time.Second, RatioClock(s.tm))
 	c.Assert(err, IsNil)
 
-	fr.IncB()
+	fr.IncB(1)
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
+	fr.IncA(1)
 
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
+	fr.IncA(1)
 
 	c.Assert(fr.IsReady(), Equals, true)
 	c.Assert(fr.Ratio(), Equals, float64(2)/float64(3))
@@ -84,19 +84,18 @@ func (s *FailRateSuite) TestOverwriteBuckets(c *C) {
 	fr, err := NewRatioCounter(3, time.Second, RatioClock(s.tm))
 	c.Assert(err, IsNil)
 
-	fr.IncB()
+	fr.IncB(1)
 
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
+	fr.IncA(1)
 
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
+	fr.IncA(1)
 
 	// This time we should overwrite the old data points
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
-	fr.IncB()
-	fr.IncB()
+	fr.IncA(1)
+	fr.IncB(2)
 
 	c.Assert(fr.IsReady(), Equals, true)
 	c.Assert(fr.Ratio(), Equals, float64(3)/float64(5))
@@ -109,23 +108,22 @@ func (s *FailRateSuite) TestInactiveBuckets(c *C) {
 	fr, err := NewRatioCounter(3, time.Second, RatioClock(s.tm))
 	c.Assert(err, IsNil)
 
-	fr.IncB()
+	fr.IncB(1)
 
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
+	fr.IncA(1)
 
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
+	fr.IncA(1)
 
 	// This time we should overwrite the old data points with new data
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
-	fr.IncB()
-	fr.IncB()
+	fr.IncA(1)
+	fr.IncB(2)
 
 	// Jump to the last bucket and change the data
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second * 2)
-	fr.IncB()
+	fr.IncB(1)
 
 	c.Assert(fr.IsReady(), Equals, true)
 	c.Assert(fr.Ratio(), Equals, float64(1)/float64(4))
@@ -135,17 +133,17 @@ func (s *FailRateSuite) TestLongPeriodsOfInactivity(c *C) {
 	fr, err := NewRatioCounter(2, time.Second, RatioClock(s.tm))
 	c.Assert(err, IsNil)
 
-	fr.IncB()
+	fr.IncB(1)
 
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	fr.IncA()
+	fr.IncA(1)
 
 	c.Assert(fr.IsReady(), Equals, true)
 	c.Assert(fr.Ratio(), Equals, 0.5)
 
 	// This time we should overwrite all data points
 	s.tm.CurrentTime = s.tm.CurrentTime.Add(100 * time.Second)
-	fr.IncA()
+	fr.IncA(1)
 	c.Assert(fr.Ratio(), Equals, 1.0)
 }
 
@@ -153,8 +151,8 @@ func (s *FailRateSuite) TestReset(c *C) {
 	fr, err := NewRatioCounter(1, time.Second, RatioClock(s.tm))
 	c.Assert(err, IsNil)
 
-	fr.IncB()
-	fr.IncA()
+	fr.IncB(1)
+	fr.IncA(1)
 
 	c.Assert(fr.IsReady(), Equals, true)
 	c.Assert(fr.Ratio(), Equals, 0.5)
@@ -164,8 +162,7 @@ func (s *FailRateSuite) TestReset(c *C) {
 	c.Assert(fr.IsReady(), Equals, false)
 
 	// Now add some stats
-	fr.IncA()
-	fr.IncA()
+	fr.IncA(2)
 
 	// We are game again!
 	c.Assert(fr.IsReady(), Equals, true)

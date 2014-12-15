@@ -57,6 +57,25 @@ func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (
 	return rc, nil
 }
 
+func (c *RollingCounter) Append(o *RollingCounter) error {
+	c.Inc(int(o.Count()))
+	return nil
+}
+
+func (c *RollingCounter) Clone() *RollingCounter {
+	other := &RollingCounter{
+		resolution:  c.resolution,
+		values:      make([]int, len(c.values)),
+		clock:       c.clock,
+		lastBucket:  c.lastBucket,
+		lastUpdated: c.lastUpdated,
+	}
+	for i, v := range c.values {
+		other.values[i] = v
+	}
+	return other
+}
+
 func (c *RollingCounter) Reset() {
 	c.lastBucket = -1
 	c.countedBuckets = 0
@@ -87,15 +106,15 @@ func (c *RollingCounter) WindowSize() time.Duration {
 	return time.Duration(len(c.values)) * c.resolution
 }
 
-func (c *RollingCounter) Inc() {
+func (c *RollingCounter) Inc(v int) {
 	c.cleanup()
-	c.incBucketValue()
+	c.incBucketValue(v)
 }
 
-func (c *RollingCounter) incBucketValue() {
+func (c *RollingCounter) incBucketValue(v int) {
 	now := c.clock.UtcNow()
 	bucket := c.getBucket(now)
-	c.values[bucket]++
+	c.values[bucket] += v
 	c.lastUpdated = now
 	// Update usage stats if we haven't collected enough data
 	if c.countedBuckets < len(c.values) {

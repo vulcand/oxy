@@ -51,3 +51,31 @@ func (s *RRSuite) TestDefaults(c *C) {
 	c.Assert(h.LatencyAtQuantile(100), Equals, time.Duration(0))
 
 }
+
+func (s *RRSuite) TestAppend(c *C) {
+	rr, err := NewRTMetrics(RTClock(s.tm))
+	c.Assert(err, IsNil)
+	c.Assert(rr, NotNil)
+
+	rr.Record(200, time.Second)
+	rr.Record(502, 2*time.Second)
+	rr.Record(200, time.Second)
+	rr.Record(200, time.Second)
+
+	rr2, err := NewRTMetrics(RTClock(s.tm))
+	c.Assert(err, IsNil)
+	c.Assert(rr2, NotNil)
+
+	rr2.Record(200, 3*time.Second)
+	rr2.Record(501, 3*time.Second)
+	rr2.Record(200, 3*time.Second)
+	rr2.Record(200, 3*time.Second)
+
+	c.Assert(rr2.Append(rr), IsNil)
+	c.Assert(rr2.StatusCodesCounts(), DeepEquals, map[int]int64{501: 1, 502: 1, 200: 6})
+	c.Assert(rr2.NetworkErrorCount(), Equals, int64(1))
+
+	h, err := rr2.LatencyHistogram()
+	c.Assert(err, IsNil)
+	c.Assert(int(h.LatencyAtQuantile(100)/time.Second), Equals, 3)
+}

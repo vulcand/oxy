@@ -129,10 +129,33 @@ func (m *RTMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 	return 0
 }
 
+func (m *RTMetrics) Append(other *RTMetrics) error {
+	if err := m.total.Append(other.total); err != nil {
+		return err
+	}
+
+	if err := m.netErrors.Append(other.netErrors); err != nil {
+		return err
+	}
+
+	for code, c := range other.statusCodes {
+		o, ok := m.statusCodes[code]
+		if ok {
+			if err := o.Append(c); err != nil {
+				return err
+			}
+		} else {
+			m.statusCodes[code] = c.Clone()
+		}
+	}
+
+	return m.histogram.Append(other.histogram)
+}
+
 func (m *RTMetrics) Record(code int, duration time.Duration) {
-	m.total.Inc()
+	m.total.Inc(1)
 	if code == http.StatusGatewayTimeout || code == http.StatusBadGateway {
-		m.netErrors.Inc()
+		m.netErrors.Inc(1)
 	}
 	m.recordStatusCode(code)
 	m.recordLatency(duration)
@@ -172,7 +195,7 @@ func (m *RTMetrics) Reset() {
 }
 
 func (m *RTMetrics) recordNetError() error {
-	m.netErrors.Inc()
+	m.netErrors.Inc(1)
 	return nil
 }
 
@@ -182,14 +205,14 @@ func (m *RTMetrics) recordLatency(d time.Duration) error {
 
 func (m *RTMetrics) recordStatusCode(statusCode int) error {
 	if c, ok := m.statusCodes[statusCode]; ok {
-		c.Inc()
+		c.Inc(1)
 		return nil
 	}
 	c, err := m.newCounter()
 	if err != nil {
 		return err
 	}
-	c.Inc()
+	c.Inc(1)
 	m.statusCodes[statusCode] = c
 	return nil
 }
