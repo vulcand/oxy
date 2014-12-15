@@ -98,6 +98,10 @@ func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
 	return m, nil
 }
 
+func (m *RTMetrics) CounterWindowSize() time.Duration {
+	return m.total.WindowSize()
+}
+
 // GetNetworkErrorRatio calculates the amont of network errors such as time outs and dropped connection
 // that occured in the given time window compared to the total requests count.
 func (m *RTMetrics) NetworkErrorRatio() float64 {
