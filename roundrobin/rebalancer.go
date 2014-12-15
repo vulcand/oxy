@@ -386,9 +386,9 @@ func (n *codeMeter) Rating() float64 {
 
 func (n *codeMeter) Record(code int, d time.Duration) {
 	if code >= n.codeS && code < n.codeE {
-		n.r.IncA()
+		n.r.IncA(1)
 	} else {
-		n.r.IncB()
+		n.r.IncB(1)
 	}
 }
 
