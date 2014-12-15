@@ -179,6 +179,9 @@ func (rb *Rebalancer) removeServer(u *url.URL) error {
 	if i == -1 {
 		return fmt.Errorf("%v not found", u)
 	}
+	if err := rb.next.RemoveServer(u); err != nil {
+		return err
+	}
 	rb.servers = append(rb.servers[:i], rb.servers[i+1:]...)
 	rb.reset()
 	return nil

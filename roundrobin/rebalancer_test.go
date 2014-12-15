@@ -70,6 +70,32 @@ func (s *RBSuite) TestRebalancerNoServers(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusInternalServerError)
 }
 
+func (s *RBSuite) TestRebalancerRemoveServer(c *C) {
+	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
+	defer a.Close()
+	defer b.Close()
+
+	fwd, err := forward.New()
+	c.Assert(err, IsNil)
+
+	lb, err := New(fwd)
+	c.Assert(err, IsNil)
+
+	rb, err := NewRebalancer(lb)
+	c.Assert(err, IsNil)
+
+	rb.UpsertServer(testutils.ParseURI(a.URL))
+	rb.UpsertServer(testutils.ParseURI(b.URL))
+
+	proxy := httptest.NewServer(rb)
+	defer proxy.Close()
+
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
+
+	c.Assert(rb.RemoveServer(testutils.ParseURI(a.URL)), IsNil)
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"b", "b", "b"})
+}
+
 // Test scenario when one server goes down after what it recovers
 func (s *RBSuite) TestRebalancerRecovery(c *C) {
 	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
