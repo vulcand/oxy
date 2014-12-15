@@ -110,6 +110,13 @@ func NewRebalancer(handler balancerHandler, opts ...rbOptSetter) (*Rebalancer, e
 	return rb, nil
 }
 
+func (rb *Rebalancer) Servers() []*url.URL {
+	rb.mtx.Lock()
+	defer rb.mtx.Unlock()
+
+	return rb.next.Servers()
+}
+
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	pw := &utils.ProxyWriter{W: w}
 	start := rb.clock.UtcNow()

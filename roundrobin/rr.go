@@ -117,6 +117,17 @@ func (r *RoundRobin) RemoveServer(u *url.URL) error {
 	return nil
 }
 
+func (rr *RoundRobin) Servers() []*url.URL {
+	rr.mutex.Lock()
+	defer rr.mutex.Unlock()
+
+	out := make([]*url.URL, len(rr.servers))
+	for i, srv := range rr.servers {
+		out[i] = srv.url
+	}
+	return out
+}
+
 func (rr *RoundRobin) ServerWeight(u *url.URL) (int, bool) {
 	rr.mutex.Lock()
 	defer rr.mutex.Unlock()
@@ -223,6 +234,7 @@ func sameURL(a, b *url.URL) bool {
 }
 
 type balancerHandler interface {
+	Servers() []*url.URL
 	ServeHTTP(w http.ResponseWriter, req *http.Request)
 	ServerWeight(u *url.URL) (int, bool)
 	RemoveServer(u *url.URL) error

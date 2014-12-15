@@ -44,6 +44,7 @@ func (s *RBSuite) TestRebalancerNormalOperation(c *C) {
 	c.Assert(err, IsNil)
 
 	rb.UpsertServer(testutils.ParseURI(a.URL))
+	c.Assert(rb.Servers()[0].String(), Equals, a.URL)
 
 	proxy := httptest.NewServer(rb)
 	defer proxy.Close()
