@@ -8,6 +8,11 @@ import (
 	"github.com/mailgun/predicate"
 )
 
+func IsValidExpression(expr string) bool {
+	_, err := parseExpression(expr)
+	return err == nil
+}
+
 type context struct {
 	r            *http.Request
 	attempt      int
