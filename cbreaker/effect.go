@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/mailgun/log"
-	"github.com/mailgun/vulcan/netutils"
+	"github.com/mailgun/oxy/utils"
 )
 
 type SideEffect interface {
@@ -33,7 +33,7 @@ func NewWebhookSideEffect(w Webhook) (*WebhookSideEffect, error) {
 	if w.Method == "" {
 		return nil, fmt.Errorf("Supply method")
 	}
-	_, err := netutils.ParseUrl(w.URL)
+	_, err := url.Parse(w.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (w *WebhookSideEffect) Exec() error {
 		return err
 	}
 	if len(w.w.Headers) != 0 {
-		netutils.CopyHeaders(r.Header, w.w.Headers)
+		utils.CopyHeaders(r.Header, w.w.Headers)
 	}
 	if len(w.w.Form) != 0 {
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
