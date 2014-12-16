@@ -72,7 +72,7 @@ func (r *RoundRobin) nextServer() (*server, error) {
 	defer r.mutex.Unlock()
 
 	if len(r.servers) == 0 {
-		return nil, fmt.Errorf("No servers")
+		return nil, fmt.Errorf("no servers in the pool")
 	}
 
 	// The algo below may look messy, but is actually very simple
@@ -91,7 +91,7 @@ func (r *RoundRobin) nextServer() (*server, error) {
 			if r.currentWeight <= 0 {
 				r.currentWeight = max
 				if r.currentWeight == 0 {
-					return nil, fmt.Errorf("All servers have 0 weight")
+					return nil, fmt.Errorf("all servers have 0 weight")
 				}
 			}
 		}
@@ -101,7 +101,7 @@ func (r *RoundRobin) nextServer() (*server, error) {
 		}
 	}
 	// We did full circle and found no available servers
-	return nil, fmt.Errorf("No available servers!")
+	return nil, fmt.Errorf("no available servers")
 }
 
 func (r *RoundRobin) RemoveServer(u *url.URL) error {
@@ -110,7 +110,7 @@ func (r *RoundRobin) RemoveServer(u *url.URL) error {
 
 	e, index := r.findServerByURL(u)
 	if e == nil {
-		return fmt.Errorf("Server not found")
+		return fmt.Errorf("server not found")
 	}
 	r.servers = append(r.servers[:index], r.servers[index+1:]...)
 	r.resetState()
@@ -144,11 +144,11 @@ func (rr *RoundRobin) UpsertServer(u *url.URL, options ...serverSetter) error {
 	defer rr.mutex.Unlock()
 
 	if u == nil {
-		return fmt.Errorf("Server URL can't be nil")
+		return fmt.Errorf("server URL can't be nil")
 	}
 
 	if s, _ := rr.findServerByURL(u); s != nil {
-		return fmt.Errorf("Server %v already exists", u)
+		return fmt.Errorf("server %v already exists", u)
 	}
 
 	srv := &server{url: utils.CopyURL(u)}
