@@ -31,38 +31,38 @@ func ParseURI(uri string) *url.URL {
 	return out
 }
 
-type reqOpts struct {
+type ReqOpts struct {
 	Host    string
 	Method  string
 	Body    string
 	Headers http.Header
 }
 
-type reqOptSetter func(o *reqOpts) error
+type ReqOption func(o *ReqOpts) error
 
-func Method(m string) reqOptSetter {
-	return func(o *reqOpts) error {
+func Method(m string) ReqOption {
+	return func(o *ReqOpts) error {
 		o.Method = m
 		return nil
 	}
 }
 
-func Host(h string) reqOptSetter {
-	return func(o *reqOpts) error {
+func Host(h string) ReqOption {
+	return func(o *ReqOpts) error {
 		o.Host = h
 		return nil
 	}
 }
 
-func Body(b string) reqOptSetter {
-	return func(o *reqOpts) error {
+func Body(b string) ReqOption {
+	return func(o *ReqOpts) error {
 		o.Body = b
 		return nil
 	}
 }
 
-func Header(name, val string) reqOptSetter {
-	return func(o *reqOpts) error {
+func Header(name, val string) ReqOption {
+	return func(o *ReqOpts) error {
 		if o.Headers == nil {
 			o.Headers = make(http.Header)
 		}
@@ -71,8 +71,8 @@ func Header(name, val string) reqOptSetter {
 	}
 }
 
-func Headers(h http.Header) reqOptSetter {
-	return func(o *reqOpts) error {
+func Headers(h http.Header) ReqOption {
+	return func(o *ReqOpts) error {
 		if o.Headers == nil {
 			o.Headers = make(http.Header)
 		}
@@ -81,8 +81,8 @@ func Headers(h http.Header) reqOptSetter {
 	}
 }
 
-func MakeRequest(url string, opts ...reqOptSetter) (*http.Response, []byte, error) {
-	o := &reqOpts{}
+func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) {
+	o := &ReqOpts{}
 	for _, s := range opts {
 		if err := s(o); err != nil {
 			return nil, nil, err
@@ -128,7 +128,7 @@ func MakeRequest(url string, opts ...reqOptSetter) (*http.Response, []byte, erro
 	return response, nil, err
 }
 
-func Get(url string, opts ...reqOptSetter) (*http.Response, []byte, error) {
+func Get(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 	opts = append(opts, Method("GET"))
 	return MakeRequest(url, opts...)
 }
