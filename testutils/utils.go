@@ -36,6 +36,7 @@ type ReqOpts struct {
 	Method  string
 	Body    string
 	Headers http.Header
+	Auth    *utils.BasicAuth
 }
 
 type ReqOption func(o *ReqOpts) error
@@ -81,6 +82,16 @@ func Headers(h http.Header) ReqOption {
 	}
 }
 
+func BasicAuth(username, password string) ReqOption {
+	return func(o *ReqOpts) error {
+		o.Auth = &utils.BasicAuth{
+			Username: username,
+			Password: password,
+		}
+		return nil
+	}
+}
+
 func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 	o := &ReqOpts{}
 	for _, s := range opts {
@@ -96,6 +107,10 @@ func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) 
 	request, _ := http.NewRequest(method, url, strings.NewReader(o.Body))
 	if o.Headers != nil {
 		utils.CopyHeaders(request.Header, o.Headers)
+	}
+
+	if o.Auth != nil {
+		request.Header.Set("Authorization", o.Auth.String())
 	}
 
 	if len(o.Host) != 0 {
