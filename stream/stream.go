@@ -38,6 +38,7 @@ package stream
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/mailgun/multibuf"
@@ -240,7 +241,6 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer b.Close()
 
 		s.next.ServeHTTP(b, outreq)
-
 		s.log.Infof("next responded: %v", b.code)
 
 		reader, err := writer.Reader()
@@ -278,7 +278,8 @@ func (s *Streamer) copyRequest(req *http.Request, body io.ReadCloser, bodySize i
 	o.ContentLength = bodySize
 	// remove TransferEncoding that could have been previously set because we have transformed the request from chunked encoding
 	o.TransferEncoding = []string{}
-	o.Body = body
+	// http.Transport will close the request body on any error, we are controlling the close process ourselves, so we override the closer here
+	o.Body = ioutil.NopCloser(body)
 	return &o
 }
 

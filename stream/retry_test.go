@@ -50,7 +50,7 @@ func (s *RTSuite) TestRetryOnError(c *C) {
 	lb.UpsertServer(testutils.ParseURI("http://localhost:64321"))
 	lb.UpsertServer(testutils.ParseURI(srv.URL))
 
-	re, body, err := testutils.Get(proxy.URL)
+	re, body, err := testutils.Get(proxy.URL, testutils.Body("some request parameters"))
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 	c.Assert(string(body), Equals, "hello")
