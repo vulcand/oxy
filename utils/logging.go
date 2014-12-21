@@ -12,10 +12,6 @@ type Logger interface {
 	Infof(format string, args ...interface{})
 	Warningf(format string, args ...interface{})
 	Errorf(format string, args ...interface{})
-
-	Info(message string)
-	Error(message string)
-	Warning(message string)
 }
 
 type FileLogger struct {
@@ -58,27 +54,6 @@ func (f *FileLogger) Errorf(format string, args ...interface{}) {
 		return
 	}
 	f.error.Printf(format, args...)
-}
-
-func (f *FileLogger) Info(message string) {
-	if f.info == nil {
-		return
-	}
-	f.info.Print(message)
-}
-
-func (f *FileLogger) Warning(message string) {
-	if f.warn == nil {
-		return
-	}
-	f.warn.Print(message)
-}
-
-func (f *FileLogger) Error(message string) {
-	if f.error == nil {
-		return
-	}
-	f.error.Print(message)
 }
 
 type NOPLogger struct {

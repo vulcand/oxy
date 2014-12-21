@@ -83,7 +83,6 @@ func responseCode() toInt {
 // IsNetworkError returns a predicate that returns true if last attempt ended with network error.
 func isNetworkError() hpredicate {
 	return func(c *context) bool {
-		c.log.Infof("code: %v", c.responseCode)
 		return c.responseCode == http.StatusBadGateway || c.responseCode == http.StatusGatewayTimeout
 	}
 }

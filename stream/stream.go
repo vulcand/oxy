@@ -241,7 +241,6 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer b.Close()
 
 		s.next.ServeHTTP(b, outreq)
-		s.log.Infof("next responded: %v", b.code)
 
 		reader, err := writer.Reader()
 		if err != nil {

@@ -90,7 +90,7 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	f.log.Infof("Forward to %v, code: %v, duration: %v",
+	f.log.Infof("Got response from %v, code: %v, duration: %v",
 		req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 
 	utils.CopyHeaders(w.Header(), response.Header)
