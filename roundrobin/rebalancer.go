@@ -305,7 +305,7 @@ func (rb *Rebalancer) markServers() bool {
 			srv.good = false
 		}
 	}
-	if len(g) != 0 || len(b) != 0 {
+	if len(g) != 0 && len(b) != 0 {
 		rb.log.Infof("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
 	}
 	return len(g) != 0 && len(b) != 0
