@@ -17,6 +17,7 @@ Status
 
 * Initial design is completed
 * Covered by tests
+* Used as a reverse proxy engine in [Vulcand](https://github.com/mailgun/vulcand)
 
 Quickstart
 -----------
@@ -68,7 +69,6 @@ lb, _ := roundrobin.New(fwd)
 lb.UpsertServer(url1)
 lb.UpsertServer(url2)
 
-// that's it! our reverse proxy is ready!
 s := &http.Server{
 	Addr:           ":8080",
 	Handler:        lb,
