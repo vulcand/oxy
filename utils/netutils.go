@@ -6,6 +6,9 @@ import (
 	"net/url"
 )
 
+// ProxyWriter helps to capture response headers and status code
+// from the ServeHTTP. It can be safely passed to ServeHTTP handler,
+// wrapping the real response writer.
 type ProxyWriter struct {
 	W    http.ResponseWriter
 	Code int
