@@ -233,7 +233,10 @@ func (s *FwdSuite) TestForwardedProto(c *C) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	buf := &bytes.Buffer{}
+	l := utils.NewFileLogger(buf, utils.INFO)
+
+	f, err := New(Logger(l))
 	c.Assert(err, IsNil)
 
 	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -248,6 +251,8 @@ func (s *FwdSuite) TestForwardedProto(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 	c.Assert(proto, Equals, "https")
+
+	c.Assert(strings.Contains(buf.String(), "tls"), Equals, true)
 }
 
 func (s *FwdSuite) TestChunkedResponseConversion(c *C) {
