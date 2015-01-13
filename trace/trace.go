@@ -1,9 +1,10 @@
-// package trace implement structured logging of requests
+// Package trace implement structured logging of requests
 package trace
 
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -11,35 +12,35 @@ import (
 	"github.com/mailgun/oxy/utils"
 )
 
-// TraceOption is a functional option setter
-type TraceOption func(*Tracer) error
+// Option is a functional option setter for Tracer
+type Option func(*Tracer) error
 
 // ErrorHandler is a functional argument that sets error handler of the server
-func ErrorHandler(h utils.ErrorHandler) TraceOption {
+func ErrorHandler(h utils.ErrorHandler) Option {
 	return func(t *Tracer) error {
 		t.errHandler = h
 		return nil
 	}
 }
 
-// Add request headers to capture
-func RequestHeaders(headers ...string) TraceOption {
+// RequestHeaders adds request headers to capture
+func RequestHeaders(headers ...string) Option {
 	return func(t *Tracer) error {
-		t.reqHeaders = headers
+		t.reqHeaders = append(t.reqHeaders, headers...)
 		return nil
 	}
 }
 
-// Add response headers to capture
-func ResponseHeaders(headers ...string) TraceOption {
+// ResponseHeaders adds response headers to capture
+func ResponseHeaders(headers ...string) Option {
 	return func(t *Tracer) error {
-		t.respHeaders = headers
+		t.respHeaders = append(t.reqHeaders, headers...)
 		return nil
 	}
 }
 
 // Logger sets optional logger for trace used to report errors
-func Logger(l utils.Logger) TraceOption {
+func Logger(l utils.Logger) Option {
 	return func(t *Tracer) error {
 		t.log = l
 		return nil
@@ -56,7 +57,10 @@ type Tracer struct {
 	log         utils.Logger
 }
 
-func New(next http.Handler, writer io.Writer, opts ...TraceOption) (*Tracer, error) {
+// New creates a new Tracer middleware that emits all the request/response information in structured format
+// to writer and passes the request to the next handler. It can optionally capture request and response headers,
+// see RequestHeaders and ResponseHeaders options for details.
+func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 	t := &Tracer{
 		writer: writer,
 		next:   next,
@@ -76,16 +80,17 @@ func New(next http.Handler, writer io.Writer, opts ...TraceOption) (*Tracer, err
 }
 
 func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	start := time.Now().UTC()
+	start := time.Now()
 	pw := &utils.ProxyWriter{W: w}
 	t.next.ServeHTTP(pw, req)
 
-	l := t.newRecord(req, pw, time.Now().UTC().Sub(start))
-	if bytes, err := json.Marshal(l); err == nil {
-		t.writer.Write(bytes)
-	} else {
+	l := t.newRecord(req, pw, time.Since(start))
+	bytes, err := json.Marshal(l)
+	if err != nil {
 		t.log.Errorf("Failed to marshal request: %v", err)
+		return
 	}
+	t.writer.Write(bytes)
 }
 
 func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.Duration) *Record {
@@ -98,7 +103,7 @@ func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.D
 		},
 		Resp: Resp{
 			Code: pw.StatusCode(),
-			T:    float64(diff) / float64(time.Millisecond),
+			RTT:  float64(diff) / float64(time.Millisecond),
 			H:    captureHeaders(pw.Header(), t.respHeaders),
 		},
 	}
@@ -124,7 +129,7 @@ func captureHeaders(in http.Header, headers []string) http.Header {
 	out := make(http.Header, len(headers))
 	for _, h := range headers {
 		vals, ok := in[h]
-		if !ok {
+		if !ok || len(out[h]) != 0 {
 			continue
 		}
 		for i := range vals {
@@ -134,24 +139,25 @@ func captureHeaders(in http.Header, headers []string) http.Header {
 	return out
 }
 
-// Record represents structured request and response record
+// Record represents a structured request and response record
 type Record struct {
 	Req  Req
 	Resp Resp
 }
 
-// Req contains information about HTTP request
+// Req contains information about an HTTP request
 type Req struct {
 	Method string      // Request method
 	URL    string      // Request URL
 	H      http.Header `json:",omitempty"` // Optional headers, will be recorded if configured
-	TLS    *TLS        `json:",omitempty"` // Optional TLS record, will be recorded if it's TLS connection
+	TLS    *TLS        `json:",omitempty"` // Optional TLS record, will be recorded if it's a TLS connection
 }
 
+// Resp contains information about HTTP response
 type Resp struct {
 	Code int         // Code - response status code
-	T    float64     // T - round trip time in milliseconds
-	H    http.Header // optional headers, will be recorded if configured
+	RTT  float64     // RTT - round trip time in milliseconds
+	H    http.Header // H- optional headers, will be recorded if configured
 }
 
 // TLS contains information about this TLS connection
@@ -173,7 +179,7 @@ func versionToString(v uint16) string {
 	case tls.VersionTLS12:
 		return "TLS12"
 	}
-	return "unknown"
+	return fmt.Sprintf("unknown: %x", v)
 }
 
 func csToString(cs uint16) string {
@@ -205,5 +211,5 @@ func csToString(cs uint16) string {
 	case tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:
 		return "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
 	}
-	return "unknown"
+	return fmt.Sprintf("unknown: %x", cs)
 }

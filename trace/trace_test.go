@@ -48,7 +48,7 @@ func (s *TraceSuite) TestTraceSimple(c *C) {
 	c.Assert(r.Req.Method, Equals, "GET")
 	c.Assert(r.Req.URL, Equals, "/hello")
 	c.Assert(r.Resp.Code, Equals, http.StatusOK)
-	c.Assert(r.Resp.T, Not(Equals), float64(0))
+	c.Assert(r.Resp.RTT, Not(Equals), float64(0))
 }
 
 func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
