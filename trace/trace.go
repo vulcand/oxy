@@ -85,12 +85,9 @@ func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	t.next.ServeHTTP(pw, req)
 
 	l := t.newRecord(req, pw, time.Since(start))
-	bytes, err := json.Marshal(l)
-	if err != nil {
+	if err := json.NewEncoder(t.writer).Encode(l); err != nil {
 		t.log.Errorf("Failed to marshal request: %v", err)
-		return
 	}
-	t.writer.Write(bytes)
 }
 
 func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.Duration) *Record {
