@@ -97,7 +97,7 @@ func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.D
 			H:      captureHeaders(req.Header, t.reqHeaders),
 		},
 		Resp: Resp{
-			Code: pw.Code,
+			Code: pw.StatusCode(),
 			T:    float64(diff) / float64(time.Millisecond),
 			H:    captureHeaders(pw.Header(), t.respHeaders),
 		},

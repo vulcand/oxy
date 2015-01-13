@@ -25,7 +25,6 @@ var _ = Suite(&TraceSuite{})
 
 func (s *TraceSuite) TestTraceSimple(c *C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("hello"))
 	})
 	buf := &bytes.Buffer{}
@@ -60,7 +59,6 @@ func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		utils.CopyHeaders(w.Header(), respHeaders)
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("hello"))
 	})
 	buf := &bytes.Buffer{}
@@ -88,7 +86,6 @@ func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
 
 func (s *TraceSuite) TestTraceTLS(c *C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("hello"))
 	})
 	buf := &bytes.Buffer{}

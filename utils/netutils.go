@@ -14,6 +14,15 @@ type ProxyWriter struct {
 	Code int
 }
 
+func (p *ProxyWriter) StatusCode() int {
+	if p.Code == 0 {
+		// per contract standard lib will set this to http.StatusOK if not set
+		// by user, here we avoid the confusion by mirroring this logic
+		return http.StatusOK
+	}
+	return p.Code
+}
+
 func (p *ProxyWriter) Header() http.Header {
 	return p.W.Header()
 }
