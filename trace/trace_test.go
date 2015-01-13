@@ -45,10 +45,10 @@ func (s *TraceSuite) TestTraceSimple(c *C) {
 	var r *Record
 	c.Assert(json.Unmarshal(trace.Bytes(), &r), IsNil)
 
-	c.Assert(r.Req.Method, Equals, "GET")
-	c.Assert(r.Req.URL, Equals, "/hello")
-	c.Assert(r.Resp.Code, Equals, http.StatusOK)
-	c.Assert(r.Resp.RTT, Not(Equals), float64(0))
+	c.Assert(r.Request.Method, Equals, "GET")
+	c.Assert(r.Request.URL, Equals, "/hello")
+	c.Assert(r.Response.Code, Equals, http.StatusOK)
+	c.Assert(r.Response.Roundtrip, Not(Equals), float64(0))
 }
 
 func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
@@ -80,8 +80,8 @@ func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
 	var r *Record
 	c.Assert(json.Unmarshal(trace.Bytes(), &r), IsNil)
 
-	c.Assert(r.Req.H, DeepEquals, reqHeaders)
-	c.Assert(r.Resp.H, DeepEquals, respHeaders)
+	c.Assert(r.Request.Headers, DeepEquals, reqHeaders)
+	c.Assert(r.Response.Headers, DeepEquals, respHeaders)
 }
 
 func (s *TraceSuite) TestTraceTLS(c *C) {
@@ -117,6 +117,7 @@ func (s *TraceSuite) TestTraceTLS(c *C) {
 	conn.Close()
 
 	var r *Record
+	fmt.Printf("%v", string(trace.Bytes()))
 	c.Assert(json.Unmarshal(trace.Bytes(), &r), IsNil)
-	c.Assert(r.Req.TLS.V, Equals, versionToString(state.Version))
+	c.Assert(r.Request.TLS.Version, Equals, versionToString(state.Version))
 }

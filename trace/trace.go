@@ -92,16 +92,16 @@ func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.Duration) *Record {
 	r := &Record{
-		Req: Req{
-			Method: req.Method,
-			URL:    req.URL.String(),
-			TLS:    newTLS(req),
-			H:      captureHeaders(req.Header, t.reqHeaders),
+		Request: Request{
+			Method:  req.Method,
+			URL:     req.URL.String(),
+			TLS:     newTLS(req),
+			Headers: captureHeaders(req.Header, t.reqHeaders),
 		},
-		Resp: Resp{
-			Code: pw.StatusCode(),
-			RTT:  float64(diff) / float64(time.Millisecond),
-			H:    captureHeaders(pw.Header(), t.respHeaders),
+		Response: Response{
+			Code:      pw.StatusCode(),
+			Roundtrip: float64(diff) / float64(time.Millisecond),
+			Headers:   captureHeaders(pw.Header(), t.respHeaders),
 		},
 	}
 	return r
@@ -112,10 +112,10 @@ func newTLS(req *http.Request) *TLS {
 		return nil
 	}
 	return &TLS{
-		V:      versionToString(req.TLS.Version),
-		Resume: req.TLS.DidResume,
-		CS:     csToString(req.TLS.CipherSuite),
-		Srv:    req.TLS.ServerName,
+		Version:     versionToString(req.TLS.Version),
+		Resume:      req.TLS.DidResume,
+		CipherSuite: csToString(req.TLS.CipherSuite),
+		Server:      req.TLS.ServerName,
 	}
 }
 
@@ -138,31 +138,31 @@ func captureHeaders(in http.Header, headers []string) http.Header {
 
 // Record represents a structured request and response record
 type Record struct {
-	Req  Req
-	Resp Resp
+	Request  Request  `json:"request"`
+	Response Response `json:"response"`
 }
 
 // Req contains information about an HTTP request
-type Req struct {
-	Method string      // Request method
-	URL    string      // Request URL
-	H      http.Header `json:",omitempty"` // Optional headers, will be recorded if configured
-	TLS    *TLS        `json:",omitempty"` // Optional TLS record, will be recorded if it's a TLS connection
+type Request struct {
+	Method  string      `json:"method"`            // Method - request method
+	URL     string      `json:"url"`               // URL - Request URL
+	Headers http.Header `json:"headers,omitempty"` // Headers - optional request headers, will be recorded if configured
+	TLS     *TLS        `json:"tls,omitempty"`     // TLS - optional TLS record, will be recorded if it's a TLS connection
 }
 
 // Resp contains information about HTTP response
-type Resp struct {
-	Code int         // Code - response status code
-	RTT  float64     // RTT - round trip time in milliseconds
-	H    http.Header // H - optional headers, will be recorded if configured
+type Response struct {
+	Code      int         `json:"code"`      // Code - response status code
+	Roundtrip float64     `json:"roundtrip"` // Roundtrip - round trip time in milliseconds
+	Headers   http.Header `json:"headers"`   // Headers - optional headers, will be recorded if configured
 }
 
 // TLS contains information about this TLS connection
 type TLS struct {
-	V      string // TLS version
-	Resume bool   // Resume tells if the session has been re-used (session tickets)
-	CS     string // CS contains cipher suite used for this connection
-	Srv    string // Srv contains server name used in SNI
+	Version     string `json:"version"`      // Version - TLS version
+	Resume      bool   `json:"resume"`       // Resume tells if the session has been re-used (session tickets)
+	CipherSuite string `json:"cipher_suite"` // CipherSuite contains cipher suite used for this connection
+	Server      string `json:"server"`       // Server contains server name used in SNI
 }
 
 func versionToString(v uint16) string {
