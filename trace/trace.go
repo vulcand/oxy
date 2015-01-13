@@ -152,9 +152,9 @@ type Request struct {
 
 // Resp contains information about HTTP response
 type Response struct {
-	Code      int         `json:"code"`      // Code - response status code
-	Roundtrip float64     `json:"roundtrip"` // Roundtrip - round trip time in milliseconds
-	Headers   http.Header `json:"headers"`   // Headers - optional headers, will be recorded if configured
+	Code      int         `json:"code"`              // Code - response status code
+	Roundtrip float64     `json:"roundtrip"`         // Roundtrip - round trip time in milliseconds
+	Headers   http.Header `json:"headers,omitempty"` // Headers - optional headers, will be recorded if configured
 }
 
 // TLS contains information about this TLS connection
