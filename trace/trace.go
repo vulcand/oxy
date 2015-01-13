@@ -157,7 +157,7 @@ type Req struct {
 type Resp struct {
 	Code int         // Code - response status code
 	RTT  float64     // RTT - round trip time in milliseconds
-	H    http.Header // H- optional headers, will be recorded if configured
+	H    http.Header // H - optional headers, will be recorded if configured
 }
 
 // TLS contains information about this TLS connection
