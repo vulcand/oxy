@@ -98,7 +98,7 @@ func (s *FwdSuite) TestForwardedHeaders(c *C) {
 	})
 	defer srv.Close()
 
-	f, err := New()
+	f, err := New(Rewriter(&HeaderRewriter{TrustForwardHeader: true, Hostname: "hello"}))
 	c.Assert(err, IsNil)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -108,8 +108,9 @@ func (s *FwdSuite) TestForwardedHeaders(c *C) {
 	defer proxy.Close()
 
 	headers := http.Header{
-		XForwardedProto: []string{"httpx"},
-		XForwardedFor:   []string{"192.168.1.1"},
+		XForwardedProto:  []string{"httpx"},
+		XForwardedFor:    []string{"192.168.1.1"},
+		XForwardedServer: []string{"foobar"},
 	}
 
 	re, _, err := testutils.Get(proxy.URL, testutils.Headers(headers))
@@ -117,6 +118,7 @@ func (s *FwdSuite) TestForwardedHeaders(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 	c.Assert(outHeaders.Get(XForwardedProto), Equals, "httpx")
 	c.Assert(strings.Contains(outHeaders.Get(XForwardedFor), "192.168.1.1"), Equals, true)
+	c.Assert(outHeaders.Get(XForwardedServer), Equals, "hello")
 }
 
 func (s *FwdSuite) TestCustomRewriter(c *C) {
