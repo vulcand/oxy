@@ -32,11 +32,12 @@ func ParseURI(uri string) *url.URL {
 }
 
 type ReqOpts struct {
-	Host    string
-	Method  string
-	Body    string
-	Headers http.Header
-	Auth    *utils.BasicAuth
+	Host           string
+	Method         string
+	Body           string
+	Headers        http.Header
+	Auth           *utils.BasicAuth
+	AllowRedirects bool
 }
 
 type ReqOption func(o *ReqOpts) error
@@ -92,6 +93,13 @@ func BasicAuth(username, password string) ReqOption {
 	}
 }
 
+func Redirects(b bool) ReqOption {
+	return func(o *ReqOpts) error {
+		o.AllowRedirects = b
+		return nil
+	}
+}
+
 func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 	o := &ReqOpts{}
 	for _, s := range opts {
@@ -131,7 +139,10 @@ func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) 
 	client := &http.Client{
 		Transport: tr,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return fmt.Errorf("No redirects")
+			if !o.AllowRedirects {
+				return fmt.Errorf("No redirects")
+			}
+			return nil
 		},
 	}
 	response, err := client.Do(request)

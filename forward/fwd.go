@@ -103,13 +103,17 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 	}
 
+	defer response.Body.Close()
 	utils.CopyHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
+	if !expectBody(response) {
+		w.Header().Set(ContentLength, "0")
+		return
+	}
 	written, _ := io.Copy(w, response.Body)
 	if written != 0 {
 		w.Header().Set(ContentLength, strconv.FormatInt(written, 10))
 	}
-	response.Body.Close()
 }
 
 func (f *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
@@ -137,4 +141,30 @@ func (f *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
 		f.rewriter.Rewrite(outReq)
 	}
 	return outReq
+}
+
+func expectBody(re *http.Response) bool {
+	if (re.StatusCode >= 100 && re.StatusCode < 200) || re.StatusCode == 204 || re.StatusCode == 304 {
+		return false
+	}
+	if isChunked(re) {
+		return true
+	}
+	if re.Header.Get("Content-Length") == "" || re.Header.Get("Content-Length") == "0" {
+		return false
+	}
+	return true
+}
+
+func isChunked(re *http.Response) bool {
+	te := re.TransferEncoding
+	if len(te) == 0 {
+		return false
+	}
+	for _, e := range te {
+		if e == "chunked" {
+			return true
+		}
+	}
+	return false
 }

@@ -279,3 +279,26 @@ func (s *FwdSuite) TestChunkedResponseConversion(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 	c.Assert(re.Header.Get("Content-Length"), Equals, fmt.Sprintf("%d", len("testtest1test2")))
 }
+
+func (s *FwdSuite) TestForwardRedirect(c *C) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Location", "http://localhost:8080")
+		w.WriteHeader(http.StatusFound)
+	})
+	defer srv.Close()
+
+	f, err := New()
+	c.Assert(err, IsNil)
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	re, body, err := testutils.Get(proxy.URL, testutils.Redirects(false))
+	c.Assert(err, NotNil)
+	c.Assert(string(body), Equals, "")
+	c.Assert(re.StatusCode, Equals, http.StatusFound)
+	c.Assert(re.Header.Get("Location"), Equals, "http://localhost:8080")
+}
