@@ -25,9 +25,11 @@ var _ = Suite(&FwdSuite{})
 func (s *FwdSuite) TestForwardHopHeaders(c *C) {
 	called := false
 	var outHeaders http.Header
+	var outHost, expectedHost string
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		called = true
 		outHeaders = req.Header
+		outHost = req.Host
 		w.Write([]byte("hello"))
 	})
 	defer srv.Close()
@@ -37,6 +39,7 @@ func (s *FwdSuite) TestForwardHopHeaders(c *C) {
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
+		expectedHost = req.URL.Host
 		f.ServeHTTP(w, req)
 	})
 	defer proxy.Close()
@@ -53,6 +56,7 @@ func (s *FwdSuite) TestForwardHopHeaders(c *C) {
 	c.Assert(called, Equals, true)
 	c.Assert(outHeaders.Get(Connection), Equals, "")
 	c.Assert(outHeaders.Get(KeepAlive), Equals, "")
+	c.Assert(outHost, Equals, expectedHost)
 }
 
 func (s *FwdSuite) TestDefaultErrHandler(c *C) {
