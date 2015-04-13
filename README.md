@@ -33,6 +33,7 @@ Simple reverse proxy
 import (
   "net/http"
   "github.com/mailgun/oxy/forward"
+  "github.com/mailgun/oxy/testutils"
   )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
@@ -47,7 +48,7 @@ redirect := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 // that's it! our reverse proxy is ready!
 s := &http.Server{
 	Addr:           ":8080",
-	Handler:        myHandler,
+	Handler:        redirect,
 }
 s.ListenAndServe()
 ```
