@@ -115,6 +115,7 @@ func (s *FwdSuite) TestForwardedHeaders(c *C) {
 		XForwardedProto:  []string{"httpx"},
 		XForwardedFor:    []string{"192.168.1.1"},
 		XForwardedServer: []string{"foobar"},
+		XForwardedHost:   []string{"upstream-foobar"},
 	}
 
 	re, _, err := testutils.Get(proxy.URL, testutils.Headers(headers))
@@ -122,6 +123,7 @@ func (s *FwdSuite) TestForwardedHeaders(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 	c.Assert(outHeaders.Get(XForwardedProto), Equals, "httpx")
 	c.Assert(strings.Contains(outHeaders.Get(XForwardedFor), "192.168.1.1"), Equals, true)
+	c.Assert(strings.Contains(outHeaders.Get(XForwardedHost), "upstream-foobar"), Equals, true)
 	c.Assert(outHeaders.Get(XForwardedServer), Equals, "hello")
 }
 
