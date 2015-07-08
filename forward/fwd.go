@@ -18,6 +18,11 @@ type ReqRewriter interface {
 	Rewrite(r *http.Request)
 }
 
+// ResProcessor must transfer response
+type ResProcessor interface {
+	Process(w http.ResponseWriter, r *http.Response) error
+}
+
 type optSetter func(f *Forwarder) error
 
 func PassHostHeader(bool) optSetter {
@@ -41,6 +46,13 @@ func Rewriter(r ReqRewriter) optSetter {
 	}
 }
 
+func Processor(p ResProcessor) optSetter {
+	return func(f *Forwarder) error {
+		f.processor = p
+		return nil
+	}
+}
+
 // ErrorHandler is a functional argument that sets error handler of the server
 func ErrorHandler(h utils.ErrorHandler) optSetter {
 	return func(f *Forwarder) error {
@@ -60,6 +72,7 @@ type Forwarder struct {
 	errHandler   utils.ErrorHandler
 	roundTripper http.RoundTripper
 	rewriter     ReqRewriter
+	processor    ResProcessor
 	log          utils.Logger
 	passHost     bool
 }
@@ -80,6 +93,9 @@ func New(setters ...optSetter) (*Forwarder, error) {
 			h = "localhost"
 		}
 		f.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
+	}
+	if f.processor == nil {
+		f.processor = &CopyProcessor{}
 	}
 	if f.log == nil {
 		f.log = utils.NullLogger
@@ -112,10 +128,10 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	utils.CopyHeaders(w.Header(), response.Header)
-	w.WriteHeader(response.StatusCode)
-	written, _ := io.Copy(w, response.Body)
-	if written != 0 {
-		w.Header().Set(ContentLength, strconv.FormatInt(written, 10))
+	if err := f.processor.Process(w, response); err != nil {
+		f.log.Errorf("Error processing response from %v, err: %v", req.URL, err)
+		f.errHandler.ServeHTTP(w, req, err)
+		return
 	}
 	response.Body.Close()
 }
@@ -148,4 +164,15 @@ func (f *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
 		f.rewriter.Rewrite(outReq)
 	}
 	return outReq
+}
+
+type CopyProcessor struct{}
+
+func (p *CopyProcessor) Process(w http.ResponseWriter, r *http.Response) error {
+	w.WriteHeader(r.StatusCode)
+	written, _ := io.Copy(w, r.Body)
+	if written != 0 {
+		w.Header().Set(ContentLength, strconv.FormatInt(written, 10))
+	}
+	return nil
 }
