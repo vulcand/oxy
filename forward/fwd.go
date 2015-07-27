@@ -127,7 +127,8 @@ func (f *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
 	outReq.URL = utils.CopyURL(req.URL)
 	outReq.URL.Scheme = u.Scheme
 	outReq.URL.Host = u.Host
-	outReq.URL.Opaque = req.RequestURI
+	// workaround for https://github.com/golang/go/issues/10433
+	outReq.URL.Opaque = mergeStartingSlashes(req.RequestURI)
 	// raw query is already included in RequestURI, so ignore it to avoid dupes
 	outReq.URL.RawQuery = ""
 	// Do not pass client Host header unless optsetter PassHostHeader is set.
@@ -148,4 +149,12 @@ func (f *Forwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
 		f.rewriter.Rewrite(outReq)
 	}
 	return outReq
+}
+
+// faster than using strings or regexp packages
+func mergeStartingSlashes(uri string) string {
+	for len(uri) > 1 && uri[0] == '/' && uri[1] == '/' {
+		uri = uri[1:]
+	}
+	return uri
 }
