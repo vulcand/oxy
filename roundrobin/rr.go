@@ -21,6 +21,17 @@ func Weight(w int) ServerOption {
 	}
 }
 
+// Tag is an optional functional argument that sets grouping of the server
+func Tag(t string) ServerOption {
+	return func(s *server) error {
+		if t == "" {
+			return fmt.Errorf("Tag should be a non empty string")
+		}
+		s.tag = t
+		return nil
+	}
+}
+
 // ErrorHandler is a functional argument that sets error handler of the server
 func ErrorHandler(h utils.ErrorHandler) LBOption {
 	return func(s *RoundRobin) error {
@@ -208,6 +219,19 @@ func (r *RoundRobin) findServerByURL(u *url.URL) (*server, int) {
 	return nil, -1
 }
 
+func (r *RoundRobin) FindServersByTag(t string) []*url.URL {
+	var l []*url.URL
+	if len(r.servers) == 0 {
+		return nil
+	}
+	for _, s := range r.servers {
+		if t == s.tag {
+			l = append(l, s.url)
+		}
+	}
+	return l
+}
+
 func (rr *RoundRobin) maxWeight() int {
 	max := -1
 	for _, s := range rr.servers {
@@ -246,6 +270,8 @@ type LBOption func(*RoundRobin) error
 // Set additional parameters for the server can be supplied when adding server
 type server struct {
 	url *url.URL
+	// Used for grouping servers together for query purposes.
+	tag string
 	// Relative weight for the enpoint to other enpoints in the load balancer
 	weight int
 }
