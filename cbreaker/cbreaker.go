@@ -31,8 +31,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/oxy/memmetrics"
-	"github.com/mailgun/oxy/utils"
+	"github.com/vulcand/oxy/memmetrics"
+	"github.com/vulcand/oxy/utils"
 	"github.com/mailgun/timetools"
 )
 
