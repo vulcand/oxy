@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/mailgun/oxy/utils"
+	"github.com/vulcand/oxy/utils"
 )
 
 func NewHandler(handler http.HandlerFunc) *httptest.Server {

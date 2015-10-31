@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/mailgun/log"
-	"github.com/mailgun/oxy/utils"
+	"github.com/vulcand/oxy/utils"
 )
 
 type SideEffect interface {

@@ -5,10 +5,10 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/mailgun/oxy/forward"
-	"github.com/mailgun/oxy/roundrobin"
-	"github.com/mailgun/oxy/testutils"
-	"github.com/mailgun/oxy/utils"
+	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/oxy/roundrobin"
+	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/utils"
 
 	. "gopkg.in/check.v1"
 )
