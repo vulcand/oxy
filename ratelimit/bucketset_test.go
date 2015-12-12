@@ -27,7 +27,7 @@ func (s *BucketSetSuite) TestLongestPeriod(c *C) {
 	rates.Add(7*time.Second, 10, 20)
 	rates.Add(5*time.Second, 11, 21)
 	// When
-	tbs := newTokenBucketSet(rates, s.clock)
+	tbs := NewTokenBucketSet(rates, s.clock)
 	// Then
 	c.Assert(tbs.maxPeriod, Equals, 7*time.Second)
 }
@@ -38,9 +38,9 @@ func (s *BucketSetSuite) TestConsume(c *C) {
 	rates := NewRateSet()
 	rates.Add(1*time.Second, 10, 20)
 	rates.Add(10*time.Second, 20, 50)
-	tbs := newTokenBucketSet(rates, s.clock)
+	tbs := NewTokenBucketSet(rates, s.clock)
 	// When
-	delay, err := tbs.consume(15)
+	delay, err := tbs.Consume(15)
 	// Then
 	c.Assert(delay, Equals, time.Duration(0))
 	c.Assert(err, IsNil)
@@ -53,12 +53,12 @@ func (s *BucketSetSuite) TestConsumeRefill(c *C) {
 	rates := NewRateSet()
 	rates.Add(10*time.Second, 10, 20)
 	rates.Add(100*time.Second, 20, 50)
-	tbs := newTokenBucketSet(rates, s.clock)
-	tbs.consume(15)
+	tbs := NewTokenBucketSet(rates, s.clock)
+	tbs.Consume(15)
 	c.Assert(tbs.debugState(), Equals, "{10s: 5}, {1m40s: 35}")
 	// When
 	s.clock.Sleep(10 * time.Second)
-	delay, err := tbs.consume(0) // Consumes nothing but forces an internal state update.
+	delay, err := tbs.Consume(0) // Consumes nothing but forces an internal state update.
 	// Then
 	c.Assert(delay, Equals, time.Duration(0))
 	c.Assert(err, IsNil)
@@ -72,11 +72,11 @@ func (s *BucketSetSuite) TestConsumeLimitedBy1st(c *C) {
 	rates := NewRateSet()
 	rates.Add(10*time.Second, 10, 10)
 	rates.Add(100*time.Second, 20, 20)
-	tbs := newTokenBucketSet(rates, s.clock)
-	tbs.consume(5)
+	tbs := NewTokenBucketSet(rates, s.clock)
+	tbs.Consume(5)
 	c.Assert(tbs.debugState(), Equals, "{10s: 5}, {1m40s: 15}")
 	// When
-	delay, err := tbs.consume(10)
+	delay, err := tbs.Consume(10)
 	// Then
 	c.Assert(delay, Equals, 5*time.Second)
 	c.Assert(err, IsNil)
@@ -90,15 +90,15 @@ func (s *BucketSetSuite) TestConsumeLimitedBy2st(c *C) {
 	rates := NewRateSet()
 	rates.Add(10*time.Second, 10, 10)
 	rates.Add(100*time.Second, 20, 20)
-	tbs := newTokenBucketSet(rates, s.clock)
-	tbs.consume(10)
+	tbs := NewTokenBucketSet(rates, s.clock)
+	tbs.Consume(10)
 	s.clock.Sleep(10 * time.Second)
-	tbs.consume(10)
+	tbs.Consume(10)
 	s.clock.Sleep(5 * time.Second)
-	tbs.consume(0)
+	tbs.Consume(0)
 	c.Assert(tbs.debugState(), Equals, "{10s: 5}, {1m40s: 3}")
 	// When
-	delay, err := tbs.consume(10)
+	delay, err := tbs.Consume(10)
 	// Then
 	c.Assert(delay, Equals, 7*(5*time.Second))
 	c.Assert(err, IsNil)
@@ -112,11 +112,11 @@ func (s *BucketSetSuite) TestConsumeMoreThenBurst(c *C) {
 	rates := NewRateSet()
 	rates.Add(1*time.Second, 10, 20)
 	rates.Add(10*time.Second, 50, 100)
-	tbs := newTokenBucketSet(rates, s.clock)
-	tbs.consume(5)
+	tbs := NewTokenBucketSet(rates, s.clock)
+	tbs.Consume(5)
 	c.Assert(tbs.debugState(), Equals, "{1s: 15}, {10s: 95}")
 	// When
-	_, err := tbs.consume(21)
+	_, err := tbs.Consume(21)
 	//Then
 	c.Assert(tbs.debugState(), Equals, "{1s: 15}, {10s: 95}")
 	c.Assert(err, NotNil)
@@ -129,8 +129,8 @@ func (s *BucketSetSuite) TestUpdateMore(c *C) {
 	rates.Add(1*time.Second, 10, 20)
 	rates.Add(10*time.Second, 20, 50)
 	rates.Add(20*time.Second, 45, 90)
-	tbs := newTokenBucketSet(rates, s.clock)
-	tbs.consume(5)
+	tbs := NewTokenBucketSet(rates, s.clock)
+	tbs.Consume(5)
 	c.Assert(tbs.debugState(), Equals, "{1s: 15}, {10s: 45}, {20s: 85}")
 	rates = NewRateSet()
 	rates.Add(10*time.Second, 30, 40)
@@ -138,7 +138,7 @@ func (s *BucketSetSuite) TestUpdateMore(c *C) {
 	rates.Add(12*time.Second, 30, 40)
 	rates.Add(13*time.Second, 30, 40)
 	// When
-	tbs.update(rates)
+	tbs.Update(rates)
 	// Then
 	c.Assert(tbs.debugState(), Equals, "{10s: 40}, {11s: 40}, {12s: 40}, {13s: 40}")
 	c.Assert(tbs.maxPeriod, Equals, 13*time.Second)
@@ -152,14 +152,14 @@ func (s *BucketSetSuite) TestUpdateLess(c *C) {
 	rates.Add(10*time.Second, 20, 50)
 	rates.Add(20*time.Second, 45, 90)
 	rates.Add(30*time.Second, 50, 100)
-	tbs := newTokenBucketSet(rates, s.clock)
-	tbs.consume(5)
+	tbs := NewTokenBucketSet(rates, s.clock)
+	tbs.Consume(5)
 	c.Assert(tbs.debugState(), Equals, "{1s: 15}, {10s: 45}, {20s: 85}, {30s: 95}")
 	rates = NewRateSet()
 	rates.Add(10*time.Second, 25, 20)
 	rates.Add(20*time.Second, 30, 21)
 	// When
-	tbs.update(rates)
+	tbs.Update(rates)
 	// Then
 	c.Assert(tbs.debugState(), Equals, "{10s: 20}, {20s: 21}")
 	c.Assert(tbs.maxPeriod, Equals, 20*time.Second)
@@ -171,14 +171,14 @@ func (s *BucketSetSuite) TestUpdateAllDifferent(c *C) {
 	rates := NewRateSet()
 	rates.Add(10*time.Second, 20, 50)
 	rates.Add(30*time.Second, 50, 100)
-	tbs := newTokenBucketSet(rates, s.clock)
-	tbs.consume(5)
+	tbs := NewTokenBucketSet(rates, s.clock)
+	tbs.Consume(5)
 	c.Assert(tbs.debugState(), Equals, "{10s: 45}, {30s: 95}")
 	rates = NewRateSet()
 	rates.Add(1*time.Second, 10, 40)
 	rates.Add(60*time.Second, 100, 150)
 	// When
-	tbs.update(rates)
+	tbs.Update(rates)
 	// Then
 	c.Assert(tbs.debugState(), Equals, "{1s: 40}, {1m0s: 150}")
 	c.Assert(tbs.maxPeriod, Equals, 60*time.Second)
