@@ -1,7 +1,6 @@
 package connlimit
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,9 +18,6 @@ type ConnLimiterSuite struct {
 }
 
 var _ = Suite(&ConnLimiterSuite{})
-
-func (s *ConnLimiterSuite) SetUpSuite(c *C) {
-}
 
 // We've hit the limit and were able to proceed once the request has completed
 func (s *ConnLimiterSuite) TestHitLimitAndRelease(c *C) {
@@ -77,10 +73,7 @@ func (s *ConnLimiterSuite) TestCustomHandlers(c *C) {
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	buf := &bytes.Buffer{}
-	log := utils.NewFileLogger(buf, utils.INFO)
-
-	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler), Logger(log))
+	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler))
 	c.Assert(err, Equals, nil)
 
 	srv := httptest.NewServer(l)
@@ -89,8 +82,6 @@ func (s *ConnLimiterSuite) TestCustomHandlers(c *C) {
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Limit", "a"))
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusTeapot)
-
-	c.Assert(len(buf.String()), Not(Equals), 0)
 }
 
 // We've hit the limit and were able to proceed once the request has completed
