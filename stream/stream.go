@@ -41,6 +41,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/mailgun/multibuf"
 	"github.com/vulcand/oxy/utils"
 )
@@ -69,7 +70,6 @@ type Streamer struct {
 
 	next       http.Handler
 	errHandler utils.ErrorHandler
-	log        utils.Logger
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments
@@ -90,10 +90,6 @@ func New(next http.Handler, setters ...optSetter) (*Streamer, error) {
 	}
 	if strm.errHandler == nil {
 		strm.errHandler = errHandler
-	}
-
-	if strm.log == nil {
-		strm.log = utils.NullLogger
 	}
 
 	return strm, nil
@@ -119,14 +115,6 @@ func Retry(predicate string) optSetter {
 			return err
 		}
 		s.retryPredicate = p
-		return nil
-	}
-}
-
-// Logger sets the logger that will be used by this middleware.
-func Logger(l utils.Logger) optSetter {
-	return func(s *Streamer) error {
-		s.log = l
 		return nil
 	}
 }
@@ -193,7 +181,7 @@ func (s *Streamer) Wrap(next http.Handler) error {
 
 func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err := s.checkLimit(req); err != nil {
-		s.log.Infof("request body over limit: %v", err)
+		log.Infof("request body over limit: %v", err)
 		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -217,7 +205,7 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// set without content length or using chunked TransferEncoding
 	totalSize, err := body.Size()
 	if err != nil {
-		s.log.Errorf("failed to get size, err %v", err)
+		log.Errorf("failed to get size, err %v", err)
 		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -246,7 +234,7 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if b.expectBody(outreq) {
 			rdr, err := writer.Reader()
 			if err != nil {
-				s.log.Errorf("failed to read response, err %v", err)
+				log.Errorf("failed to read response, err %v", err)
 				s.errHandler.ServeHTTP(w, req, err)
 				return
 			}
@@ -255,7 +243,7 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if (s.retryPredicate == nil || attempt > DefaultMaxRetryAttempts) ||
-			!s.retryPredicate(&context{r: req, attempt: attempt, responseCode: b.code, log: s.log}) {
+			!s.retryPredicate(&context{r: req, attempt: attempt, responseCode: b.code}) {
 			utils.CopyHeaders(w.Header(), b.Header())
 			w.WriteHeader(b.code)
 			if reader != nil {
@@ -266,12 +254,12 @@ func (s *Streamer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		attempt += 1
 		if _, err := body.Seek(0, 0); err != nil {
-			s.log.Errorf("Failed to rewind: error: %v", err)
+			log.Errorf("Failed to rewind: error: %v", err)
 			s.errHandler.ServeHTTP(w, req, err)
 			return
 		}
 		outreq = s.copyRequest(req, body, totalSize)
-		s.log.Infof("retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
+		log.Infof("retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
 	}
 }
 

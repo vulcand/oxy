@@ -1,7 +1,6 @@
 package ratelimit
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -299,10 +298,7 @@ func (s *LimiterSuite) TestOptions(c *C) {
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	buf := &bytes.Buffer{}
-	log := utils.NewFileLogger(buf, utils.INFO)
-
-	l, err := New(handler, headerLimit, rates, ErrorHandler(errHandler), Logger(log), Clock(s.clock))
+	l, err := New(handler, headerLimit, rates, ErrorHandler(errHandler), Clock(s.clock))
 	c.Assert(err, IsNil)
 
 	srv := httptest.NewServer(l)
@@ -315,8 +311,6 @@ func (s *LimiterSuite) TestOptions(c *C) {
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusTeapot)
-
-	c.Assert(len(buf.String()), Not(Equals), 0)
 }
 
 func headerLimiter(req *http.Request) (string, int64, error) {

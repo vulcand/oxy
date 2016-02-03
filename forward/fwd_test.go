@@ -1,7 +1,6 @@
 package forward
 
 import (
-	"bytes"
 	"fmt"
 	"net"
 	"net/http"
@@ -188,10 +187,7 @@ func (s *FwdSuite) TestCustomLogger(c *C) {
 	})
 	defer srv.Close()
 
-	buf := &bytes.Buffer{}
-	l := utils.NewFileLogger(buf, utils.INFO)
-
-	f, err := New(Logger(l))
+	f, err := New()
 	c.Assert(err, IsNil)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -203,7 +199,6 @@ func (s *FwdSuite) TestCustomLogger(c *C) {
 	re, _, err := testutils.Get(proxy.URL)
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
-	c.Assert(strings.Contains(buf.String(), srv.URL), Equals, true)
 }
 
 func (s *FwdSuite) TestEscapedURL(c *C) {
@@ -243,10 +238,7 @@ func (s *FwdSuite) TestForwardedProto(c *C) {
 	})
 	defer srv.Close()
 
-	buf := &bytes.Buffer{}
-	l := utils.NewFileLogger(buf, utils.INFO)
-
-	f, err := New(Logger(l))
+	f, err := New()
 	c.Assert(err, IsNil)
 
 	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -261,8 +253,6 @@ func (s *FwdSuite) TestForwardedProto(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 	c.Assert(proto, Equals, "https")
-
-	c.Assert(strings.Contains(buf.String(), "tls"), Equals, true)
 }
 
 func (s *FwdSuite) TestChunkedResponseConversion(c *C) {
