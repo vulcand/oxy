@@ -113,7 +113,14 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	utils.CopyHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
-	written, _ := io.Copy(w, response.Body)
+	written, err := io.Copy(w, response.Body)
+
+	if err != nil {
+		f.log.Errorf("Error copying upstream response Body: %v", err.Error())
+		f.errHandler.ServeHTTP(w, req, err)
+		return
+	}
+
 	if written != 0 {
 		w.Header().Set(ContentLength, strconv.FormatInt(written, 10))
 	}
