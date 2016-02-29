@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/gorilla/context"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -37,14 +38,16 @@ type RoundRobin struct {
 	index         int
 	servers       []*server
 	currentWeight int
+	KeepContext   bool
 }
 
 func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 	rr := &RoundRobin{
-		next:    next,
-		index:   -1,
-		mutex:   &sync.Mutex{},
-		servers: []*server{},
+		next:        next,
+		index:       -1,
+		mutex:       &sync.Mutex{},
+		servers:     []*server{},
+		KeepContext: false,
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -70,6 +73,9 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
 	newReq.URL = url
+	if r.KeepContext {
+		context.Set(req, "oxy_backend", url)
+	}
 	r.next.ServeHTTP(w, &newReq)
 }
 
