@@ -28,12 +28,9 @@ func (s *TraceSuite) TestTraceSimple(c *C) {
 		w.Header().Set("Content-Length", "5")
 		w.Write([]byte("hello"))
 	})
-	buf := &bytes.Buffer{}
-	l := utils.NewFileLogger(buf, utils.INFO)
 
 	trace := &bytes.Buffer{}
-
-	t, err := New(handler, trace, Logger(l))
+	t, err := New(handler, trace)
 	c.Assert(err, IsNil)
 
 	srv := httptest.NewServer(t)
@@ -64,12 +61,9 @@ func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
 		utils.CopyHeaders(w.Header(), respHeaders)
 		w.Write([]byte("hello"))
 	})
-	buf := &bytes.Buffer{}
-	l := utils.NewFileLogger(buf, utils.INFO)
 
 	trace := &bytes.Buffer{}
-
-	t, err := New(handler, trace, Logger(l), RequestHeaders("X-Req-B", "X-Req-A"), ResponseHeaders("X-Re-1", "X-Re-2"))
+	t, err := New(handler, trace, RequestHeaders("X-Req-B", "X-Req-A"), ResponseHeaders("X-Re-1", "X-Re-2"))
 	c.Assert(err, IsNil)
 
 	srv := httptest.NewServer(t)
@@ -91,12 +85,9 @@ func (s *TraceSuite) TestTraceTLS(c *C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
-	buf := &bytes.Buffer{}
-	l := utils.NewFileLogger(buf, utils.INFO)
 
 	trace := &bytes.Buffer{}
-
-	t, err := New(handler, trace, Logger(l))
+	t, err := New(handler, trace)
 	c.Assert(err, IsNil)
 
 	srv := httptest.NewUnstartedServer(t)

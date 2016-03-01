@@ -3,20 +3,17 @@ package roundrobin
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"time"
 
+	"github.com/mailgun/timetools"
 	"github.com/vulcand/oxy/forward"
 	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/oxy/utils"
-	"github.com/mailgun/timetools"
 
 	. "gopkg.in/check.v1"
 )
 
 type RBSuite struct {
 	clock *timetools.FreezedTime
-	log   utils.Logger
 }
 
 var _ = Suite(&RBSuite{
@@ -24,10 +21,6 @@ var _ = Suite(&RBSuite{
 		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
 	},
 })
-
-func (s *RBSuite) SetUpSuite(c *C) {
-	s.log = utils.NewFileLogger(os.Stdout, utils.INFO)
-}
 
 func (s *RBSuite) TestRebalancerNormalOperation(c *C) {
 	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
@@ -111,7 +104,7 @@ func (s *RBSuite) TestRebalancerRecovery(c *C) {
 	newMeter := func() (Meter, error) {
 		return &testMeter{}, nil
 	}
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock), RebalancerLogger(s.log))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock))
 	c.Assert(err, IsNil)
 
 	rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -166,7 +159,7 @@ func (s *RBSuite) TestRebalancerCascading(c *C) {
 	newMeter := func() (Meter, error) {
 		return &testMeter{}, nil
 	}
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock), RebalancerLogger(s.log))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock))
 	c.Assert(err, IsNil)
 
 	rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -221,7 +214,7 @@ func (s *RBSuite) TestRebalancerAllBad(c *C) {
 	newMeter := func() (Meter, error) {
 		return &testMeter{}, nil
 	}
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock), RebalancerLogger(s.log))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock))
 	c.Assert(err, IsNil)
 
 	rb.UpsertServer(testutils.ParseURI(a.URL))
@@ -262,7 +255,7 @@ func (s *RBSuite) TestRebalancerReset(c *C) {
 	newMeter := func() (Meter, error) {
 		return &testMeter{}, nil
 	}
-	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock), RebalancerLogger(s.log))
+	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter), RebalancerClock(s.clock))
 	c.Assert(err, IsNil)
 
 	rb.UpsertServer(testutils.ParseURI(a.URL))

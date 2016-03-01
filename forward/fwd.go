@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -49,18 +50,10 @@ func ErrorHandler(h utils.ErrorHandler) optSetter {
 	}
 }
 
-func Logger(l utils.Logger) optSetter {
-	return func(f *Forwarder) error {
-		f.log = l
-		return nil
-	}
-}
-
 type Forwarder struct {
 	errHandler   utils.ErrorHandler
 	roundTripper http.RoundTripper
 	rewriter     ReqRewriter
-	log          utils.Logger
 	passHost     bool
 }
 
@@ -81,9 +74,6 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		}
 		f.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
 	}
-	if f.log == nil {
-		f.log = utils.NullLogger
-	}
 	if f.errHandler == nil {
 		f.errHandler = utils.DefaultHandler
 	}
@@ -94,20 +84,20 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	start := time.Now().UTC()
 	response, err := f.roundTripper.RoundTrip(f.copyRequest(req, req.URL))
 	if err != nil {
-		f.log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
+		log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
 		f.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 
 	if req.TLS != nil {
-		f.log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
+		log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start),
 			req.TLS.Version,
 			req.TLS.DidResume,
 			req.TLS.CipherSuite,
 			req.TLS.ServerName)
 	} else {
-		f.log.Infof("Round trip: %v, code: %v, duration: %v",
+		log.Infof("Round trip: %v, code: %v, duration: %v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 	}
 
