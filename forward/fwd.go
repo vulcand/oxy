@@ -112,7 +112,13 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	utils.CopyHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
-	io.Copy(w, response.Body)
+	_, err = io.Copy(w, response.Body)
+	if err != nil {
+		f.log.Errorf("Error copying upstream response Body: %v", err.Error())
+		f.errHandler.ServeHTTP(w, req, err)
+		return
+	}
+
 	response.Body.Close()
 }
 
