@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/context"
+	"github.com/mailgun/timetools"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
-	"github.com/mailgun/timetools"
 )
 
 // RebalancerOption - functional option setter for rebalancer
@@ -48,6 +49,9 @@ type Rebalancer struct {
 
 	// creates new meters
 	newMeter NewMeterFn
+
+	// Flag to indicate if backend info should be saved in request object
+	KeepContext bool
 }
 
 func RebalancerLogger(log utils.Logger) RebalancerOption {
@@ -88,8 +92,9 @@ func RebalancerErrorHandler(h utils.ErrorHandler) RebalancerOption {
 
 func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalancer, error) {
 	rb := &Rebalancer{
-		mtx:  &sync.Mutex{},
-		next: handler,
+		mtx:         &sync.Mutex{},
+		next:        handler,
+		KeepContext: false,
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -143,6 +148,9 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// make shallow copy of request before changing anything to avoid side effects
 	newReq := *req
 	newReq.URL = url
+	if rb.KeepContext {
+		context.Set(req, "oxy_backend", url.String())
+	}
 	rb.next.Next().ServeHTTP(pw, &newReq)
 
 	rb.recordMetrics(url, pw.Code, rb.clock.UtcNow().Sub(start))
