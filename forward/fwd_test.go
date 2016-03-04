@@ -36,7 +36,7 @@ func (s *FwdSuite) TestForwardHopHeaders(c *C) {
 	})
 	defer srv.Close()
 
-	f, err := New(PassHostHeader(true))
+	f, err := New()
 	c.Assert(err, IsNil)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -296,15 +296,14 @@ func (s *FwdSuite) TestDetectsWebsocketRequest(c *C) {
 		conn.Write([]byte("ok"))
 		conn.Close()
 	}))
-	wsHandler := func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		websocketRequest := isWebsocketRequest(req)
 		c.Assert(websocketRequest, Equals, true)
 		mux.ServeHTTP(w, req)
-	}
-	server := httptest.NewServer(http.HandlerFunc(wsHandler))
-	defer server.Close()
+	})
+	defer srv.Close()
 
-	serverAddr := server.Listener.Addr().String()
+	serverAddr := srv.Listener.Addr().String()
 	resp, err := sendWebsocketRequest(serverAddr, "/ws", "echo", c)
 	c.Assert(err, IsNil)
 	c.Assert(resp, Equals, "ok")

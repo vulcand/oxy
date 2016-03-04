@@ -196,7 +196,7 @@ func (f *httpForwarder) copyRequest(req *http.Request, u *url.URL) *http.Request
 	// raw query is already included in RequestURI, so ignore it to avoid dupes
 	outReq.URL.RawQuery = ""
 	// Do not pass client Host header unless optsetter PassHostHeader is set.
-	if f.passHost {
+	if !f.passHost {
 		outReq.Host = u.Host
 	}
 	outReq.Proto = "HTTP/1.1"
