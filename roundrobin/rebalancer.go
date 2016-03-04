@@ -149,7 +149,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	newReq := *req
 	newReq.URL = url
 	if rb.KeepContext {
-		context.Set(req, "oxy_backend", url)
+		context.Set(req, "oxy_backend", url.String())
 	}
 	rb.next.Next().ServeHTTP(pw, &newReq)
 

@@ -74,7 +74,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	newReq := *req
 	newReq.URL = url
 	if r.KeepContext {
-		context.Set(req, "oxy_backend", url)
+		context.Set(req, "oxy_backend", url.String())
 	}
 	r.next.ServeHTTP(w, &newReq)
 }
