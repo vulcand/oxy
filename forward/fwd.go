@@ -217,7 +217,7 @@ func (f *httpForwarder) copyRequest(req *http.Request, u *url.URL) *http.Request
 
 // serveHTTP forwards websocket traffic
 func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
-	outReq := f.copyRequest(req)
+	outReq := f.copyRequest(req, req.URL)
 	host := outReq.URL.Host
 	dial := net.Dial
 
@@ -278,12 +278,30 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 }
 
 // copyRequest makes a copy of the specified request.
-func (f *websocketForwarder) copyRequest(req *http.Request) (outReq *http.Request) {
+func (f *websocketForwarder) copyRequest(req *http.Request, u *url.URL) (outReq *http.Request) {
 	outReq = new(http.Request)
-	*outReq = *req
+	*outReq = *req // includes shallow copies of maps, but we handle this below
+
 	outReq.URL = utils.CopyURL(req.URL)
-	outReq.URL.Scheme = req.URL.Scheme
-	outReq.URL.Host = req.URL.Host
+	outReq.URL.Scheme = u.Scheme
+	outReq.URL.Host = u.Host
+	outReq.URL.Opaque = req.RequestURI
+	// raw query is already included in RequestURI, so ignore it to avoid dupes
+	outReq.URL.RawQuery = ""
+
+	outReq.Proto = "HTTP/1.1"
+	outReq.ProtoMajor = 1
+	outReq.ProtoMinor = 1
+
+	// Overwrite close flag so we can keep persistent connection for the backend servers
+	outReq.Close = false
+
+	outReq.Header = make(http.Header)
+	utils.CopyHeaders(outReq.Header, req.Header)
+
+	if f.rewriter != nil {
+		f.rewriter.Rewrite(outReq)
+	}
 	return outReq
 }
 
