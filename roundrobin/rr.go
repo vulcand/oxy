@@ -61,15 +61,51 @@ func (r *RoundRobin) Next() http.Handler {
 	return r.next
 }
 
+func (r *RoundRobin) getCookieVal(req *http.Request) (*url.URL, bool, error) {
+	// Before we move on to a new server, peek at our req cookie to see if we are bound.
+	// If so, serve to them.
+	cookie, err := req.Cookie("__STICKY_SVR")
+	switch err {
+	case nil:
+	case http.ErrNoCookie:
+		return nil, false, nil
+	default:
+		return nil, false, err
+
+	}
+
+	s_url, err := url.Parse(cookie.Value)
+	if err != nil {
+		return nil, false, err
+	}
+
+	s, i := r.findServerByURL(s_url)
+	if i != -1 {
+		return s.url, true, nil
+	} else {
+		return nil, false, nil
+	}
+
+}
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	url, err := r.NextServer()
+	// make shallow copy of request before chaning anything to avoid side effects
+	newReq := *req
+	cookie_url, present, err := r.getCookieVal(&newReq)
+
 	if err != nil {
 		r.errHandler.ServeHTTP(w, req, err)
 		return
 	}
-	// make shallow copy of request before chaning anything to avoid side effects
-	newReq := *req
-	newReq.URL = url
+	if present {
+		newReq.URL = cookie_url
+	} else {
+		url, err := r.NextServer()
+		if err != nil {
+			r.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+		newReq.URL = url
+	}
 	r.next.ServeHTTP(w, &newReq)
 }
 
