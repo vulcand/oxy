@@ -30,6 +30,13 @@ func ErrorHandler(h utils.ErrorHandler) LBOption {
 	}
 }
 
+func EnableStickySession(ss *StickySession) LBOption {
+	return func(s *RoundRobin) error {
+		s.ss = ss
+		return nil
+	}
+}
+
 // ErrorHandler is a functional argument that sets error handler of the server
 func RoundRobinRequestRewriteListener(rrl RequestRewriteListener) LBOption {
 	return func(s *RoundRobin) error {
@@ -43,9 +50,10 @@ type RoundRobin struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 	// Current index (starts from -1)
-	index                  int
-	servers                []*server
-	currentWeight          int
+	index         int
+	servers       []*server
+	currentWeight int
+	ss            *StickySession
 	requestRewriteListener RequestRewriteListener
 }
 
@@ -55,6 +63,7 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 		index:   -1,
 		mutex:   &sync.Mutex{},
 		servers: []*server{},
+		ss:      nil,
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -71,32 +80,6 @@ func (r *RoundRobin) Next() http.Handler {
 	return r.next
 }
 
-func (r *RoundRobin) getCookieVal(req *http.Request) (*url.URL, bool, error) {
-	// Before we move on to a new server, peek at our req cookie to see if we are bound.
-	// If so, serve to them.
-	cookie, err := req.Cookie("__STICKY_SVR")
-	switch err {
-	case nil:
-	case http.ErrNoCookie:
-		return nil, false, nil
-	default:
-		return nil, false, err
-
-	}
-
-	s_url, err := url.Parse(cookie.Value)
-	if err != nil {
-		return nil, false, err
-	}
-
-	s, i := r.findServerByURL(s_url)
-	if i != -1 {
-		return s.url, true, nil
-	} else {
-		return nil, false, nil
-	}
-
-}
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if log.GetLevel() >= log.DebugLevel {
 		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
@@ -106,20 +89,29 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
-	cookie_url, present, err := r.getCookieVal(&newReq)
+	stuck := false
+	if r.ss != nil {
+		cookie_url, present, err := r.ss.GetBackend(&newReq, r.Servers())
 
-	if err != nil {
-		r.errHandler.ServeHTTP(w, req, err)
-		return
+		if err != nil {
+			r.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+		if present {
+			newReq.URL = cookie_url
+			stuck = true
+		}
 	}
 
-	if present {
-		newReq.URL = cookie_url
-	} else {
+	if !stuck {
 		url, err := r.NextServer()
 		if err != nil {
 			r.errHandler.ServeHTTP(w, req, err)
 			return
+		}
+
+		if r.ss != nil {
+			r.ss.StickBackend(url, &w)
 		}
 		newReq.URL = url
 	}
