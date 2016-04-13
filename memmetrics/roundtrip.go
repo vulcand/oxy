@@ -1,7 +1,9 @@
 package memmetrics
 
 import (
+	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/mailgun/timetools"
@@ -13,10 +15,11 @@ import (
 // are a rolling window histograms with defined precision as well.
 // See RTOptions for more detail on parameters.
 type RTMetrics struct {
-	total       *RollingCounter
-	netErrors   *RollingCounter
-	statusCodes map[int]*RollingCounter
-	histogram   *RollingHDRHistogram
+	total           *RollingCounter
+	netErrors       *RollingCounter
+	statusCodes     map[int]*RollingCounter
+	statusCodesLock sync.RWMutex
+	histogram       *RollingHDRHistogram
 
 	newCounter NewCounterFn
 	newHist    NewRollingHistogramFn
@@ -53,7 +56,8 @@ func RTClock(clock timetools.TimeProvider) rrOptSetter {
 // NewRTMetrics returns new instance of metrics collector.
 func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
 	m := &RTMetrics{
-		statusCodes: make(map[int]*RollingCounter),
+		statusCodes:     make(map[int]*RollingCounter),
+		statusCodesLock: sync.RWMutex{},
 	}
 	for _, s := range settings {
 		if err := s(m); err != nil {
@@ -115,6 +119,8 @@ func (m *RTMetrics) NetworkErrorRatio() float64 {
 func (m *RTMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 	a := int64(0)
 	b := int64(0)
+	m.statusCodesLock.RLock()
+	defer m.statusCodesLock.RUnlock()
 	for code, v := range m.statusCodes {
 		if code < endA && code >= startA {
 			a += v.Count()
@@ -130,6 +136,10 @@ func (m *RTMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 }
 
 func (m *RTMetrics) Append(other *RTMetrics) error {
+	if m == other {
+		return errors.New("RTMetrics cannot append to self")
+	}
+
 	if err := m.total.Append(other.total); err != nil {
 		return err
 	}
@@ -138,6 +148,10 @@ func (m *RTMetrics) Append(other *RTMetrics) error {
 		return err
 	}
 
+	m.statusCodesLock.Lock()
+	defer m.statusCodesLock.Unlock()
+	other.statusCodesLock.RLock()
+	defer other.statusCodesLock.RUnlock()
 	for code, c := range other.statusCodes {
 		o, ok := m.statusCodes[code]
 		if ok {
@@ -174,6 +188,8 @@ func (m *RTMetrics) NetworkErrorCount() int64 {
 // GetStatusCodesCounts returns map with counts of the response codes
 func (m *RTMetrics) StatusCodesCounts() map[int]int64 {
 	sc := make(map[int]int64)
+	m.statusCodesLock.RLock()
+	defer m.statusCodesLock.RUnlock()
 	for k, v := range m.statusCodes {
 		if v.Count() != 0 {
 			sc[k] = v.Count()
@@ -191,6 +207,8 @@ func (m *RTMetrics) Reset() {
 	m.histogram.Reset()
 	m.total.Reset()
 	m.netErrors.Reset()
+	m.statusCodesLock.Lock()
+	defer m.statusCodesLock.Unlock()
 	m.statusCodes = make(map[int]*RollingCounter)
 }
 
@@ -204,10 +222,23 @@ func (m *RTMetrics) recordLatency(d time.Duration) error {
 }
 
 func (m *RTMetrics) recordStatusCode(statusCode int) error {
+	m.statusCodesLock.RLock()
+	if c, ok := m.statusCodes[statusCode]; ok {
+		c.Inc(1)
+		m.statusCodesLock.RUnlock()
+		return nil
+	}
+	m.statusCodesLock.RUnlock()
+
+	m.statusCodesLock.Lock()
+	defer m.statusCodesLock.Unlock()
+
+	// Check if another goroutine has written our counter already
 	if c, ok := m.statusCodes[statusCode]; ok {
 		c.Inc(1)
 		return nil
 	}
+
 	c, err := m.newCounter()
 	if err != nil {
 		return err
