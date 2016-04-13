@@ -1,6 +1,8 @@
 package memmetrics
 
 import (
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/mailgun/timetools"
@@ -78,4 +80,23 @@ func (s *RRSuite) TestAppend(c *C) {
 	h, err := rr2.LatencyHistogram()
 	c.Assert(err, IsNil)
 	c.Assert(int(h.LatencyAtQuantile(100)/time.Second), Equals, 3)
+}
+
+func (s *RRSuite) TestConcurrentRecords(c *C) {
+	// This test asserts a race condition which requires parallelism
+	runtime.GOMAXPROCS(100)
+
+	rr, _ := NewRTMetrics(RTClock(s.tm))
+
+	for code := 0; code < 100; code++ {
+		l := sync.RWMutex{}
+		l.Lock()
+		for numRecords := 0; numRecords < 10; numRecords++ {
+			go func() {
+				l.RLock()
+				rr.recordStatusCode(code)
+			}()
+		}
+		l.Unlock()
+	}
 }
