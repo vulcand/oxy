@@ -1,4 +1,4 @@
-// package stickysession is a mixin for load balancers that implements layer 8 (http cookie) session affinity
+// package stickysession is a mixin for load balancers that implements layer 7 (http cookie) session affinity
 package roundrobin
 
 import (
