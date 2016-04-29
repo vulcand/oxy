@@ -34,6 +34,15 @@ func NewHDRHistogram(low, high int64, sigfigs int) (h *HDRHistogram, err error) 
 	}, nil
 }
 
+func (r *HDRHistogram) Export() *HDRHistogram {
+	var hist *hdrhistogram.Histogram = nil
+	if r.h != nil {
+		snapshot := r.h.Export()
+		hist = hdrhistogram.Import(snapshot)
+	}
+	return &HDRHistogram{low: r.low, high: r.high, sigfigs: r.sigfigs, h: hist}
+}
+
 // Returns latency at quantile with microsecond precision
 func (h *HDRHistogram) LatencyAtQuantile(q float64) time.Duration {
 	return time.Duration(h.ValueAtQuantile(q)) * time.Microsecond
@@ -116,6 +125,26 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 	}
 	rh.buckets = buckets
 	return rh, nil
+}
+
+func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
+	export := &RollingHDRHistogram{}
+	export.idx = r.idx
+	export.lastRoll = r.lastRoll
+	export.period = r.period
+	export.bucketCount = r.bucketCount
+	export.low = r.low
+	export.high = r.high
+	export.sigfigs = r.sigfigs
+	export.clock = r.clock
+
+	exportBuckets := make([]*HDRHistogram, len(r.buckets))
+	for i, hist := range r.buckets {
+		exportBuckets[i] = hist.Export()
+	}
+	export.buckets = exportBuckets
+
+	return export
 }
 
 func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
