@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -168,18 +167,16 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 	}
 
 	utils.CopyHeaders(w.Header(), response.Header)
+	// Remove hop-by-hop headers.
+	utils.RemoveHeaders(w.Header(), HopHeaders...)
 	w.WriteHeader(response.StatusCode)
-	written, err := io.Copy(w, response.Body)
+	_, err = io.Copy(w, response.Body)
 	defer response.Body.Close()
 
 	if err != nil {
 		ctx.log.Errorf("Error copying upstream response Body: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
-	}
-
-	if written != 0 {
-		w.Header().Set(ContentLength, strconv.FormatInt(written, 10))
 	}
 }
 
