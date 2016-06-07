@@ -76,7 +76,7 @@ func (s *RTSuite) TestRetryExceedAttempts(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusBadGateway)
 }
 
-func new(c *C, p string) (*roundrobin.RoundRobin, *Bufer) {
+func new(c *C, p string) (*roundrobin.RoundRobin, *Buffer) {
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
