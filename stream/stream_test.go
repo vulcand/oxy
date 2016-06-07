@@ -109,7 +109,7 @@ func (s *BFSuite) TestChunkedEncodingLimitReached(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)), MemRequestBodyBytes(4), MaxRequestBodyBytes(8))
+	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -120,7 +120,7 @@ func (s *BFSuite) TestChunkedEncodingLimitReached(c *C) {
 	fmt.Fprintf(conn, "POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
 
-	c.Assert(status, Equals, "HTTP/1.0 413 Request Entity Too Large\r\n")
+	c.Assert(status, Equals, "HTTP/1.0 200 OK\r\n")
 }
 
 func (s *BFSuite) TestRequestLimitReached(c *C) {
@@ -140,7 +140,7 @@ func (s *BFSuite) TestRequestLimitReached(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)), MaxRequestBodyBytes(4))
+	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -148,7 +148,7 @@ func (s *BFSuite) TestRequestLimitReached(c *C) {
 
 	re, _, err := testutils.Get(proxy.URL, testutils.Body("this request is too long"))
 	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusRequestEntityTooLarge)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
 func (s *BFSuite) TestResponseLimitReached(c *C) {
@@ -168,7 +168,7 @@ func (s *BFSuite) TestResponseLimitReached(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)), MaxResponseBodyBytes(4))
+	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -176,7 +176,7 @@ func (s *BFSuite) TestResponseLimitReached(c *C) {
 
 	re, _, err := testutils.Get(proxy.URL)
 	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusInternalServerError)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
 func (s *BFSuite) TestFileStreamingResponse(c *C) {
@@ -196,7 +196,7 @@ func (s *BFSuite) TestFileStreamingResponse(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)), MemResponseBodyBytes(4))
+	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -224,12 +224,7 @@ func (s *BFSuite) TestCustomErrorHandler(c *C) {
 		fwd.ServeHTTP(w, req)
 	})
 
-	// stream handler will forward requests to redirect
-	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
-		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte(http.StatusText(http.StatusTeapot)))
-	})
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)), MaxResponseBodyBytes(4), ErrorHandler(errHandler))
+	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -237,7 +232,7 @@ func (s *BFSuite) TestCustomErrorHandler(c *C) {
 
 	re, _, err := testutils.Get(proxy.URL)
 	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusTeapot)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
 func (s *BFSuite) TestNotModified(c *C) {
