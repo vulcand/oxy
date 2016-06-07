@@ -1,4 +1,4 @@
-package stream
+package buffer
 
 import (
 	"net/http"
@@ -9,6 +9,7 @@ import (
 	"github.com/vulcand/oxy/testutils"
 
 	. "gopkg.in/check.v1"
+	"os"
 )
 
 type RTSuite struct{}
@@ -75,7 +76,7 @@ func (s *RTSuite) TestRetryExceedAttempts(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusBadGateway)
 }
 
-func new(c *C, p string) (*roundrobin.RoundRobin, *Streamer) {
+func new(c *C, p string) (*roundrobin.RoundRobin, *Bufferer) {
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
