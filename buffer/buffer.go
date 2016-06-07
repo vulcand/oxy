@@ -1,36 +1,36 @@
 /*
-package stream provides http.Handler middleware that solves several problems when dealing with http requests:
+package buffer provides http.Handler middleware that solves several problems when dealing with http requests:
 
 Reads the entire request and response into buffer, optionally buffering it to disk for large requests.
 Checks the limits for the requests and responses, rejecting in case if the limit was exceeded.
 Changes request content-transfer-encoding from chunked and provides total size to the handlers.
 
-Examples of a streaming middleware:
+Examples of a buffering middleware:
 
   // sample HTTP handler
   handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
     w.Write([]byte("hello"))
   })
 
-  // Stream will read the body in buffer before passing the request to the handler
+  // Buffer will read the body in buffer before passing the request to the handler
   // calculate total size of the request and transform it from chunked encoding
   // before passing to the server
-  stream.New(handler)
+  buffer.New(handler)
 
   // This version will buffer up to 2MB in memory and will serialize any extra
   // to a temporary file, if the request size exceeds 10MB it will reject the request
-  stream.New(handler,
-    stream.MemRequestBodyBytes(2 * 1024 * 1024),
-    stream.MaxRequestBodyBytes(10 * 1024 * 1024))
+  buffer.New(handler,
+    buffer.MemRequestBodyBytes(2 * 1024 * 1024),
+    buffer.MaxRequestBodyBytes(10 * 1024 * 1024))
 
   // Will do the same as above, but with responses
-  stream.New(handler,
-    stream.MemResponseBodyBytes(2 * 1024 * 1024),
-    stream.MaxResponseBodyBytes(10 * 1024 * 1024))
+  buffer.New(handler,
+    buffer.MemResponseBodyBytes(2 * 1024 * 1024),
+    buffer.MaxResponseBodyBytes(10 * 1024 * 1024))
 
-  // Stream will replay the request if the handler returns error at least 3 times
+  // Buffer will replay the request if the handler returns error at least 3 times
   // before returning the response
-  stream.New(handler, stream.Retry(`IsNetworkError() && Attempts() <= 2`))
+  buffer.New(handler, buffer.Retry(`IsNetworkError() && Attempts() <= 2`))
 
 */
 package buffer
@@ -72,7 +72,7 @@ type Buffer struct {
 	errHandler utils.ErrorHandler
 }
 
-// New returns a new streamer middleware. New() function supports optional functional arguments
+// New returns a new buffer middleware. New() function supports optional functional arguments
 func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 	strm := &Buffer{
 		next: next,
@@ -97,7 +97,7 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 
 type optSetter func(s *Buffer) error
 
-// Retry provides a predicate that allows stream middleware to replay the request
+// Retry provides a predicate that allows buffer middleware to replay the request
 // if it matches certain condition, e.g. returns special error code. Available functions are:
 //
 // Attempts() - limits the amount of retry attempts
@@ -139,7 +139,7 @@ func MaxRequestBodyBytes(m int64) optSetter {
 }
 
 // MaxRequestBody bytes sets the maximum request body to be stored in memory
-// stream middleware will serialize the excess to disk.
+// buffer middleware will serialize the excess to disk.
 func MemRequestBodyBytes(m int64) optSetter {
 	return func(s *Buffer) error {
 		if m < 0 {
@@ -162,7 +162,7 @@ func MaxResponseBodyBytes(m int64) optSetter {
 }
 
 // MemResponseBodyBytes sets the maximum request body to be stored in memory
-// stream middleware will serialize the excess to disk.
+// buffer middleware will serialize the excess to disk.
 func MemResponseBodyBytes(m int64) optSetter {
 	return func(s *Buffer) error {
 		if m < 0 {
@@ -173,7 +173,7 @@ func MemResponseBodyBytes(m int64) optSetter {
 	}
 }
 
-// Wrap sets the next handler to be called by stream handler.
+// Wrap sets the next handler to be called by buffer handler.
 func (s *Buffer) Wrap(next http.Handler) error {
 	s.next = next
 	return nil
