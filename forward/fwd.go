@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -244,13 +245,13 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	}
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		ctx.log.Errorf("Unable to hijack the connection: %v", err)
-		ctx.errHandler.ServeHTTP(w, req, err)
+		ctx.log.Errorf("Unable to hijack the connection: %v", reflect.TypeOf(w))
+		ctx.errHandler.ServeHTTP(w, req, nil)
 		return
 	}
 	underlyingConn, _, err := hijacker.Hijack()
 	if err != nil {
-		ctx.log.Errorf("Unable to hijack the connection: %v", err)
+		ctx.log.Errorf("Unable to hijack the connection: %v %v", reflect.TypeOf(w), err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}

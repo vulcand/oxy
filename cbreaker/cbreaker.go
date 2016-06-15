@@ -31,9 +31,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mailgun/timetools"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
-	"github.com/mailgun/timetools"
 )
 
 // CircuitBreaker is http.Handler that implements circuit breaker pattern

@@ -8,8 +8,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-
-	"github.com/vulcand/oxy/utils"
 )
 
 func NewHandler(handler http.HandlerFunc) *httptest.Server {
