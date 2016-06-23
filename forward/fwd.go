@@ -42,6 +42,19 @@ func RoundTripper(r http.RoundTripper) optSetter {
 	}
 }
 
+// Dialer mirrors the net.Dial function to be able to define alternate
+// implementations
+type Dialer func(network, address string) (net.Conn, error)
+
+// WebsocketDial defines a new network dialer to use to dial to remote websocket destination.
+// If no dialer has been defined, net.Dial will be used.
+func WebsocketDial(dial Dialer) optSetter {
+	return func(f *Forwarder) error {
+		f.websocketForwarder.dial = dial
+		return nil
+	}
+}
+
 // Rewriter defines a request rewriter for the HTTP forwarder
 func Rewriter(r ReqRewriter) optSetter {
 	return func(f *Forwarder) error {
@@ -100,6 +113,7 @@ type httpForwarder struct {
 // websocketForwarder is a handler that can reverse proxy
 // websocket traffic
 type websocketForwarder struct {
+	dial            Dialer
 	rewriter        ReqRewriter
 	TLSClientConfig *tls.Config
 }
@@ -118,6 +132,9 @@ func New(setters ...optSetter) (*Forwarder, error) {
 	}
 	if f.httpForwarder.roundTripper == nil {
 		f.httpForwarder.roundTripper = http.DefaultTransport
+	}
+	if f.websocketForwarder.dial == nil {
+		f.websocketForwarder.dial = net.Dial
 	}
 	if f.httpForwarder.rewriter == nil {
 		h, err := os.Hostname()
@@ -217,9 +234,8 @@ func (f *httpForwarder) copyRequest(req *http.Request, u *url.URL) *http.Request
 
 // serveHTTP forwards websocket traffic
 func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
-	outReq := f.copyRequest(req, req.URL)
+	outReq := f.copyRequest(req)
 	host := outReq.URL.Host
-	dial := net.Dial
 
 	// if host does not specify a port, use the default http port
 	if !strings.Contains(host, ":") {
@@ -230,16 +246,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	if outReq.URL.Scheme == "wss" {
-		if f.TLSClientConfig == nil {
-			f.TLSClientConfig = &tls.Config{}
-		}
-		dial = func(network, address string) (net.Conn, error) {
-			return tls.Dial("tcp", host, f.TLSClientConfig)
-		}
-	}
-
-	targetConn, err := dial("tcp", host)
+	targetConn, err := f.dial("tcp", host)
 	if err != nil {
 		ctx.log.Errorf("Error dialing `%v`: %v", host, err)
 		ctx.errHandler.ServeHTTP(w, req, err)
@@ -247,7 +254,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	}
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		ctx.log.Errorf("Unable to hijack the connection: %v", err)
+		ctx.log.Errorf("Unable to hijack the connection: does not implement http.Hijacker")
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -278,30 +285,12 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 }
 
 // copyRequest makes a copy of the specified request.
-func (f *websocketForwarder) copyRequest(req *http.Request, u *url.URL) (outReq *http.Request) {
+func (f *websocketForwarder) copyRequest(req *http.Request) (outReq *http.Request) {
 	outReq = new(http.Request)
-	*outReq = *req // includes shallow copies of maps, but we handle this below
-
+	*outReq = *req
 	outReq.URL = utils.CopyURL(req.URL)
-	outReq.URL.Scheme = u.Scheme
-	outReq.URL.Host = u.Host
-	outReq.URL.Opaque = req.RequestURI
-	// raw query is already included in RequestURI, so ignore it to avoid dupes
-	outReq.URL.RawQuery = ""
-
-	outReq.Proto = "HTTP/1.1"
-	outReq.ProtoMajor = 1
-	outReq.ProtoMinor = 1
-
-	// Overwrite close flag so we can keep persistent connection for the backend servers
-	outReq.Close = false
-
-	outReq.Header = make(http.Header)
-	utils.CopyHeaders(outReq.Header, req.Header)
-
-	if f.rewriter != nil {
-		f.rewriter.Rewrite(outReq)
-	}
+	outReq.URL.Scheme = req.URL.Scheme
+	outReq.URL.Host = req.URL.Host
 	return outReq
 }
 
