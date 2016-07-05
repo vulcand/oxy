@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mailgun/log"
 	"github.com/mailgun/timetools"
 )
 
@@ -34,17 +33,14 @@ func (r *ratioController) String() string {
 }
 
 func (r *ratioController) allowRequest() bool {
-	log.Infof("%v", r)
 	t := r.targetRatio()
 	// This condition answers the question - would we satisfy the target ratio if we allow this request?
 	e := r.computeRatio(r.allowed+1, r.denied)
 	if e < t {
 		r.allowed++
-		log.Infof("%v allowed", r)
 		return true
 	}
 	r.denied++
-	log.Infof("%v denied", r)
 	return false
 }
 

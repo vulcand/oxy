@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/mailgun/log"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -69,10 +68,9 @@ func (w *WebhookSideEffect) Exec() error {
 	if re.Body != nil {
 		defer re.Body.Close()
 	}
-	body, err := ioutil.ReadAll(re.Body)
+	_, err = ioutil.ReadAll(re.Body)
 	if err != nil {
 		return err
 	}
-	log.Infof("%v got response: (%s): %s", w, re.Status, string(body))
 	return nil
 }
