@@ -34,6 +34,14 @@ func PassHostHeader(b bool) optSetter {
 	}
 }
 
+// StreamResponse forces streaming body (flushes response directly to client)
+func StreamResponse(b bool) optSetter {
+	return func(f *Forwarder) error {
+		f.httpForwarder.streamResponse = b
+		return nil
+	}
+}
+
 // RoundTripper sets a new http.RoundTripper
 // Forwarder will use http.DefaultTransport as a default round tripper
 func RoundTripper(r http.RoundTripper) optSetter {
@@ -93,9 +101,10 @@ type handlerContext struct {
 // httpForwarder is a handler that can reverse proxy
 // HTTP traffic
 type httpForwarder struct {
-	roundTripper http.RoundTripper
-	rewriter     ReqRewriter
-	passHost     bool
+	roundTripper   http.RoundTripper
+	rewriter       ReqRewriter
+	passHost       bool
+	streamResponse bool
 }
 
 // websocketForwarder is a handler that can reverse proxy
@@ -156,6 +165,14 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 		return
 	}
 
+	utils.CopyHeaders(w.Header(), response.Header)
+	// Remove hop-by-hop headers.
+	utils.RemoveHeaders(w.Header(), HopHeaders...)
+	w.WriteHeader(response.StatusCode)
+
+	stream := "text/event-stream" == response.Header.Get(ContentType) || f.streamResponse
+	written, err := io.Copy(newResponseFlusher(w, stream), response.Body)
+
 	if req.TLS != nil {
 		ctx.log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start),
@@ -168,11 +185,6 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 	}
 
-	utils.CopyHeaders(w.Header(), response.Header)
-	// Remove hop-by-hop headers.
-	utils.RemoveHeaders(w.Header(), HopHeaders...)
-	w.WriteHeader(response.StatusCode)
-	written, err := io.Copy(w, response.Body)
 	defer response.Body.Close()
 
 	if err != nil {

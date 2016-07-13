@@ -3,6 +3,7 @@ package testutils
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/vulcand/oxy/utils"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"

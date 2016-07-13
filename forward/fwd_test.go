@@ -15,6 +15,7 @@ import (
 
 	"golang.org/x/net/websocket"
 	. "gopkg.in/check.v1"
+	"io"
 )
 
 func TestFwd(t *testing.T) { TestingT(t) }
@@ -368,4 +369,48 @@ func sendWebsocketRequest(serverAddr, path, data string, c *C) (received string,
 func newWebsocketConfig(serverAddr, path string) *websocket.Config {
 	config, _ := websocket.NewConfig(fmt.Sprintf("ws://%s%s", serverAddr, path), "http://localhost")
 	return config
+}
+
+func (s *FwdSuite) TestResponseFlusher(c *C) {
+	flushChan := make(chan bool, 2)
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		// <-flushChan
+		msg := "test1"
+		fmt.Fprintf(w, "data: Message: %s\n\n", msg)
+		w.(http.Flusher).Flush()
+		<-flushChan
+		msg = "test2"
+		fmt.Fprintf(w, "data: Message: %s\n\n", msg)
+		w.(http.Flusher).Flush()
+	})
+	defer srv.Close()
+
+	f, err := New()
+	c.Assert(err, IsNil)
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	request, err := http.NewRequest("GET", proxy.URL, nil)
+	re, err := http.DefaultClient.Do(request)
+	buf := make([]byte, 32*1024)
+	_, err = re.Body.Read(buf)
+	c.Assert(err, IsNil)
+	resp1 := string(buf)
+	if !strings.HasPrefix(resp1, "data: Message: test1\n\n") {
+		c.FailNow()
+	}
+	flushChan <- true
+	_, err = re.Body.Read(buf)
+	resp2 := string(buf)
+	if !strings.HasPrefix(resp2, "data: Message: test2\n\n") {
+		c.FailNow()
+	}
+	c.Assert(err, Equals, io.EOF)
 }
