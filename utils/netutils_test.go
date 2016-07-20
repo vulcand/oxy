@@ -66,3 +66,30 @@ func (s *NetUtilsSuite) TestRemoveHeaders(c *C) {
 	c.Assert(source.Get("a"), Equals, "")
 	c.Assert(source.Get("c"), Equals, "d")
 }
+
+func (s *NetUtilsSuite) TestGetHeaderMediaType(c *C) {
+	source := make(http.Header)
+	source.Add("Content-Type", "text/event-stream")
+
+	mediatype, err := GetHeaderMediaType(source, "Content-Type")
+	c.Assert(err, IsNil)
+	c.Assert(mediatype, Equals, "text/event-stream")
+}
+
+func (s *NetUtilsSuite) TestGetHeaderMediaTypeCharSet(c *C) {
+	source := make(http.Header)
+	source.Add("Content-Type", "text/event-stream; charset=utf-8")
+
+	mediatype, err := GetHeaderMediaType(source, "Content-Type")
+	c.Assert(err, IsNil)
+	c.Assert(mediatype, Equals, "text/event-stream")
+}
+
+func (s *NetUtilsSuite) TestGetHeaderMediaTypeMixedCase(c *C) {
+	source := make(http.Header)
+	source.Add("Content-Type", "text/Event-Stream")
+
+	mediatype, err := GetHeaderMediaType(source, "Content-Type")
+	c.Assert(err, IsNil)
+	c.Assert(mediatype, Equals, "text/event-stream")
+}
