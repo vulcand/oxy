@@ -48,6 +48,9 @@ type Rebalancer struct {
 
 	// creates new meters
 	newMeter NewMeterFn
+
+	// sticky session object
+	ss *StickySession
 }
 
 func RebalancerLogger(log utils.Logger) RebalancerOption {
@@ -86,10 +89,18 @@ func RebalancerErrorHandler(h utils.ErrorHandler) RebalancerOption {
 	}
 }
 
+func RebalancerStickySession(ss *StickySession) RebalancerOption {
+	return func(r *Rebalancer) error {
+		r.ss = ss
+		return nil
+	}
+}
+
 func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalancer, error) {
 	rb := &Rebalancer{
 		mtx:  &sync.Mutex{},
 		next: handler,
+		ss:   nil,
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -134,18 +145,41 @@ func (rb *Rebalancer) Servers() []*url.URL {
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	pw := &utils.ProxyWriter{W: w}
 	start := rb.clock.UtcNow()
-	url, err := rb.next.NextServer()
-	if err != nil {
-		rb.errHandler.ServeHTTP(w, req, err)
-		return
-	}
 
 	// make shallow copy of request before changing anything to avoid side effects
 	newReq := *req
-	newReq.URL = url
+	stuck := false
+
+	if rb.ss != nil {
+		cookie_url, present, err := rb.ss.GetBackend(&newReq, rb.Servers())
+
+		if err != nil {
+			rb.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+
+		if present {
+			newReq.URL = cookie_url
+			stuck = true
+		}
+	}
+
+	if !stuck {
+		url, err := rb.next.NextServer()
+		if err != nil {
+			rb.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+
+		if rb.ss != nil {
+			rb.ss.StickBackend(url, &w)
+		}
+
+		newReq.URL = url
+	}
 	rb.next.Next().ServeHTTP(pw, &newReq)
 
-	rb.recordMetrics(url, pw.Code, rb.clock.UtcNow().Sub(start))
+	rb.recordMetrics(newReq.URL, pw.Code, rb.clock.UtcNow().Sub(start))
 	rb.adjustWeights()
 }
 

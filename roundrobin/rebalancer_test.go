@@ -1,6 +1,7 @@
 package roundrobin
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -325,6 +326,53 @@ func (s *RBSuite) TestRebalancerLive(c *C) {
 	c.Assert(rb.servers[0].curWeight, Equals, FSMMaxWeight)
 	c.Assert(rb.servers[1].curWeight, Equals, FSMMaxWeight)
 	c.Assert(rb.servers[2].curWeight, Equals, 1)
+}
+
+func (s *RBSuite) TestRebalancerStickySession(c *C) {
+	a, b, x := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("x")
+	defer a.Close()
+	defer b.Close()
+	defer x.Close()
+
+	sticky := NewStickySession("test")
+	c.Assert(sticky, NotNil)
+
+	fwd, err := forward.New()
+	c.Assert(err, IsNil)
+
+	lb, err := New(fwd)
+	c.Assert(err, IsNil)
+
+	rb, err := NewRebalancer(lb, RebalancerStickySession(sticky))
+	c.Assert(err, IsNil)
+
+	rb.UpsertServer(testutils.ParseURI(a.URL))
+	rb.UpsertServer(testutils.ParseURI(b.URL))
+	rb.UpsertServer(testutils.ParseURI(x.URL))
+
+	proxy := httptest.NewServer(rb)
+	defer proxy.Close()
+
+	http_cli := &http.Client{}
+	for i := 0; i < 10; i++ {
+		req, err := http.NewRequest("GET", proxy.URL, nil)
+		c.Assert(err, IsNil)
+		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+
+		resp, err := http_cli.Do(req)
+		c.Assert(err, IsNil)
+
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+
+		c.Assert(err, IsNil)
+		c.Assert(string(body), Equals, "a")
+	}
+
+	c.Assert(rb.RemoveServer(testutils.ParseURI(a.URL)), IsNil)
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"b", "x", "b"})
+	c.Assert(rb.RemoveServer(testutils.ParseURI(b.URL)), IsNil)
+	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"x", "x", "x"})
 }
 
 type testMeter struct {

@@ -29,6 +29,13 @@ func ErrorHandler(h utils.ErrorHandler) LBOption {
 	}
 }
 
+func EnableStickySession(ss *StickySession) LBOption {
+	return func(s *RoundRobin) error {
+		s.ss = ss
+		return nil
+	}
+}
+
 type RoundRobin struct {
 	mutex      *sync.Mutex
 	next       http.Handler
@@ -37,6 +44,7 @@ type RoundRobin struct {
 	index         int
 	servers       []*server
 	currentWeight int
+	ss            *StickySession
 }
 
 func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
@@ -45,6 +53,7 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 		index:   -1,
 		mutex:   &sync.Mutex{},
 		servers: []*server{},
+		ss:      nil,
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -62,14 +71,35 @@ func (r *RoundRobin) Next() http.Handler {
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	url, err := r.NextServer()
-	if err != nil {
-		r.errHandler.ServeHTTP(w, req, err)
-		return
-	}
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
-	newReq.URL = url
+	stuck := false
+	if r.ss != nil {
+		cookie_url, present, err := r.ss.GetBackend(&newReq, r.Servers())
+
+		if err != nil {
+			r.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+
+		if present {
+			newReq.URL = cookie_url
+			stuck = true
+		}
+	}
+
+	if !stuck {
+		url, err := r.NextServer()
+		if err != nil {
+			r.errHandler.ServeHTTP(w, req, err)
+			return
+		}
+
+		if r.ss != nil {
+			r.ss.StickBackend(url, &w)
+		}
+		newReq.URL = url
+	}
 	r.next.ServeHTTP(w, &newReq)
 }
 
