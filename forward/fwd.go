@@ -170,7 +170,13 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 	utils.RemoveHeaders(w.Header(), HopHeaders...)
 	w.WriteHeader(response.StatusCode)
 
-	stream := "text/event-stream" == response.Header.Get(ContentType) || f.streamResponse
+	stream := f.streamResponse
+	if ! stream {
+		contentType, err := utils.GetHeaderMediaType(response.Header, ContentType)
+		if err == nil {
+			stream = contentType == "text/event-stream"
+		}
+	}
 	written, err := io.Copy(newResponseFlusher(w, stream), response.Body)
 
 	if req.TLS != nil {

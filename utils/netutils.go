@@ -3,6 +3,7 @@ package utils
 import (
 	"bufio"
 	"io"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -128,4 +129,10 @@ func RemoveHeaders(headers http.Header, names ...string) {
 	for _, h := range names {
 		headers.Del(h)
 	}
+}
+
+// Parse the MIME media type value of a header.
+func GetHeaderMediaType(headers http.Header, name string) (string, error)  {
+	mediatype, _, err := mime.ParseMediaType(headers.Get(name))
+	return mediatype, err
 }
