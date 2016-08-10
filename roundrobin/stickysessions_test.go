@@ -205,10 +205,8 @@ func (s *SSSuite) TestRemoveAllServers(c *C) {
 
 func (s *SSSuite) TestBadCookieVal(c *C) {
 	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
 
 	defer a.Close()
-	defer b.Close()
 
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
@@ -220,7 +218,6 @@ func (s *SSSuite) TestBadCookieVal(c *C) {
 	c.Assert(err, IsNil)
 
 	lb.UpsertServer(testutils.ParseURI(a.URL))
-	lb.UpsertServer(testutils.ParseURI(b.URL))
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
@@ -229,9 +226,26 @@ func (s *SSSuite) TestBadCookieVal(c *C) {
 
 	req, err := http.NewRequest("GET", proxy.URL, nil)
 	c.Assert(err, IsNil)
-	req.AddCookie(&http.Cookie{Name: "test", Value: "http://[::1]a"}) // error value from go's net/url tests.
+	req.AddCookie(&http.Cookie{Name: "test", Value: "This is a patently invalid url!  You can't parse it!  :-)"})
 
 	resp, err := http_cli.Do(req)
 	c.Assert(err, IsNil)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(string(body), Equals, "a")
+
+	// Now, cycle off the good server to cause an error
+	lb.RemoveServer(testutils.ParseURI(a.URL))
+
+	http_cli = &http.Client{}
+
+	req, err = http.NewRequest("GET", proxy.URL, nil)
+	c.Assert(err, IsNil)
+	req.AddCookie(&http.Cookie{Name: "test", Value: "This is a patently invalid url!  You can't parse it!  :-)"})
+
+	resp, err = http_cli.Do(req)
+	c.Assert(err, IsNil)
+
+	body, err = ioutil.ReadAll(resp.Body)
 	c.Assert(resp.StatusCode, Equals, http.StatusInternalServerError)
 }
