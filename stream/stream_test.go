@@ -14,6 +14,7 @@ import (
 	"github.com/vulcand/oxy/testutils"
 
 	. "gopkg.in/check.v1"
+	"time"
 )
 
 func TestStream(t *testing.T) { TestingT(t) }
@@ -29,7 +30,7 @@ func (s *STSuite) TestSimple(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -59,12 +60,25 @@ func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 		c.Assert(err, IsNil)
 		reqBody = string(body)
 		contentLength = req.ContentLength
-		w.Write([]byte("hello"))
+
+		w.WriteHeader(200)
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			panic("expected http.ResponseWriter to be an http.Flusher")
+		}
+		fmt.Fprint(w, "Response")
+		flusher.Flush()
+		time.Sleep(time.Duration(500) * time.Millisecond)
+		fmt.Fprint(w, "in")
+		flusher.Flush()
+		time.Sleep(time.Duration(500) * time.Millisecond)
+		fmt.Fprint(w, "Chunks")
+		flusher.Flush()
 	})
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -82,43 +96,19 @@ func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 
 	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
 	c.Assert(err, IsNil)
-	fmt.Fprintf(conn, "POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
-	status, err := bufio.NewReader(conn).ReadString('\n')
+	fmt.Fprintf(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+	reader := bufio.NewReader(conn)
 
+	status, err := reader.ReadString('\n')
+
+	reader.ReadString('\n') //content type
+	reader.ReadString('\n') //Date
+	transferEncoding , _ := reader.ReadString('\n')
+
+	c.Assert(transferEncoding, Equals, "Transfer-Encoding: chunked\r\n")
+	c.Assert(contentLength, Equals, int64(-1))
 	c.Assert(reqBody, Equals, "testtest1test2")
-	c.Assert(status, Equals, "HTTP/1.0 200 OK\r\n")
-	c.Assert(contentLength, Equals, int64(len(reqBody)))
-}
-
-func (s *STSuite) TestChunkedEncodingLimitReached(c *C) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
-	})
-	defer srv.Close()
-
-	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	c.Assert(err, IsNil)
-
-	// this is our redirect to server
-	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
-		fwd.ServeHTTP(w, req)
-	})
-
-	// stream handler will forward requests to redirect
-	st, err := New(rdr)
-	c.Assert(err, IsNil)
-
-	proxy := httptest.NewServer(st)
-	defer proxy.Close()
-
-	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
-	c.Assert(err, IsNil)
-	fmt.Fprintf(conn, "POST / HTTP/1.0\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
-	status, err := bufio.NewReader(conn).ReadString('\n')
-
-	c.Assert(status, Equals, "HTTP/1.0 200 OK\r\n")
+	c.Assert(status, Equals, "HTTP/1.1 200 OK\r\n")
 }
 
 func (s *STSuite) TestRequestLimitReached(c *C) {
@@ -128,7 +118,7 @@ func (s *STSuite) TestRequestLimitReached(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -156,7 +146,7 @@ func (s *STSuite) TestResponseLimitReached(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -184,7 +174,7 @@ func (s *STSuite) TestFileStreamingResponse(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -213,7 +203,7 @@ func (s *STSuite) TestCustomErrorHandler(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -240,7 +230,7 @@ func (s *STSuite) TestNotModified(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -268,7 +258,7 @@ func (s *STSuite) TestNoBody(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	// this is our redirect to server
@@ -298,7 +288,7 @@ func (s *STSuite) TestPreservesTLS(c *C) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Stream(true))
 	c.Assert(err, IsNil)
 
 	var t *tls.ConnectionState
