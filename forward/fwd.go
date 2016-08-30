@@ -89,7 +89,6 @@ type Forwarder struct {
 // handlerContext defines a handler context for error reporting and logging
 type handlerContext struct {
 	errHandler utils.ErrorHandler
-	log        utils.Logger
 }
 
 // httpForwarder is a handler that can reverse proxy
@@ -177,7 +176,7 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 	defer response.Body.Close()
 
 	if err != nil {
-		ctx.log.Errorf("Error copying upstream response Body: %v", err)
+		log.Errorf("Error copying upstream response Body: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -235,19 +234,19 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 
 	targetConn, err := f.dial("tcp", host)
 	if err != nil {
-		ctx.log.Errorf("Error dialing `%v`: %v", host, err)
+		log.Errorf("Error dialing `%v`: %v", host, err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		ctx.log.Errorf("Unable to hijack the connection: does not implement http.Hijacker")
+		log.Errorf("Unable to hijack the connection: does not implement http.Hijacker")
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	underlyingConn, _, err := hijacker.Hijack()
 	if err != nil {
-		ctx.log.Errorf("Unable to hijack the connection: %v", err)
+		log.Errorf("Unable to hijack the connection: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -257,7 +256,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 
 	// write the modified incoming request to the dialed connection
 	if err = outReq.Write(targetConn); err != nil {
-		ctx.log.Errorf("Unable to copy request to target: %v", err)
+		log.Errorf("Unable to copy request to target: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
