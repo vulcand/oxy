@@ -32,6 +32,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+
 	"github.com/mailgun/timetools"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"

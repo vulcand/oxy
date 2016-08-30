@@ -113,7 +113,7 @@ type Forwarder struct {
 	*websocketForwarder
 	*handlerContext
 	stateListener UrlForwardingStateListener
-	stream bool
+	stream        bool
 }
 
 // handlerContext defines a handler context for error reporting and logging
@@ -133,11 +133,10 @@ type httpForwarder struct {
 // HTTP traffic but doesn't wait for a complete
 // response before it begins writing bytes upstream
 type httpStreamingForwarder struct {
-	rewriter     ReqRewriter
-	passHost     bool
+	rewriter      ReqRewriter
+	passHost      bool
 	flushInterval time.Duration
 }
-
 
 // websocketForwarder is a handler that can reverse proxy
 // websocket traffic
@@ -151,15 +150,16 @@ const (
 	StateConnected = iota
 	StateDisconnected
 )
+
 type UrlForwardingStateListener func(*url.URL, int)
 
 // New creates an instance of Forwarder based on the provided list of configuration options
 func New(setters ...optSetter) (*Forwarder, error) {
 	f := &Forwarder{
-		httpForwarder:      &httpForwarder{},
+		httpForwarder:          &httpForwarder{},
 		httpStreamingForwarder: &httpStreamingForwarder{flushInterval: time.Duration(100) * time.Millisecond},
-		websocketForwarder: &websocketForwarder{},
-		handlerContext:     &handlerContext{},
+		websocketForwarder:     &websocketForwarder{},
+		handlerContext:         &handlerContext{},
 	}
 	for _, s := range setters {
 		if err := s(f); err != nil {
@@ -349,9 +349,6 @@ func isWebsocketRequest(req *http.Request) bool {
 	}
 	return containsHeader(Connection, "upgrade") && containsHeader(Upgrade, "websocket")
 }
-
-
-
 
 // serveHTTP forwards HTTP traffic using the configured transport
 func (f *httpStreamingForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
