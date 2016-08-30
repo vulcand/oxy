@@ -1,4 +1,4 @@
-Oxy
+Oxy [![Build Status](https://travis-ci.org/vulcand/oxy.svg?branch=master)](https://travis-ci.org/vulcand/oxy)
 =====
 
 Oxy is a Go library with HTTP handlers that enhance HTTP standard library:
