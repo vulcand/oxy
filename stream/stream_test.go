@@ -18,13 +18,13 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func TestBuffer(t *testing.T) { TestingT(t) }
+func TestStream(t *testing.T) { TestingT(t) }
 
-type BFSuite struct{}
+type STSuite struct{}
 
-var _ = Suite(&BFSuite{})
+var _ = Suite(&STSuite{})
 
-func (s *BFSuite) TestSimple(c *C) {
+func (s *STSuite) TestSimple(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -53,7 +53,7 @@ func (s *BFSuite) TestSimple(c *C) {
 	c.Assert(string(body), Equals, "hello")
 }
 
-func (s *BFSuite) TestChunkedEncodingSuccess(c *C) {
+func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 	var reqBody string
 	var contentLength int64
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -92,7 +92,7 @@ func (s *BFSuite) TestChunkedEncodingSuccess(c *C) {
 	c.Assert(contentLength, Equals, int64(len(reqBody)))
 }
 
-func (s *BFSuite) TestChunkedEncodingLimitReached(c *C) {
+func (s *STSuite) TestChunkedEncodingLimitReached(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -123,7 +123,7 @@ func (s *BFSuite) TestChunkedEncodingLimitReached(c *C) {
 	c.Assert(status, Equals, "HTTP/1.0 200 OK\r\n")
 }
 
-func (s *BFSuite) TestRequestLimitReached(c *C) {
+func (s *STSuite) TestRequestLimitReached(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -151,7 +151,7 @@ func (s *BFSuite) TestRequestLimitReached(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
-func (s *BFSuite) TestResponseLimitReached(c *C) {
+func (s *STSuite) TestResponseLimitReached(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello, this response is too large"))
 	})
@@ -179,7 +179,7 @@ func (s *BFSuite) TestResponseLimitReached(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
-func (s *BFSuite) TestFileStreamingResponse(c *C) {
+func (s *STSuite) TestFileStreamingResponse(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
@@ -208,7 +208,7 @@ func (s *BFSuite) TestFileStreamingResponse(c *C) {
 	c.Assert(string(body), Equals, "hello, this response is too large to fit in memory")
 }
 
-func (s *BFSuite) TestCustomErrorHandler(c *C) {
+func (s *STSuite) TestCustomErrorHandler(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello, this response is too large"))
 	})
@@ -235,7 +235,7 @@ func (s *BFSuite) TestCustomErrorHandler(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
-func (s *BFSuite) TestNotModified(c *C) {
+func (s *STSuite) TestNotModified(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
@@ -263,7 +263,7 @@ func (s *BFSuite) TestNotModified(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusNotModified)
 }
 
-func (s *BFSuite) TestNoBody(c *C) {
+func (s *STSuite) TestNoBody(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -292,7 +292,7 @@ func (s *BFSuite) TestNoBody(c *C) {
 }
 
 // Make sure that stream handler preserves TLS settings
-func (s *BFSuite) TestPreservesTLS(c *C) {
+func (s *STSuite) TestPreservesTLS(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
