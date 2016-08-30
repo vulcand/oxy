@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vulcand/oxy/utils"
@@ -100,6 +101,7 @@ type Forwarder struct {
 type handlerContext struct {
 	errHandler utils.ErrorHandler
 	log        utils.Logger
+	bufferPool *sync.Pool
 }
 
 // httpForwarder is a handler that can reverse proxy
@@ -129,6 +131,11 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		if err := s(f); err != nil {
 			return nil, err
 		}
+	}
+	f.bufferPool = &sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 32 * 1024)
+		},
 	}
 	if f.httpForwarder.roundTripper == nil {
 		f.httpForwarder.roundTripper = http.DefaultTransport
@@ -186,7 +193,9 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 
 	utils.CopyHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
-	written, err := io.Copy(w, response.Body)
+	buffer := ctx.bufferPool.Get().([]byte)
+	written, err := io.CopyBuffer(w, response.Body, buffer)
+	ctx.bufferPool.Put(buffer)
 	defer response.Body.Close()
 
 	if err != nil {
@@ -276,7 +285,9 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	}
 	errc := make(chan error, 2)
 	replicate := func(dst io.Writer, src io.Reader) {
-		_, err := io.Copy(dst, src)
+		buffer := ctx.bufferPool.Get().([]byte)
+		_, err := io.CopyBuffer(dst, src, buffer)
+		ctx.bufferPool.Put(buffer)
 		errc <- err
 	}
 	go replicate(targetConn, underlyingConn)
