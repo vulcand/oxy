@@ -8,12 +8,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/vulcand/oxy/forward"
 	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/oxy/utils"
 
 	. "gopkg.in/check.v1"
 )
@@ -41,7 +39,7 @@ func (s *STSuite) TestSimple(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -76,7 +74,7 @@ func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -109,7 +107,7 @@ func (s *STSuite) TestChunkedEncodingLimitReached(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -140,7 +138,7 @@ func (s *STSuite) TestRequestLimitReached(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -168,7 +166,7 @@ func (s *STSuite) TestResponseLimitReached(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -196,7 +194,7 @@ func (s *STSuite) TestFileStreamingResponse(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -224,7 +222,7 @@ func (s *STSuite) TestCustomErrorHandler(c *C) {
 		fwd.ServeHTTP(w, req)
 	})
 
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -252,7 +250,7 @@ func (s *STSuite) TestNotModified(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -280,7 +278,7 @@ func (s *STSuite) TestNoBody(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(st)
@@ -312,7 +310,7 @@ func (s *STSuite) TestPreservesTLS(c *C) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, Logger(utils.NewFileLogger(os.Stdout, utils.INFO)))
+	st, err := New(rdr)
 	c.Assert(err, IsNil)
 
 	proxy := httptest.NewUnstartedServer(st)

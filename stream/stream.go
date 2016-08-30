@@ -53,7 +53,6 @@ type Stream struct {
 
 	next       http.Handler
 	errHandler utils.ErrorHandler
-	log        utils.Logger
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments
@@ -70,22 +69,10 @@ func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 			return nil, err
 		}
 	}
-	if strm.log == nil {
-		strm.log = utils.NullLogger
-	}
-
 	return strm, nil
 }
 
 type optSetter func(s *Stream) error
-
-// Logger sets the logger that will be used by this middleware.
-func Logger(l utils.Logger) optSetter {
-	return func(s *Stream) error {
-		s.log = l
-		return nil
-	}
-}
 
 // Wrap sets the next handler to be called by stream handler.
 func (s *Stream) Wrap(next http.Handler) error {

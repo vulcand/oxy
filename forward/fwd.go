@@ -81,7 +81,6 @@ func ErrorHandler(h utils.ErrorHandler) optSetter {
 	}
 }
 
-
 // Logger specifies the logger to use.
 // Forwarder will default to oxyutils.NullLogger if no logger has been specified
 func Stream(stream bool) optSetter {
@@ -359,7 +358,7 @@ func (f *httpStreamingForwarder) serveHTTP(w http.ResponseWriter, req *http.Requ
 
 	reqUrl, err := url.ParseRequestURI(req.RequestURI)
 	if err != nil {
-		ctx.log.Errorf("Error parsing Request URI %v, err: %v", req.RequestURI, err)
+		log.Errorf("Error parsing Request URI %v, err: %v", req.RequestURI, err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -376,14 +375,14 @@ func (f *httpStreamingForwarder) serveHTTP(w http.ResponseWriter, req *http.Requ
 	revproxy.ServeHTTP(w, req)
 
 	if req.TLS != nil {
-		ctx.log.Infof("Round trip: %v, code: %v, Length: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
+		log.Infof("Round trip: %v, code: %v, Length: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
 			req.URL, pw.Code, pw.Length, time.Now().UTC().Sub(start),
 			req.TLS.Version,
 			req.TLS.DidResume,
 			req.TLS.CipherSuite,
 			req.TLS.ServerName)
 	} else {
-		ctx.log.Infof("Round trip: %v, code: %v, Length: %v, duration: %v",
+		log.Infof("Round trip: %v, code: %v, Length: %v, duration: %v",
 			req.URL, pw.Code, pw.Length, time.Now().UTC().Sub(start))
 	}
 }
