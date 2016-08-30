@@ -9,7 +9,6 @@ import (
 	"github.com/vulcand/oxy/testutils"
 
 	. "gopkg.in/check.v1"
-	"os"
 )
 
 type RTSuite struct{}
