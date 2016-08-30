@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -79,17 +80,6 @@ func ErrorHandler(h utils.ErrorHandler) optSetter {
 	}
 }
 
-// Logger specifies the logger to use.
-// Forwarder will default to oxyutils.NullLogger if no logger has been specified
-func Logger(l utils.Logger) optSetter {
-	return func(f *Forwarder) error {
-		f.log = l
-		return nil
-	}
-}
-
-// Forwarder wraps two traffic forwarding implementations: HTTP and websockets.
-// It decides based on the specified request which implementation to use
 type Forwarder struct {
 	*httpForwarder
 	*websocketForwarder
@@ -99,7 +89,6 @@ type Forwarder struct {
 // handlerContext defines a handler context for error reporting and logging
 type handlerContext struct {
 	errHandler utils.ErrorHandler
-	log        utils.Logger
 }
 
 // httpForwarder is a handler that can reverse proxy
@@ -143,9 +132,6 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		}
 		f.httpForwarder.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
 	}
-	if f.log == nil {
-		f.log = utils.NullLogger
-	}
 	if f.errHandler == nil {
 		f.errHandler = utils.DefaultHandler
 	}
@@ -167,20 +153,20 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 	start := time.Now().UTC()
 	response, err := f.roundTripper.RoundTrip(f.copyRequest(req, req.URL))
 	if err != nil {
-		ctx.log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
+		log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 
 	if req.TLS != nil {
-		ctx.log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
+		log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start),
 			req.TLS.Version,
 			req.TLS.DidResume,
 			req.TLS.CipherSuite,
 			req.TLS.ServerName)
 	} else {
-		ctx.log.Infof("Round trip: %v, code: %v, duration: %v",
+		log.Infof("Round trip: %v, code: %v, duration: %v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 	}
 
@@ -190,7 +176,7 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 	defer response.Body.Close()
 
 	if err != nil {
-		ctx.log.Errorf("Error copying upstream response Body: %v", err)
+		log.Errorf("Error copying upstream response Body: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -248,19 +234,19 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 
 	targetConn, err := f.dial("tcp", host)
 	if err != nil {
-		ctx.log.Errorf("Error dialing `%v`: %v", host, err)
+		log.Errorf("Error dialing `%v`: %v", host, err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		ctx.log.Errorf("Unable to hijack the connection: does not implement http.Hijacker")
+		log.Errorf("Unable to hijack the connection: does not implement http.Hijacker")
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	underlyingConn, _, err := hijacker.Hijack()
 	if err != nil {
-		ctx.log.Errorf("Unable to hijack the connection: %v", err)
+		log.Errorf("Unable to hijack the connection: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -270,7 +256,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 
 	// write the modified incoming request to the dialed connection
 	if err = outReq.Write(targetConn); err != nil {
-		ctx.log.Errorf("Unable to copy request to target: %v", err)
+		log.Errorf("Unable to copy request to target: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
