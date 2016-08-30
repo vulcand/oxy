@@ -154,33 +154,20 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 	start := time.Now().UTC()
 	response, err := f.roundTripper.RoundTrip(f.copyRequest(req, req.URL))
 	if err != nil {
-<<<<<<< 86889ea4f83af77d331409260a542cb0797bcf41
-		ctx.log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
-		ctx.errHandler.ServeHTTP(w, req, err)
-=======
 		log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
 		f.errHandler.ServeHTTP(w, req, err)
->>>>>>> Drop internal log lib, use logrus
 		return
 	}
 
 	if req.TLS != nil {
-<<<<<<< 86889ea4f83af77d331409260a542cb0797bcf41
-		ctx.log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
-=======
 		log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
->>>>>>> Drop internal log lib, use logrus
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start),
 			req.TLS.Version,
 			req.TLS.DidResume,
 			req.TLS.CipherSuite,
 			req.TLS.ServerName)
 	} else {
-<<<<<<< 86889ea4f83af77d331409260a542cb0797bcf41
-		ctx.log.Infof("Round trip: %v, code: %v, duration: %v",
-=======
 		log.Infof("Round trip: %v, code: %v, duration: %v",
->>>>>>> Drop internal log lib, use logrus
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 	}
 
