@@ -86,6 +86,7 @@ What if we want to handle retries and replay the request in case of errors? `str
 import (
   "net/http"
   "github.com/vulcand/oxy/forward"
+  "github.com/vulcand/oxy/stream"
   "github.com/vulcand/oxy/roundrobin"
   )
 
