@@ -1,10 +1,14 @@
 package utils
 
 import (
+	"bufio"
+	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
-	log "github.com/Sirupsen/logrus"
+	"reflect"
 )
 
 // ProxyWriter helps to capture response headers and status code
@@ -49,10 +53,17 @@ func (p *ProxyWriter) CloseNotify() <-chan bool {
 	if cn, ok := p.W.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
-	log.Warning("Upstream ResponseWriter does not implement http.CloseNotifier. Returning dummy channel.")
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(p.W))
 	return make(<-chan bool)
 }
 
+func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hi, ok := p.W.(http.Hijacker); ok {
+		return hi.Hijack()
+	}
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.W))
+	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.W))
+}
 
 func NewBufferWriter(w io.WriteCloser) *BufferWriter {
 	return &BufferWriter{
@@ -88,8 +99,16 @@ func (b *BufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.W.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
-	log.Warning("Upstream ResponseWriter does not implement http.CloseNotifier. Returning dummy channel.")
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.W))
 	return make(<-chan bool)
+}
+
+func (b *BufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hi, ok := b.W.(http.Hijacker); ok {
+		return hi.Hijack()
+	}
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.W))
+	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.W))
 }
 
 type nopWriteCloser struct {
