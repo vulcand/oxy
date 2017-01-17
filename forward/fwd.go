@@ -18,6 +18,7 @@ import (
 	"github.com/vulcand/oxy/utils"
 	"net/http/httputil"
 	"reflect"
+	"fmt"
 )
 
 // ReqRewriter can alter request headers and body
@@ -309,6 +310,8 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	defer underlyingConn.Close()
 	defer targetConn.Close()
 
+	log.Infof("Writing outgoing Websocket request to target connection: %+v", outReq)
+
 	// write the modified incoming request to the dialed connection
 	if err = outReq.Write(targetConn); err != nil {
 		log.Errorf("Unable to copy request to target: %v", err)
@@ -322,7 +325,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	}
 	go replicate(targetConn, underlyingConn)
 	go replicate(underlyingConn, targetConn)
-	<-errc
+	<- errc
 }
 
 // copyRequest makes a copy of the specified request.
@@ -330,8 +333,20 @@ func (f *websocketForwarder) copyRequest(req *http.Request) (outReq *http.Reques
 	outReq = new(http.Request)
 	*outReq = *req
 	outReq.URL = utils.CopyURL(req.URL)
+
+	//a good working default
 	outReq.URL.Scheme = req.URL.Scheme
+
+	//sometimes backends might be registered as HTTP/HTTPS servers so translate URLs to websocket URLs.
+	switch req.URL.Scheme {
+	case "https":
+		outReq.URL.Scheme = "wss"
+	case "http":
+		outReq.URL.Scheme = "ws"
+	}
+
 	outReq.URL.Host = req.URL.Host
+	outReq.URL.Path = req.RequestURI
 	return outReq
 }
 
