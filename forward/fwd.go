@@ -17,6 +17,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 	"net/http/httputil"
+	"reflect"
 )
 
 // ReqRewriter can alter request headers and body
@@ -294,7 +295,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	}
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		log.Errorf("Unable to hijack the connection: does not implement http.Hijacker")
+		log.Errorf("Unable to hijack the connection: does not implement http.Hijacker. ResponseWriter implementation type: %v", reflect.TypeOf(w))
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}

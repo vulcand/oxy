@@ -103,7 +103,7 @@ func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 
 	reader.ReadString('\n') //content type
 	reader.ReadString('\n') //Date
-	transferEncoding , _ := reader.ReadString('\n')
+	transferEncoding, _ := reader.ReadString('\n')
 
 	c.Assert(transferEncoding, Equals, "Transfer-Encoding: chunked\r\n")
 	c.Assert(contentLength, Equals, int64(-1))
