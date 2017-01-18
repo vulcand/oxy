@@ -18,7 +18,6 @@ import (
 	"github.com/vulcand/oxy/utils"
 	"net/http/httputil"
 	"reflect"
-	"fmt"
 )
 
 // ReqRewriter can alter request headers and body
@@ -325,7 +324,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	}
 	go replicate(targetConn, underlyingConn)
 	go replicate(underlyingConn, targetConn)
-	<- errc
+	<-errc
 }
 
 // copyRequest makes a copy of the specified request.
