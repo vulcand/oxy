@@ -188,6 +188,10 @@ func New(setters ...optSetter) (*Forwarder, error) {
 // ServeHTTP decides which forwarder to use based on the specified
 // request and delegates to the proper implementation
 func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	logEntry.Debug("vulcand/oxy/forward: begin ServeHttp on request")
+	defer logEntry.Debug("vulcand/oxy/forward: competed ServeHttp on request")
+
 	if f.stateListener != nil {
 		f.stateListener(req.URL, StateConnected)
 		defer f.stateListener(req.URL, StateDisconnected)
@@ -203,24 +207,27 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 // serveHTTP forwards HTTP traffic using the configured transport
 func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
+	logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	logEntry.Debug("vulcand/oxy/forward/httpbuffer: begin ServeHttp on request")
+	defer logEntry.Debug("vulcand/oxy/forward/httpbuffer: competed ServeHttp on request")
 
 	start := time.Now().UTC()
 	response, err := f.roundTripper.RoundTrip(f.copyRequest(req, req.URL))
 	if err != nil {
-		log.Errorf("Error forwarding to %v, err: %v", req.URL, err)
+		log.Errorf("vulcand/oxy/forward/httpbuffer: Error forwarding to %v, err: %v", req.URL, err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 
 	if req.TLS != nil {
-		log.Infof("Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
+		log.Infof("vulcand/oxy/forward/httpbuffer: Round trip: %v, code: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start),
 			req.TLS.Version,
 			req.TLS.DidResume,
 			req.TLS.CipherSuite,
 			req.TLS.ServerName)
 	} else {
-		log.Infof("Round trip: %v, code: %v, duration: %v",
+		log.Infof("vulcand/oxy/forward/httpbuffer: Round trip: %v, code: %v, duration: %v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 	}
 
@@ -231,7 +238,7 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx 
 	defer response.Body.Close()
 
 	if err != nil {
-		log.Errorf("Error copying upstream response Body: %v", err)
+		log.Errorf("vulcand/oxy/forward/httpbuffer: Error copying upstream response Body: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -275,6 +282,9 @@ func (f *httpForwarder) copyRequest(req *http.Request, u *url.URL) *http.Request
 
 // serveHTTP forwards websocket traffic
 func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
+	logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	logEntry.Debug("vulcand/oxy/forward/websocket: begin ServeHttp on request")
+	defer logEntry.Debug("vulcand/oxy/forward/websocket: competed ServeHttp on request")
 	outReq := f.copyRequest(req)
 	host := outReq.URL.Host
 
@@ -289,19 +299,19 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 
 	targetConn, err := f.dial("tcp", host)
 	if err != nil {
-		log.Errorf("Error dialing `%v`: %v", host, err)
+		log.Errorf("vulcand/oxy/forward/websocket: Error dialing `%v`: %v", host, err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		log.Errorf("Unable to hijack the connection: does not implement http.Hijacker. ResponseWriter implementation type: %v", reflect.TypeOf(w))
+		log.Errorf("vulcand/oxy/forward/websocket: Unable to hijack the connection: does not implement http.Hijacker. ResponseWriter implementation type: %v", reflect.TypeOf(w))
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
 	underlyingConn, _, err := hijacker.Hijack()
 	if err != nil {
-		log.Errorf("Unable to hijack the connection: %v", err)
+		log.Errorf("vulcand/oxy/forward/websocket: Unable to hijack the connection: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -309,11 +319,11 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	defer underlyingConn.Close()
 	defer targetConn.Close()
 
-	log.Infof("Writing outgoing Websocket request to target connection: %+v", outReq)
+	log.Infof("vulcand/oxy/forward/websocket: Writing outgoing Websocket request to target connection: %+v", outReq)
 
 	// write the modified incoming request to the dialed connection
 	if err = outReq.Write(targetConn); err != nil {
-		log.Errorf("Unable to copy request to target: %v", err)
+		log.Errorf("vulcand/oxy/forward/websocket: Unable to copy request to target: %v", err)
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -366,6 +376,9 @@ func isWebsocketRequest(req *http.Request) bool {
 
 // serveHTTP forwards HTTP traffic using the configured transport
 func (f *httpStreamingForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
+	logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	logEntry.Debug("vulcand/oxy/forward/httpstream: begin ServeHttp on request")
+	defer logEntry.Debug("vulcand/oxy/forward/httpstream: competed ServeHttp on request")
 	pw := &utils.ProxyWriter{
 		W: w,
 	}
@@ -390,14 +403,14 @@ func (f *httpStreamingForwarder) serveHTTP(w http.ResponseWriter, req *http.Requ
 	revproxy.ServeHTTP(pw, req)
 
 	if req.TLS != nil {
-		log.Infof("Round trip: %v, code: %v, Length: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
+		log.Infof("vulcand/oxy/forward/httpstream: Round trip: %v, code: %v, Length: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
 			req.URL, pw.Code, pw.Length, time.Now().UTC().Sub(start),
 			req.TLS.Version,
 			req.TLS.DidResume,
 			req.TLS.CipherSuite,
 			req.TLS.ServerName)
 	} else {
-		log.Infof("Round trip: %v, code: %v, Length: %v, duration: %v",
+		log.Infof("vulcand/oxy/forward/httpstream: Round trip: %v, code: %v, Length: %v, duration: %v",
 			req.URL, pw.Code, pw.Length, time.Now().UTC().Sub(start))
 	}
 }
