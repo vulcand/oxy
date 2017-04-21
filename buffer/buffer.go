@@ -180,12 +180,8 @@ func (s *Buffer) Wrap(next http.Handler) error {
 }
 
 func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
-	logEntry.Debug("vulcand/oxy/buffer: begin ServeHttp on request")
-	defer logEntry.Debug("vulcand/oxy/buffer: competed ServeHttp on request")
-
 	if err := s.checkLimit(req); err != nil {
-		log.Errorf("vulcand/oxy/buffer: request body over limit, err: %v", err)
+		log.Infof("request body over limit: %v", err)
 		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -196,7 +192,6 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// and the reader would be unbounded bufio in the http.Server
 	body, err := multibuf.New(req.Body, multibuf.MaxBytes(s.maxRequestBodyBytes), multibuf.MemBytes(s.memRequestBodyBytes))
 	if err != nil || body == nil {
-		log.Errorf("vulcand/oxy/buffer: error when reading request body, err: %v", err)
 		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -210,7 +205,7 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// set without content length or using chunked TransferEncoding
 	totalSize, err := body.Size()
 	if err != nil {
-		log.Errorf("vulcand/oxy/buffer: failed to get request size, err: %v", err)
+		log.Errorf("failed to get size, err %v", err)
 		s.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -222,7 +217,6 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		// We create a special writer that will limit the response size, buffer it to disk if necessary
 		writer, err := multibuf.NewWriterOnce(multibuf.MaxBytes(s.maxResponseBodyBytes), multibuf.MemBytes(s.memResponseBodyBytes))
 		if err != nil {
-			log.Errorf("vulcand/oxy/buffer: failed create response writer, err: %v", err)
 			s.errHandler.ServeHTTP(w, req, err)
 			return
 		}
@@ -240,7 +234,7 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if b.expectBody(outreq) {
 			rdr, err := writer.Reader()
 			if err != nil {
-				log.Errorf("vulcand/oxy/buffer: failed to read response, err: %v", err)
+				log.Errorf("failed to read response, err %v", err)
 				s.errHandler.ServeHTTP(w, req, err)
 				return
 			}
@@ -260,12 +254,12 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		attempt += 1
 		if _, err := body.Seek(0, 0); err != nil {
-			log.Errorf("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)
+			log.Errorf("Failed to rewind: error: %v", err)
 			s.errHandler.ServeHTTP(w, req, err)
 			return
 		}
 		outreq = s.copyRequest(req, body, totalSize)
-		log.Infof("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
+		log.Infof("retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
 	}
 }
 

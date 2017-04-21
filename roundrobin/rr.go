@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -63,18 +62,11 @@ func (r *RoundRobin) Next() http.Handler {
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
-	logEntry.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request")
-	defer logEntry.Debug("vulcand/oxy/roundrobin/rr: competed ServeHttp on request")
 	url, err := r.NextServer()
 	if err != nil {
 		r.errHandler.ServeHTTP(w, req, err)
 		return
 	}
-
-	//log which backend URL we're sending this request to
-	log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": url}).Info("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
-
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
 	newReq.URL = url
