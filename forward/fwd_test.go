@@ -1,7 +1,10 @@
 package forward
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -255,11 +258,48 @@ func (s *FwdSuite) TestForwardedProto(c *C) {
 	c.Assert(proto, Equals, "https")
 }
 
+func (s *FwdSuite) TestTlsClientCertInfo(c *C) {
+	var outHeaders http.Header
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		outHeaders = req.Header
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	f, err := New(PassClientCertInfo(true))
+	c.Assert(err, IsNil)
+
+	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	tproxy := httptest.NewUnstartedServer(proxy)
+	clientCACert, err := ioutil.ReadFile("../testutils/ca1.crt")
+	if err != nil {
+		c.Assert(err, IsNil)
+	}
+	clientCertPool := x509.NewCertPool()
+	clientCertPool.AppendCertsFromPEM(clientCACert)
+	tproxy.TLS = &tls.Config{
+		InsecureSkipVerify: true,
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  clientCertPool,
+	}
+	tproxy.StartTLS()
+	defer tproxy.Close()
+
+	re, _, err := testutils.Get(tproxy.URL, testutils.ClientCert(true))
+	c.Assert(err, IsNil)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	c.Assert(outHeaders.Get(XForwardedProto), Equals, "https")
+	c.Assert(outHeaders.Get("X-SSL-Client-CN"), Equals, "clien1.example.com")
+}
+
 func (s *FwdSuite) TestChunkedResponseConversion(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
-		fmt.Fprintf(conn, "HTTP/1.0 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+		fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 		conn.Close()
 	})
 	defer srv.Close()

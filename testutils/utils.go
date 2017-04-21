@@ -2,8 +2,10 @@ package testutils
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -32,11 +34,12 @@ func ParseURI(uri string) *url.URL {
 }
 
 type ReqOpts struct {
-	Host    string
-	Method  string
-	Body    string
-	Headers http.Header
-	Auth    *utils.BasicAuth
+	Host       string
+	Method  	 string
+	Body       string
+	Headers    http.Header
+	Auth       *utils.BasicAuth
+	ClientCert bool
 }
 
 type ReqOption func(o *ReqOpts) error
@@ -92,6 +95,13 @@ func BasicAuth(username, password string) ReqOption {
 	}
 }
 
+func ClientCert(b bool) ReqOption {
+	return func(o *ReqOpts) error {
+		o.ClientCert = b
+		return nil
+	}
+}
+
 func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 	o := &ReqOpts{}
 	for _, s := range opts {
@@ -118,9 +128,30 @@ func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) 
 
 	var tr *http.Transport
 	if strings.HasPrefix(url, "https") {
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		if(o.ClientCert) {
+			clientCACert, err := ioutil.ReadFile("../testutils/ca1.crt")
+			if err != nil {
+				log.Fatal(err)
+			}
+			clientCertPool := x509.NewCertPool()
+			clientCertPool.AppendCertsFromPEM(clientCACert)
+			cert, err := tls.LoadX509KeyPair("../testutils/client1.crt", "../testutils/client1.key")
+			if(err != nil) {
+				log.Fatal(err)
+			}
+			tlsConfig = &tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         "example.com",
+				Certificates:       []tls.Certificate{cert},
+				RootCAs: 						clientCertPool,
+			}
+		}
 		tr = &http.Transport{
 			DisableKeepAlives: true,
-			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:   tlsConfig,
 		}
 	} else {
 		tr = &http.Transport{

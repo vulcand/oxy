@@ -36,6 +36,15 @@ func PassHostHeader(b bool) optSetter {
 	}
 }
 
+// PassClientCertInfo specifies if a client's certificate CommonName
+// and Serial should be delegated
+func PassClientCertInfo(b bool) optSetter {
+	return func(f *Forwarder) error {
+		f.httpForwarder.passClientCertInfo = b
+		return nil
+	}
+}
+
 // RoundTripper sets a new http.RoundTripper
 // Forwarder will use http.DefaultTransport as a default round tripper
 func RoundTripper(r http.RoundTripper) optSetter {
@@ -124,9 +133,10 @@ type handlerContext struct {
 // httpForwarder is a handler that can reverse proxy
 // HTTP traffic
 type httpForwarder struct {
-	roundTripper http.RoundTripper
-	rewriter     ReqRewriter
-	passHost     bool
+	roundTripper       http.RoundTripper
+	rewriter           ReqRewriter
+	passHost           bool
+	passClientCertInfo bool
 }
 
 // httpStreamingForwarder is a handler that can reverse proxy
@@ -281,6 +291,13 @@ func (f *httpForwarder) copyRequest(req *http.Request, u *url.URL) *http.Request
 	if f.rewriter != nil {
 		f.rewriter.Rewrite(outReq)
 	}
+
+	// Do not pass client certificate info unless optsetter PassClientCertInfo is set.
+	if f.passClientCertInfo && req.TLS != nil && len(req.TLS.PeerCertificates) > 0 {
+	  outReq.Header.Set("X-SSL-Client-CN", req.TLS.PeerCertificates[0].Subject.CommonName)
+	  outReq.Header.Set("X-SSL-Client-Serial", req.TLS.PeerCertificates[0].Subject.SerialNumber)
+	}
+
 	return outReq
 }
 
