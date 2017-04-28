@@ -3,12 +3,13 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"reflect"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // ProxyWriter helps to capture response headers and status code
@@ -134,11 +135,9 @@ func CopyURL(i *url.URL) *url.URL {
 
 // CopyHeaders copies http headers from source to destination, it
 // does not overide, but adds multiple headers
-func CopyHeaders(dst, src http.Header) {
+func CopyHeaders(dst http.Header, src http.Header) {
 	for k, vv := range src {
-		for _, v := range vv {
-			dst.Add(k, v)
-		}
+		dst[k] = append(dst[k], vv...)
 	}
 }
 
