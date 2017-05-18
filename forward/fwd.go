@@ -335,13 +335,15 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 		return
 	}
 	errc := make(chan error, 2)
-	replicate := func(dst io.Writer, src io.Reader) {
+	replicate := func(dst io.Writer, src io.Reader, dstName string, srcName string) {
 		_, err := io.Copy(dst, src)
+		log.Errorf("vulcand/oxy/forward/websocket: Error when copying from %s to %s using io.Copy: %v", srcName, dstName, err)
 		errc <- err
 	}
-	go replicate(targetConn, underlyingConn)
-	go replicate(underlyingConn, targetConn)
-	<-errc
+	go replicate(targetConn, underlyingConn, "backend", "client")
+	go replicate(underlyingConn, targetConn, "client", "backend")
+	err = <-errc
+	log.Infof("vulcand/oxy/forward/websocket: terminating websocket proxying due to error: %v", err)
 }
 
 // copyRequest makes a copy of the specified request.
