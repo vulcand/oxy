@@ -66,3 +66,29 @@ func (s *NetUtilsSuite) TestRemoveHeaders(c *C) {
 	c.Assert(source.Get("a"), Equals, "")
 	c.Assert(source.Get("c"), Equals, "d")
 }
+
+func BenchmarkCopyHeaders(b *testing.B) {
+	dstHeaders := make([]http.Header, 0, b.N)
+	sourceHeaders := make([]http.Header, 0, b.N)
+	for n := 0; n < b.N; n++ {
+		// example from a reverse proxy merging headers
+		d := http.Header{}
+		d.Add("Request-Id", "1bd36bcc-a0d1-4fc7-aedc-20bbdefa27c5")
+		dstHeaders = append(dstHeaders, d)
+
+		s := http.Header{}
+		s.Add("Content-Length", "374")
+		s.Add("Context-Type", "text/html; charset=utf-8")
+		s.Add("Etag", `"op14g6ae"`)
+		s.Add("Last-Modified", "Wed, 26 Apr 2017 18:24:06 GMT")
+		s.Add("Server", "Caddy")
+		s.Add("Date", "Fri, 28 Apr 2017 15:54:01 GMT")
+		s.Add("Accept-Ranges", "bytes")
+		sourceHeaders = append(sourceHeaders, s)
+	}
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		CopyHeaders(dstHeaders[n], sourceHeaders[n])
+	}
+}
