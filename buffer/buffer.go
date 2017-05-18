@@ -241,6 +241,10 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer b.Close()
 
 		s.next.ServeHTTP(b, outreq)
+		if b.hijacked {
+			log.Infof("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
+			return
+		}
 
 		var reader multibuf.MultiReader
 		if b.expectBody(outreq) {
@@ -303,6 +307,7 @@ type bufferWriter struct {
 	code           int
 	buffer         multibuf.WriterOnce
 	responseWriter http.ResponseWriter
+	hijacked bool
 }
 
 // RFC2616 #4.4
@@ -351,7 +356,11 @@ func (b *bufferWriter) CloseNotify() <-chan bool {
 //This allows connections to be hijacked for websockets for instance.
 func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := b.responseWriter.(http.Hijacker); ok {
-		return hi.Hijack()
+		conn, rw, err := hi.Hijack()
+		if err != nil {
+			b.hijacked = true
+		}
+		return conn, rw, err
 	}
 	log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
 	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.responseWriter))
