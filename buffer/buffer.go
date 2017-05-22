@@ -307,7 +307,7 @@ type bufferWriter struct {
 	code           int
 	buffer         multibuf.WriterOnce
 	responseWriter http.ResponseWriter
-	hijacked bool
+	hijacked       bool
 }
 
 // RFC2616 #4.4
