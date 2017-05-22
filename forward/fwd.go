@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"crypto/tls"
 	log "github.com/Sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
+	"net"
 	"net/http/httputil"
 	"reflect"
-	"net"
-	"crypto/tls"
 )
 
 // ReqRewriter can alter request headers and body
@@ -44,7 +44,6 @@ func RoundTripper(r http.RoundTripper) optSetter {
 		return nil
 	}
 }
-
 
 // Rewriter defines a request rewriter for the HTTP forwarder
 func Rewriter(r ReqRewriter) optSetter {
@@ -106,7 +105,6 @@ func StreamRoundTripper(r http.RoundTripper) optSetter {
 	}
 }
 
-
 // PassHostHeader specifies if a client's Host header field should
 // be delegated
 func StreamPassHostHeader(b bool) optSetter {
@@ -166,7 +164,7 @@ type httpForwarder struct {
 // HTTP traffic but doesn't wait for a complete
 // response before it begins writing bytes upstream
 type httpStreamingForwarder struct {
-	roundTripper http.RoundTripper
+	roundTripper  http.RoundTripper
 	rewriter      ReqRewriter
 	passHost      bool
 	flushInterval time.Duration
@@ -427,14 +425,14 @@ func (f *websocketForwarder) copyRequest(req *http.Request) (outReq *http.Reques
 	outReq.URL.Path = req.RequestURI
 
 	/*
-	// Do not pass client Host header unless optsetter PassHostHeader is set.
-	if !f.passHost {
-		outReq.Host = req.Host
-	}
+		// Do not pass client Host header unless optsetter PassHostHeader is set.
+		if !f.passHost {
+			outReq.Host = req.Host
+		}
 
-	if f.rewriter != nil {
-		f.rewriter.Rewrite(outReq)
-	}
+		if f.rewriter != nil {
+			f.rewriter.Rewrite(outReq)
+		}
 	*/
 
 	return outReq
@@ -454,7 +452,6 @@ func isWebsocketRequest(req *http.Request) bool {
 	}
 	return containsHeader(Connection, "upgrade") && containsHeader(Upgrade, "websocket")
 }
-
 
 // copyRequest makes a copy of the specified request to be sent using the configured
 // transport
