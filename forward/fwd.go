@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"crypto/tls"
 	log "github.com/Sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
-	"net"
 	"net/http/httputil"
 	"reflect"
+	"net"
+	"crypto/tls"
 )
 
 // ReqRewriter can alter request headers and body
@@ -44,6 +44,7 @@ func RoundTripper(r http.RoundTripper) optSetter {
 		return nil
 	}
 }
+
 
 // Rewriter defines a request rewriter for the HTTP forwarder
 func Rewriter(r ReqRewriter) optSetter {
@@ -341,7 +342,8 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	var targetConn net.Conn
 	var err error
 
-	if f.tlsClientConfig != nil {
+
+	if outReq.URL.Scheme == "wss" && f.tlsClientConfig != nil {
 		targetConn, err = tls.Dial("tcp", host, f.tlsClientConfig)
 	} else {
 		targetConn, err = net.Dial("tcp", host)
@@ -438,6 +440,7 @@ func isWebsocketRequest(req *http.Request) bool {
 	}
 	return containsHeader(Connection, "upgrade") && containsHeader(Upgrade, "websocket")
 }
+
 
 // copyRequest makes a copy of the specified request to be sent using the configured
 // transport
