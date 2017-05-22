@@ -53,28 +53,11 @@ func Rewriter(r ReqRewriter) optSetter {
 	}
 }
 
-// WebsocketRewriter defines a request rewriter for the websocket forwarder
-func WebsocketRewriter(r ReqRewriter) optSetter {
-	return func(f *Forwarder) error {
-		f.websocketForwarder.rewriter = r
-		return nil
-	}
-}
-
-// PassHostHeader specifies if a client's Host header field should
-// be delegated
-func WebsocketPassHostHeader(b bool) optSetter {
-	return func(f *Forwarder) error {
-		f.websocketForwarder.passHost = b
-		return nil
-	}
-}
-
 // PassHostHeader specifies if a client's Host header field should
 // be delegated
 func WebsocketTLSClientConfig(tcc *tls.Config) optSetter {
 	return func(f *Forwarder) error {
-		f.websocketForwarder.tlsClientConfig = tcc
+		f.httpForwarder.tlsClientConfig = tcc
 		return nil
 	}
 }
@@ -96,32 +79,6 @@ func Stream(stream bool) optSetter {
 	}
 }
 
-// RoundTripper sets a new http.RoundTripper
-// Forwarder will use http.DefaultTransport as a default round tripper
-func StreamRoundTripper(r http.RoundTripper) optSetter {
-	return func(f *Forwarder) error {
-		f.httpStreamingForwarder.roundTripper = r
-		return nil
-	}
-}
-
-// PassHostHeader specifies if a client's Host header field should
-// be delegated
-func StreamPassHostHeader(b bool) optSetter {
-	return func(f *Forwarder) error {
-		f.httpStreamingForwarder.passHost = b
-		return nil
-	}
-}
-
-// Rewriter defines a request rewriter for the HTTP forwarder
-func StreamRewriter(r ReqRewriter) optSetter {
-	return func(f *Forwarder) error {
-		f.httpStreamingForwarder.rewriter = r
-		return nil
-	}
-}
-
 func StateListener(stateListener UrlForwardingStateListener) optSetter {
 	return func(f *Forwarder) error {
 		f.stateListener = stateListener
@@ -131,7 +88,7 @@ func StateListener(stateListener UrlForwardingStateListener) optSetter {
 
 func StreamingFlushInterval(flushInterval time.Duration) optSetter {
 	return func(f *Forwarder) error {
-		f.httpStreamingForwarder.flushInterval = flushInterval
+		f.httpForwarder.flushInterval = flushInterval
 		return nil
 	}
 }
@@ -140,8 +97,6 @@ func StreamingFlushInterval(flushInterval time.Duration) optSetter {
 // It decides based on the specified request which implementation to use
 type Forwarder struct {
 	*httpForwarder
-	*httpStreamingForwarder
-	*websocketForwarder
 	*handlerContext
 	stateListener UrlForwardingStateListener
 	stream        bool
@@ -158,23 +113,9 @@ type httpForwarder struct {
 	roundTripper http.RoundTripper
 	rewriter     ReqRewriter
 	passHost     bool
-}
 
-// httpStreamingForwarder is a handler that can reverse proxy
-// HTTP traffic but doesn't wait for a complete
-// response before it begins writing bytes upstream
-type httpStreamingForwarder struct {
-	roundTripper  http.RoundTripper
-	rewriter      ReqRewriter
-	passHost      bool
 	flushInterval time.Duration
-}
 
-// websocketForwarder is a handler that can reverse proxy
-// websocket traffic
-type websocketForwarder struct {
-	rewriter        ReqRewriter
-	passHost        bool
 	tlsClientConfig *tls.Config
 }
 
@@ -188,10 +129,8 @@ type UrlForwardingStateListener func(*url.URL, int)
 // New creates an instance of Forwarder based on the provided list of configuration options
 func New(setters ...optSetter) (*Forwarder, error) {
 	f := &Forwarder{
-		httpForwarder:          &httpForwarder{},
-		httpStreamingForwarder: &httpStreamingForwarder{flushInterval: time.Duration(100) * time.Millisecond},
-		websocketForwarder:     &websocketForwarder{},
-		handlerContext:         &handlerContext{},
+		httpForwarder:  &httpForwarder{flushInterval: time.Duration(100) * time.Millisecond},
+		handlerContext: &handlerContext{},
 	}
 	for _, s := range setters {
 		if err := s(f); err != nil {
@@ -205,22 +144,6 @@ func New(setters ...optSetter) (*Forwarder, error) {
 			h = "localhost"
 		}
 		f.httpForwarder.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
-	}
-
-	if f.websocketForwarder.rewriter == nil {
-		h, err := os.Hostname()
-		if err != nil {
-			h = "localhost"
-		}
-		f.websocketForwarder.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
-	}
-
-	if f.httpStreamingForwarder.rewriter == nil {
-		h, err := os.Hostname()
-		if err != nil {
-			h = "localhost"
-		}
-		f.httpStreamingForwarder.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
 	}
 
 	if f.errHandler == nil {
@@ -243,16 +166,16 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer f.stateListener(req.URL, StateDisconnected)
 	}
 	if isWebsocketRequest(req) {
-		f.websocketForwarder.serveHTTP(w, req, f.handlerContext)
+		f.httpForwarder.serveWebSocket(w, req, f.handlerContext)
 	} else if f.stream {
-		f.httpStreamingForwarder.serveHTTP(w, req, f.handlerContext)
+		f.httpForwarder.serveStreamingHTTP(w, req, f.handlerContext)
 	} else {
-		f.httpForwarder.serveHTTP(w, req, f.handlerContext)
+		f.httpForwarder.serveBufferedHTTP(w, req, f.handlerContext)
 	}
 }
 
 // serveHTTP forwards HTTP traffic using the configured transport
-func (f *httpForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
+func (f *httpForwarder) serveBufferedHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
 	if log.GetLevel() >= log.DebugLevel {
 		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/forward/httpbuffer: begin ServeHttp on request")
@@ -329,14 +252,14 @@ func (f *httpForwarder) copyRequest(req *http.Request, u *url.URL) *http.Request
 }
 
 // serveHTTP forwards websocket traffic
-func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
+func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
 	if log.GetLevel() >= log.DebugLevel {
 		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/forward/websocket: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/forward/websocket: competed ServeHttp on request")
 	}
 
-	outReq := f.copyRequest(req)
+	outReq := f.copyWebSocketRequest(req)
 	host := outReq.URL.Host
 
 	// if host does not specify a port, use the default http port
@@ -405,7 +328,7 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 }
 
 // copyRequest makes a copy of the specified request.
-func (f *websocketForwarder) copyRequest(req *http.Request) (outReq *http.Request) {
+func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Request) {
 	outReq = new(http.Request)
 	*outReq = *req
 	outReq.URL = utils.CopyURL(req.URL)
@@ -453,40 +376,8 @@ func isWebsocketRequest(req *http.Request) bool {
 	return containsHeader(Connection, "upgrade") && containsHeader(Upgrade, "websocket")
 }
 
-// copyRequest makes a copy of the specified request to be sent using the configured
-// transport
-func (f *httpStreamingForwarder) copyRequest(req *http.Request, u *url.URL) *http.Request {
-	outReq := new(http.Request)
-	*outReq = *req // includes shallow copies of maps, but we handle this below
-
-	outReq.URL = utils.CopyURL(req.URL)
-	outReq.URL.Scheme = u.Scheme
-	outReq.URL.Host = u.Host
-	outReq.URL.Opaque = req.RequestURI
-	// raw query is already included in RequestURI, so ignore it to avoid dupes
-	outReq.URL.RawQuery = ""
-	// Do not pass client Host header unless optsetter PassHostHeader is set.
-	if !f.passHost {
-		outReq.Host = u.Host
-	}
-	outReq.Proto = "HTTP/1.1"
-	outReq.ProtoMajor = 1
-	outReq.ProtoMinor = 1
-
-	// Overwrite close flag so we can keep persistent connection for the backend servers
-	outReq.Close = false
-
-	outReq.Header = make(http.Header)
-	utils.CopyHeaders(outReq.Header, req.Header)
-
-	if f.rewriter != nil {
-		f.rewriter.Rewrite(outReq)
-	}
-	return outReq
-}
-
 // serveHTTP forwards HTTP traffic using the configured transport
-func (f *httpStreamingForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ctx *handlerContext) {
+func (f *httpForwarder) serveStreamingHTTP(w http.ResponseWriter, inReq *http.Request, ctx *handlerContext) {
 	if log.GetLevel() >= log.DebugLevel {
 		logEntry := log.WithField("Request", utils.DumpHttpRequest(inReq))
 		logEntry.Debug("vulcand/oxy/forward/httpstream: begin ServeHttp on request")
