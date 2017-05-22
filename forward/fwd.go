@@ -40,7 +40,7 @@ func PassHostHeader(b bool) optSetter {
 // Forwarder will use http.DefaultTransport as a default round tripper
 func RoundTripper(r http.RoundTripper) optSetter {
 	return func(f *Forwarder) error {
-		f.roundTripper = r
+		f.httpForwarder.roundTripper = r
 		return nil
 	}
 }
@@ -96,6 +96,16 @@ func Stream(stream bool) optSetter {
 		return nil
 	}
 }
+
+// RoundTripper sets a new http.RoundTripper
+// Forwarder will use http.DefaultTransport as a default round tripper
+func StreamRoundTripper(r http.RoundTripper) optSetter {
+	return func(f *Forwarder) error {
+		f.httpStreamingForwarder.roundTripper = r
+		return nil
+	}
+}
+
 
 // PassHostHeader specifies if a client's Host header field should
 // be delegated
@@ -156,6 +166,7 @@ type httpForwarder struct {
 // HTTP traffic but doesn't wait for a complete
 // response before it begins writing bytes upstream
 type httpStreamingForwarder struct {
+	roundTripper http.RoundTripper
 	rewriter      ReqRewriter
 	passHost      bool
 	flushInterval time.Duration
@@ -342,10 +353,11 @@ func (f *websocketForwarder) serveHTTP(w http.ResponseWriter, req *http.Request,
 	var targetConn net.Conn
 	var err error
 
-
 	if outReq.URL.Scheme == "wss" && f.tlsClientConfig != nil {
+		log.Debugf("vulcand/oxy/forward/websocket: Dialing secure (tls) tcp connection to host %s with TLS Client Config %v", host, f.tlsClientConfig)
 		targetConn, err = tls.Dial("tcp", host, f.tlsClientConfig)
 	} else {
+		log.Debugf("vulcand/oxy/forward/websocket: Dialing insecure (non-tls) tcp connection to host %s", host)
 		targetConn, err = net.Dial("tcp", host)
 	}
 
@@ -414,6 +426,7 @@ func (f *websocketForwarder) copyRequest(req *http.Request) (outReq *http.Reques
 	outReq.URL.Host = req.URL.Host
 	outReq.URL.Path = req.RequestURI
 
+	/*
 	// Do not pass client Host header unless optsetter PassHostHeader is set.
 	if !f.passHost {
 		outReq.Host = req.Host
@@ -422,6 +435,7 @@ func (f *websocketForwarder) copyRequest(req *http.Request) (outReq *http.Reques
 	if f.rewriter != nil {
 		f.rewriter.Rewrite(outReq)
 	}
+	*/
 
 	return outReq
 }
@@ -504,7 +518,8 @@ func (f *httpStreamingForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Re
 	outReq.URL.RawQuery = reqUrl.RawQuery
 
 	revproxy := httputil.NewSingleHostReverseProxy(urlcpy)
-	revproxy.FlushInterval = f.flushInterval //Flush something every 100 milliseconds
+	revproxy.Transport = f.roundTripper
+	revproxy.FlushInterval = f.flushInterval
 	revproxy.ServeHTTP(pw, outReq)
 
 	if outReq.TLS != nil {
