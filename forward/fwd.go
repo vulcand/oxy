@@ -146,6 +146,10 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		f.httpForwarder.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
 	}
 
+	if f.httpForwarder.roundTripper == nil {
+		f.httpForwarder.roundTripper = http.DefaultTransport
+	}
+
 	if f.errHandler == nil {
 		f.errHandler = utils.DefaultHandler
 	}
