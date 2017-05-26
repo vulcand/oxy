@@ -205,6 +205,24 @@ func (s *RRSuite) TestWeighted(c *C) {
 	c.Assert(ok, Equals, false)
 }
 
+func (s *RRSuite) TestRequestRewriteListener(c *C) {
+	a := testutils.NewResponder("a")
+	defer a.Close()
+
+	b := testutils.NewResponder("b")
+	defer b.Close()
+
+	fwd, err := forward.New()
+	c.Assert(err, IsNil)
+
+	lb, err := New(fwd,
+		RoundRobinRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {
+		}))
+	c.Assert(err, IsNil)
+
+	c.Assert(lb.requestRewriteListener, NotNil)
+}
+
 func seq(c *C, url string, repeat int) []string {
 	out := []string{}
 	for i := 0; i < repeat; i++ {
