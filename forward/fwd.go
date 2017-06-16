@@ -328,9 +328,9 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	go replicate(targetConn, underlyingConn, "backend", "client")
 	go replicate(underlyingConn, targetConn, "client", "backend")
 	err = <-errc // One goroutine complete
-	log.Infof("vulcand/oxy/forward/websocket: > websocket proxying complete: %v", err)
+	log.Infof("vulcand/oxy/forward/websocket: first proxying connection closed: %v", err)
 	err = <-errc // Both goroutines complete
-	log.Infof("vulcand/oxy/forward/websocket: < websocket proxying complete: %v", err)
+	log.Infof("vulcand/oxy/forward/websocket: second proxying connection closed: %v", err)
 }
 
 // copyRequest makes a copy of the specified request.
