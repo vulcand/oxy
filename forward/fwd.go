@@ -358,10 +358,6 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 		outReq.Host = req.Host
 	}
 
-	outReq.Proto = "HTTP/1.1"
-	outReq.ProtoMajor = 1
-	outReq.ProtoMinor = 1
-
 	// Overwrite close flag so we can keep persistent connection for the backend servers
 	outReq.Close = false
 
