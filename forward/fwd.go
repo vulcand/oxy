@@ -315,7 +315,6 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 		ctx.errHandler.ServeHTTP(w, req, err)
 		return
 	}
-	errc := make(chan error, 2)
 	replicate := func(dst io.Writer, src io.Reader, dstName string, srcName string) {
 		_, err := io.Copy(dst, src)
 		if err != nil {
@@ -323,12 +322,11 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 		} else {
 			log.Infof("vulcand/oxy/forward/websocket: Copying from %s to %s using io.Copy completed without error.", srcName, dstName)
 		}
-		errc <- err
 	}
+
+	// Create a full-duplex connection that closes when the backend closes it.
 	go replicate(targetConn, underlyingConn, "backend", "client")
-	go replicate(underlyingConn, targetConn, "client", "backend")
-	err = <-errc
-	log.Infof("vulcand/oxy/forward/websocket: websocket proxying complete: %v", err)
+	replicate(underlyingConn, targetConn, "client", "backend")
 }
 
 // copyRequest makes a copy of the specified request.
