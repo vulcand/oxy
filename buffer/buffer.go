@@ -42,8 +42,8 @@ import (
 	"net/http"
 
 	"bufio"
-	log "github.com/sirupsen/logrus"
 	"github.com/mailgun/multibuf"
+	"github.com/vulcand/oxy/log"
 	"github.com/vulcand/oxy/utils"
 	"net"
 	"reflect"
