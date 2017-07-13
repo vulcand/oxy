@@ -41,9 +41,12 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
+	"bufio"
+	log "github.com/sirupsen/logrus"
 	"github.com/mailgun/multibuf"
 	"github.com/vulcand/oxy/utils"
+	"net"
+	"reflect"
 )
 
 const (
@@ -231,12 +234,17 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		// We are mimicking http.ResponseWriter to replace writer with our special writer
 		b := &bufferWriter{
-			header: make(http.Header),
-			buffer: writer,
+			header:         make(http.Header),
+			buffer:         writer,
+			responseWriter: w,
 		}
 		defer b.Close()
 
 		s.next.ServeHTTP(b, outreq)
+		if b.hijacked {
+			log.Infof("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
+			return
+		}
 
 		var reader multibuf.MultiReader
 		if b.expectBody(outreq) {
@@ -295,9 +303,11 @@ func (s *Buffer) checkLimit(req *http.Request) error {
 }
 
 type bufferWriter struct {
-	header http.Header
-	code   int
-	buffer multibuf.WriterOnce
+	header         http.Header
+	code           int
+	buffer         multibuf.WriterOnce
+	responseWriter http.ResponseWriter
+	hijacked       bool
 }
 
 // RFC2616 #4.4
@@ -332,6 +342,28 @@ func (b *bufferWriter) Write(buf []byte) (int, error) {
 // WriteHeader sets rw.Code.
 func (b *bufferWriter) WriteHeader(code int) {
 	b.code = code
+}
+
+//CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
+func (b *bufferWriter) CloseNotify() <-chan bool {
+	if cn, ok := b.responseWriter.(http.CloseNotifier); ok {
+		return cn.CloseNotify()
+	}
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
+	return make(<-chan bool)
+}
+
+//This allows connections to be hijacked for websockets for instance.
+func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hi, ok := b.responseWriter.(http.Hijacker); ok {
+		conn, rw, err := hi.Hijack()
+		if err != nil {
+			b.hijacked = true
+		}
+		return conn, rw, err
+	}
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
+	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.responseWriter))
 }
 
 type SizeErrHandler struct {

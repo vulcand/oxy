@@ -320,6 +320,25 @@ func (s *RBSuite) TestRebalancerLive(c *C) {
 	c.Assert(rb.servers[2].curWeight, Equals, 1)
 }
 
+func (s *RBSuite) TestRequestRewriteListener(c *C) {
+	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
+	defer a.Close()
+	defer b.Close()
+
+	fwd, err := forward.New()
+	c.Assert(err, IsNil)
+
+	lb, err := New(fwd)
+	c.Assert(err, IsNil)
+
+	rb, err := NewRebalancer(lb,
+		RebalancerRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {
+		}))
+	c.Assert(err, IsNil)
+
+	c.Assert(rb.requestRewriteListener, NotNil)
+}
+
 type testMeter struct {
 	rating   float64
 	notReady bool

@@ -13,9 +13,9 @@ import (
 	"github.com/vulcand/oxy/forward"
 	"github.com/vulcand/oxy/testutils"
 
+	log "github.com/sirupsen/logrus"
 	. "gopkg.in/check.v1"
 	"time"
-	log "github.com/Sirupsen/logrus"
 )
 
 func TestStream(t *testing.T) { TestingT(t) }
@@ -24,10 +24,12 @@ type STSuite struct{}
 
 var _ = Suite(&STSuite{})
 
-type noOpNextHttpHandler struct {}
+type noOpNextHttpHandler struct{}
+
 func (n noOpNextHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {}
 
-type noOpIoWriter struct {}
+type noOpIoWriter struct{}
+
 func (n noOpIoWriter) Write(bytes []byte) (int, error) {
 	return len(bytes), nil
 }
@@ -323,10 +325,8 @@ func (s *STSuite) TestPreservesTLS(c *C) {
 	c.Assert(t, NotNil)
 }
 
-
-
 func BenchmarkLoggingDebugLevel(b *testing.B) {
-	streamer, _:= New(noOpNextHttpHandler{})
+	streamer, _ := New(noOpNextHttpHandler{})
 
 	log.SetLevel(log.DebugLevel)
 	log.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen

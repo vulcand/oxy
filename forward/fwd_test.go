@@ -287,7 +287,7 @@ func (s *FwdSuite) TestDetectsWebsocketRequest(c *C) {
 		conn.Close()
 	}))
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		websocketRequest := isWebsocketRequest(req)
+		websocketRequest := IsWebsocketRequest(req)
 		c.Assert(websocketRequest, Equals, true)
 		mux.ServeHTTP(w, req)
 	})
