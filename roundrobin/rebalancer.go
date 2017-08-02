@@ -147,7 +147,6 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if log.GetLevel() >= log.DebugLevel {
 		//log which backend URL we're sending this request to
-		//log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": url}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 		log.WithField("Request", utils.DumpHttpRequest(req)).WithField("ForwardURL", url).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 	}
 
