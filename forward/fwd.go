@@ -396,6 +396,7 @@ func (f *httpForwarder) serveStreamingHTTP(w http.ResponseWriter, inReq *http.Re
 	urlcpy := utils.CopyURL(outReq.URL)
 	urlcpy.Scheme = outReq.URL.Scheme
 	urlcpy.Host = outReq.URL.Host
+	urlcpy.RawQuery = ""
 
 	outReq.URL.Path = reqUrl.Path
 	outReq.URL.RawQuery = reqUrl.RawQuery
