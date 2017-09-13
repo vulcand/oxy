@@ -34,7 +34,7 @@ package stream
 import (
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/log"
 	"github.com/vulcand/oxy/utils"
 )
 

@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"reflect"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/log"
 )
 
 // ProxyWriter helps to capture response headers and status code
