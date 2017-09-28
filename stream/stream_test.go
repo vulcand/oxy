@@ -13,7 +13,7 @@ import (
 	"github.com/vulcand/oxy/forward"
 	"github.com/vulcand/oxy/testutils"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	. "gopkg.in/check.v1"
 	"time"
 )
