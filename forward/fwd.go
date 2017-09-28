@@ -398,7 +398,6 @@ func (f *httpForwarder) serveStreamingHTTP(w http.ResponseWriter, inReq *http.Re
 	urlcpy.Host = outReq.URL.Host
 
 	outReq.URL.Path = reqUrl.Path
-	outReq.URL.RawQuery = reqUrl.RawQuery
 
 	revproxy := httputil.NewSingleHostReverseProxy(urlcpy)
 	revproxy.Transport = f.roundTripper
