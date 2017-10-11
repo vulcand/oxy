@@ -13,11 +13,12 @@ import (
 	"time"
 
 	"crypto/tls"
-	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
 	"net"
 	"net/http/httputil"
 	"reflect"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/utils"
 )
 
 // ReqRewriter can alter request headers and body
@@ -205,6 +206,16 @@ func (f *httpForwarder) serveBufferedHTTP(w http.ResponseWriter, req *http.Reque
 		log.Infof("vulcand/oxy/forward/httpbuffer: Round trip: %v, code: %v, duration: %v",
 			req.URL, response.StatusCode, time.Now().UTC().Sub(start))
 	}
+
+	// Connection: references headers that should be treated as hop by hop
+	if c := response.Header.Get("Connection"); c != "" {
+		for _, f := range strings.Split(c, ",") {
+			if f = strings.TrimSpace(f); f != "" {
+				response.Header.Del(f)
+			}
+		}
+	}
+	utils.RemoveHeaders(response.Header, HopHeaders...)
 
 	utils.CopyHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
@@ -398,7 +409,6 @@ func (f *httpForwarder) serveStreamingHTTP(w http.ResponseWriter, inReq *http.Re
 	urlcpy.Host = outReq.URL.Host
 
 	outReq.URL.Path = reqUrl.Path
-	outReq.URL.RawQuery = reqUrl.RawQuery
 
 	revproxy := httputil.NewSingleHostReverseProxy(urlcpy)
 	revproxy.Transport = f.roundTripper
