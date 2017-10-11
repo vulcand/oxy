@@ -71,8 +71,7 @@ func ErrorHandler(h utils.ErrorHandler) optSetter {
 	}
 }
 
-// Logger specifies the logger to use.
-// Forwarder will default to oxyutils.NullLogger if no logger has been specified
+// Stream specifies if HTTP responses should be streamed.
 func Stream(stream bool) optSetter {
 	return func(f *Forwarder) error {
 		f.stream = stream
