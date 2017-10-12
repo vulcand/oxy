@@ -79,6 +79,9 @@ func Stream(stream bool) optSetter {
 	}
 }
 
+// Logger defines the logger the forwarder will use.
+//
+// It defaults to logrus.New(), the default logger created by logrus.
 func Logger(l *log.Logger) optSetter {
 	return func(f *Forwarder) error {
 		f.log = l
