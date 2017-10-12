@@ -81,7 +81,7 @@ func Stream(stream bool) optSetter {
 
 // Logger defines the logger the forwarder will use.
 //
-// It defaults to logrus.New(), the default logger created by logrus.
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func Logger(l *log.Logger) optSetter {
 	return func(f *Forwarder) error {
 		f.log = l
@@ -141,7 +141,7 @@ type UrlForwardingStateListener func(*url.URL, int)
 // New creates an instance of Forwarder based on the provided list of configuration options
 func New(setters ...optSetter) (*Forwarder, error) {
 	f := &Forwarder{
-		httpForwarder:  &httpForwarder{flushInterval: time.Duration(100) * time.Millisecond, log: log.New()},
+		httpForwarder:  &httpForwarder{flushInterval: time.Duration(100) * time.Millisecond, log: log.StandardLogger()},
 		handlerContext: &handlerContext{},
 	}
 	for _, s := range setters {
