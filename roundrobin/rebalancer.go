@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/mailgun/timetools"
+	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
 )
@@ -49,6 +49,8 @@ type Rebalancer struct {
 	newMeter NewMeterFn
 
 	requestRewriteListener RequestRewriteListener
+
+	log *log.Logger
 }
 
 func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
@@ -92,6 +94,8 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 	rb := &Rebalancer{
 		mtx:  &sync.Mutex{},
 		next: handler,
+
+		log: log.StandardLogger(),
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -123,6 +127,16 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 	return rb, nil
 }
 
+// Logger defines the logger the forwarder will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) RebalancerOption {
+	return func(rb *Rebalancer) error {
+		rb.log = l
+		return nil
+	}
+}
+
 func (rb *Rebalancer) Servers() []*url.URL {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -131,8 +145,8 @@ func (rb *Rebalancer) Servers() []*url.URL {
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if log.GetLevel() >= log.DebugLevel {
-		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	if rb.log.Level >= log.DebugLevel {
+		logEntry := rb.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: competed ServeHttp on request")
 	}
@@ -145,9 +159,9 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if log.GetLevel() >= log.DebugLevel {
+	if rb.log.Level >= log.DebugLevel {
 		//log which backend URL we're sending this request to
-		log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": url}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
+		rb.log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": url}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 	}
 
 	// make shallow copy of request before changing anything to avoid side effects
@@ -286,7 +300,7 @@ func (rb *Rebalancer) adjustWeights() {
 
 func (rb *Rebalancer) applyWeights() {
 	for _, srv := range rb.servers {
-		log.Infof("upsert server %v, weight %v", srv.url, srv.curWeight)
+		rb.log.Infof("upsert server %v, weight %v", srv.url, srv.curWeight)
 		rb.next.UpsertServer(srv.url, Weight(srv.curWeight))
 	}
 }
@@ -298,7 +312,7 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 		if srv.good {
 			weight := increase(srv.curWeight)
 			if weight <= FSMMaxWeight {
-				log.Infof("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
+				rb.log.Infof("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
 				srv.curWeight = weight
 				changed = true
 			}
@@ -345,7 +359,7 @@ func (rb *Rebalancer) markServers() bool {
 		}
 	}
 	if len(g) != 0 && len(b) != 0 {
-		log.Infof("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
+		rb.log.Infof("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
 	}
 	return len(g) != 0 && len(b) != 0
 }
@@ -359,7 +373,7 @@ func (rb *Rebalancer) convergeWeights() bool {
 		}
 		changed = true
 		newWeight := decrease(s.origWeight, s.curWeight)
-		log.Infof("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
+		rb.log.Infof("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
 		s.curWeight = newWeight
 	}
 	if !changed {
