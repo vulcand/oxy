@@ -49,10 +49,13 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 type Redirect struct {
-	URL string
+	URL          string
+	PreservePath bool
 }
 
 type RedirectFallback struct {
+	r Redirect
+
 	u *url.URL
 
 	log *log.Logger
@@ -63,7 +66,7 @@ func NewRedirectFallbackWithLogger(r Redirect, l *log.Logger) (*RedirectFallback
 	if err != nil {
 		return nil, err
 	}
-	return &RedirectFallback{u: u, log: l}, nil
+	return &RedirectFallback{r: r, u: u, log: l}, nil
 }
 
 func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
@@ -77,7 +80,12 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer logEntry.Debug("vulcand/oxy/fallback/redirect: competed ServeHttp on request")
 	}
 
-	w.Header().Set("Location", f.u.String())
+	location := f.u.String()
+	if f.r.PreservePath {
+		location += req.URL.Path
+	}
+
+	w.Header().Set("Location", location)
 	w.WriteHeader(http.StatusFound)
 	w.Write([]byte(http.StatusText(http.StatusFound)))
 }
