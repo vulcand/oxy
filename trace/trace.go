@@ -48,6 +48,8 @@ type Tracer struct {
 	reqHeaders  []string
 	respHeaders []string
 	writer      io.Writer
+
+	log *log.Logger
 }
 
 // New creates a new Tracer middleware that emits all the request/response information in structured format
@@ -57,6 +59,8 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 	t := &Tracer{
 		writer: writer,
 		next:   next,
+
+		log: log.StandardLogger(),
 	}
 	for _, o := range opts {
 		if err := o(t); err != nil {
@@ -69,6 +73,16 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 	return t, nil
 }
 
+// Logger defines the logger the forwarder will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) Option {
+	return func(t *Tracer) error {
+		t.log = l
+		return nil
+	}
+}
+
 func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
 	pw := &utils.ProxyWriter{W: w}
@@ -76,7 +90,7 @@ func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	l := t.newRecord(req, pw, time.Since(start))
 	if err := json.NewEncoder(t.writer).Encode(l); err != nil {
-		log.Errorf("Failed to marshal request: %v", err)
+		t.log.Errorf("Failed to marshal request: %v", err)
 	}
 }
 
