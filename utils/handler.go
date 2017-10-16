@@ -4,13 +4,17 @@ import (
 	"io"
 	"net"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type ErrorHandler interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request, err error)
 }
 
-var DefaultHandler ErrorHandler = &StdHandler{}
+var DefaultHandler ErrorHandler = &StdHandler{
+	log: log.StandardLogger(),
+}
 
 type StdHandler struct {
 	log *log.Logger
