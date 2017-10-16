@@ -330,8 +330,8 @@ func BenchmarkLoggingDebugLevel(b *testing.B) {
 	l := log.StandardLogger()
 	streamer, _ := New(noOpNextHttpHandler{}, Logger(l))
 
-	l.SetLevel(log.DebugLevel)
-	l.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
+	l.Level = log.DebugLevel
+	l.Out = &noOpIoWriter{} //Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
 		heavyServeHttpLoad(streamer)
@@ -342,8 +342,8 @@ func BenchmarkLoggingInfoLevel(b *testing.B) {
 	l := log.StandardLogger()
 	streamer, _ := New(noOpNextHttpHandler{}, Logger(l))
 
-	l.SetLevel(log.InfoLevel)
-	l.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
+	l.Level = log.InfoLevel
+	l.Out = &noOpIoWriter{} //Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
 		heavyServeHttpLoad(streamer)
