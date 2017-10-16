@@ -27,9 +27,11 @@ type Webhook struct {
 
 type WebhookSideEffect struct {
 	w Webhook
+
+	log *log.Logger
 }
 
-func NewWebhookSideEffect(w Webhook) (*WebhookSideEffect, error) {
+func NewWebhookSideEffectsWithLogger(w Webhook, l *log.Logger) (*WebhookSideEffect, error) {
 	if w.Method == "" {
 		return nil, fmt.Errorf("Supply method")
 	}
@@ -38,7 +40,11 @@ func NewWebhookSideEffect(w Webhook) (*WebhookSideEffect, error) {
 		return nil, err
 	}
 
-	return &WebhookSideEffect{w: w}, nil
+	return &WebhookSideEffect{w: w, log: l}, nil
+}
+
+func NewWebhookSideEffect(w Webhook) (*WebhookSideEffect, error) {
+	return NewWebhookSideEffectsWithLogger(w, log.StandardLogger())
 }
 
 func (w *WebhookSideEffect) getBody() io.Reader {

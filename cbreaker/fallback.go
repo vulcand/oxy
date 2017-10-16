@@ -18,18 +18,24 @@ type Response struct {
 
 type ResponseFallback struct {
 	r Response
+
+	log *log.Logger
 }
 
-func NewResponseFallback(r Response) (*ResponseFallback, error) {
+func NewResponseFallbackWithLogger(r Response, l *log.Logger) (*ResponseFallback, error) {
 	if r.StatusCode == 0 {
 		return nil, fmt.Errorf("response code should not be 0")
 	}
-	return &ResponseFallback{r: r}, nil
+	return &ResponseFallback{r: r, log: l}, nil
+}
+
+func NewResponseFallback(r Response) (*ResponseFallback, error) {
+	return NewResponseFallbackWithLogger(r, log.StandardLogger())
 }
 
 func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if log.GetLevel() >= log.DebugLevel {
-		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	if f.log.Level >= log.DebugLevel {
+		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/fallback/response: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/fallback/response: competed ServeHttp on request")
 	}
@@ -48,19 +54,25 @@ type Redirect struct {
 
 type RedirectFallback struct {
 	u *url.URL
+
+	log *log.Logger
 }
 
-func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
+func NewRedirectFallbackWithLogger(r Redirect, l *log.Logger) (*RedirectFallback, error) {
 	u, err := url.ParseRequestURI(r.URL)
 	if err != nil {
 		return nil, err
 	}
-	return &RedirectFallback{u: u}, nil
+	return &RedirectFallback{u: u, log: l}, nil
+}
+
+func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
+	return NewRedirectFallbackWithLogger(r, log.StandardLogger())
 }
 
 func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if log.GetLevel() >= log.DebugLevel {
-		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	if f.log.Level >= log.DebugLevel {
+		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/fallback/redirect: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/fallback/redirect: competed ServeHttp on request")
 	}

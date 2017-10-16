@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mailgun/timetools"
+	log "github.com/sirupsen/logrus"
 	. "gopkg.in/check.v1"
 )
 
@@ -24,7 +25,7 @@ func (s *RatioSuite) advanceTime(d time.Duration) {
 
 func (s *RatioSuite) TestRampUp(c *C) {
 	duration := 10 * time.Second
-	rc := newRatioController(s.tm, duration)
+	rc := newRatioController(s.tm, duration, log.StandardLogger())
 
 	allowed, denied := 0, 0
 	for i := 0; i < int(duration/time.Millisecond); i++ {

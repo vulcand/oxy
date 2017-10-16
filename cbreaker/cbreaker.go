@@ -63,6 +63,8 @@ type CircuitBreaker struct {
 	next     http.Handler
 
 	clock timetools.TimeProvider
+
+	log *log.Logger
 }
 
 // New creates a new CircuitBreaker middleware
@@ -76,6 +78,7 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 		fallbackDuration: defaultFallbackDuration,
 		recoveryDuration: defaultRecoveryDuration,
 		fallback:         defaultFallback,
+		log:              log.StandardLogger(),
 	}
 
 	for _, s := range options {
@@ -99,9 +102,19 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 	return cb, nil
 }
 
+// Logger defines the logger the forwarder will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) CircuitBreakerOption {
+	return func(c *CircuitBreaker) error {
+		c.log = l
+		return nil
+	}
+}
+
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if log.GetLevel() >= log.DebugLevel {
-		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	if c.log.Level >= log.DebugLevel {
+		logEntry := c.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/circuitbreaker: competed ServeHttp on request")
 	}
@@ -126,7 +139,7 @@ func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Reque
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	log.Infof("%v is in error state", c)
+	c.log.Infof("%v is in error state", c)
 
 	switch c.state {
 	case stateStandby:
@@ -191,13 +204,13 @@ func (c *CircuitBreaker) exec(s SideEffect) {
 	}
 	go func() {
 		if err := s.Exec(); err != nil {
-			log.Errorf("%v side effect failure: %v", c, err)
+			c.log.Errorf("%v side effect failure: %v", c, err)
 		}
 	}()
 }
 
 func (c *CircuitBreaker) setState(new cbState, until time.Time) {
-	log.Infof("%v setting state to %v, until %v", c, new, until)
+	c.log.Infof("%v setting state to %v, until %v", c, new, until)
 	c.state = new
 	c.until = until
 	switch new {
@@ -230,7 +243,7 @@ func (c *CircuitBreaker) checkAndSet() {
 	c.lastCheck = c.clock.UtcNow().Add(c.checkPeriod)
 
 	if c.state == stateTripped {
-		log.Infof("%v skip set tripped", c)
+		c.log.Infof("%v skip set tripped", c)
 		return
 	}
 
@@ -244,7 +257,7 @@ func (c *CircuitBreaker) checkAndSet() {
 
 func (c *CircuitBreaker) setRecovering() {
 	c.setState(stateRecovering, c.clock.UtcNow().Add(c.recoveryDuration))
-	c.rc = newRatioController(c.clock, c.recoveryDuration)
+	c.rc = newRatioController(c.clock, c.recoveryDuration, c.log)
 }
 
 // CircuitBreakerOption represents an option you can pass to New.
