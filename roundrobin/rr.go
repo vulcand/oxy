@@ -86,7 +86,7 @@ func (r *RoundRobin) Next() http.Handler {
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if log.Level >= log.DebugLevel {
+	if r.log.Level >= log.DebugLevel {
 		logEntry := r.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/roundrobin/rr: competed ServeHttp on request")
