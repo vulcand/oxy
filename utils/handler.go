@@ -13,6 +13,7 @@ type ErrorHandler interface {
 var DefaultHandler ErrorHandler = &StdHandler{}
 
 type StdHandler struct {
+	log *log.Logger
 }
 
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
