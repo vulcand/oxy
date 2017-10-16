@@ -201,7 +201,7 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if s.log.Level >= log.DebugLevel {
 		logEntry := s.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/buffer: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/buffer: competed ServeHttp on request")
+		defer logEntry.Debug("vulcand/oxy/buffer: completed ServeHttp on request")
 	}
 
 	if err := s.checkLimit(req); err != nil {
