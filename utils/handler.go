@@ -4,21 +4,15 @@ import (
 	"io"
 	"net"
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type ErrorHandler interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request, err error)
 }
 
-var DefaultHandler ErrorHandler = &StdHandler{
-	log: log.StandardLogger(),
-}
+var DefaultHandler ErrorHandler = &StdHandler{}
 
-type StdHandler struct {
-	log *log.Logger
-}
+type StdHandler struct{}
 
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	statusCode := http.StatusInternalServerError
