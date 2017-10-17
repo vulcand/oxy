@@ -77,7 +77,7 @@ func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 	return strm, nil
 }
 
-// Logger defines the logger the forwarder will use.
+// Logger defines the logger the streamer will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func Logger(l *log.Logger) optSetter {

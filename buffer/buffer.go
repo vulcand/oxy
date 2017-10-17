@@ -103,7 +103,7 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 	return strm, nil
 }
 
-// Logger defines the logger the forwarder will use.
+// Logger defines the logger the buffer will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func Logger(l *log.Logger) optSetter {

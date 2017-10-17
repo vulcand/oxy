@@ -127,7 +127,7 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 	return rb, nil
 }
 
-// Logger defines the logger the forwarder will use.
+// Logger defines the logger the rebalancer will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func RebalancerLogger(l *log.Logger) RebalancerOption {

@@ -102,7 +102,7 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 	return cb, nil
 }
 
-// Logger defines the logger the forwarder will use.
+// Logger defines the logger the circuit breaker will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func Logger(l *log.Logger) CircuitBreakerOption {

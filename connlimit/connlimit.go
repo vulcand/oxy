@@ -50,7 +50,7 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 	return cl, nil
 }
 
-// Logger defines the logger the forwarder will use.
+// Logger defines the logger the connection limiter will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func Logger(l *log.Logger) ConnLimitOption {

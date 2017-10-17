@@ -71,7 +71,7 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 	return rr, nil
 }
 
-// Logger defines the logger the forwarder will use.
+// Logger defines the logger the round robin load balancer will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func RoundRobinLogger(l *log.Logger) LBOption {
