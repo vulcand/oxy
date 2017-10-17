@@ -327,11 +327,10 @@ func (s *STSuite) TestPreservesTLS(c *C) {
 }
 
 func BenchmarkLoggingDebugLevel(b *testing.B) {
-	l := log.StandardLogger()
-	streamer, _ := New(noOpNextHttpHandler{}, Logger(l))
+	streamer, _ := New(noOpNextHttpHandler{})
 
-	l.Level = log.DebugLevel
-	l.Out = &noOpIoWriter{} //Make sure we don't emit a bunch of stuff on screen
+	log.SetLevel(log.DebugLevel)
+	log.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
 		heavyServeHttpLoad(streamer)
@@ -339,11 +338,10 @@ func BenchmarkLoggingDebugLevel(b *testing.B) {
 }
 
 func BenchmarkLoggingInfoLevel(b *testing.B) {
-	l := log.StandardLogger()
-	streamer, _ := New(noOpNextHttpHandler{}, Logger(l))
+	streamer, _ := New(noOpNextHttpHandler{})
 
-	l.Level = log.InfoLevel
-	l.Out = &noOpIoWriter{} //Make sure we don't emit a bunch of stuff on screen
+	log.SetLevel(log.InfoLevel)
+	log.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
 		heavyServeHttpLoad(streamer)
