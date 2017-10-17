@@ -16,9 +16,22 @@ import (
 // from the ServeHTTP. It can be safely passed to ServeHTTP handler,
 // wrapping the real response writer.
 type ProxyWriter struct {
-	W      http.ResponseWriter
+	w      http.ResponseWriter
 	Code   int
 	Length int64
+
+	log *log.Logger
+}
+
+func NewProxyWriter(w http.ResponseWriter) *ProxyWriter {
+	return NewProxyWriterWithLogger(w, log.StandardLogger())
+}
+
+func NewProxyWriterWithLogger(w http.ResponseWriter, l *log.Logger) *ProxyWriter {
+	return &ProxyWriter{
+		w:   w,
+		log: l,
+	}
 }
 
 func (p *ProxyWriter) StatusCode() int {
@@ -31,39 +44,39 @@ func (p *ProxyWriter) StatusCode() int {
 }
 
 func (p *ProxyWriter) Header() http.Header {
-	return p.W.Header()
+	return p.w.Header()
 }
 
 func (p *ProxyWriter) Write(buf []byte) (int, error) {
 	p.Length = p.Length + int64(len(buf))
-	return p.W.Write(buf)
+	return p.w.Write(buf)
 }
 
 func (p *ProxyWriter) WriteHeader(code int) {
 	p.Code = code
-	p.W.WriteHeader(code)
+	p.w.WriteHeader(code)
 }
 
 func (p *ProxyWriter) Flush() {
-	if f, ok := p.W.(http.Flusher); ok {
+	if f, ok := p.w.(http.Flusher); ok {
 		f.Flush()
 	}
 }
 
 func (p *ProxyWriter) CloseNotify() <-chan bool {
-	if cn, ok := p.W.(http.CloseNotifier); ok {
+	if cn, ok := p.w.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
-	log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(p.W))
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(p.w))
 	return make(<-chan bool)
 }
 
 func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hi, ok := p.W.(http.Hijacker); ok {
+	if hi, ok := p.w.(http.Hijacker); ok {
 		return hi.Hijack()
 	}
-	log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.W))
-	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.W))
+	log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.w))
+	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.w))
 }
 
 func NewBufferWriter(w io.WriteCloser) *BufferWriter {

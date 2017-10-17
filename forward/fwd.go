@@ -403,9 +403,7 @@ func (f *httpForwarder) serveStreamingHTTP(w http.ResponseWriter, inReq *http.Re
 
 	outReq := f.copyRequest(inReq, inReq.URL)
 
-	pw := &utils.ProxyWriter{
-		W: w,
-	}
+	pw := utils.NewProxyWriterWithLogger(w, f.log)
 	start := time.Now().UTC()
 
 	reqUrl, err := url.ParseRequestURI(outReq.RequestURI)

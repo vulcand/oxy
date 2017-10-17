@@ -151,7 +151,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: competed ServeHttp on request")
 	}
 
-	pw := &utils.ProxyWriter{W: w}
+	pw := utils.NewProxyWriterWithLogger(w, rb.log)
 	start := rb.clock.UtcNow()
 	url, err := rb.next.NextServer()
 	if err != nil {

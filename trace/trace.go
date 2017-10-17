@@ -85,7 +85,7 @@ func Logger(l *log.Logger) Option {
 
 func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
-	pw := &utils.ProxyWriter{W: w}
+	pw := utils.NewProxyWriterWithLogger(w, t.log)
 	t.next.ServeHTTP(pw, req)
 
 	l := t.newRecord(req, pw, time.Since(start))
