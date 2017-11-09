@@ -50,10 +50,10 @@ type RoundRobin struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 	// Current index (starts from -1)
-	index         int
-	servers       []*server
-	currentWeight int
-	ss            *StickySession
+	index                  int
+	servers                []*server
+	currentWeight          int
+	ss                     *StickySession
 	requestRewriteListener RequestRewriteListener
 }
 
