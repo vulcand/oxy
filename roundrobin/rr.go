@@ -94,9 +94,9 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		cookie_url, present, err := r.ss.GetBackend(&newReq, r.Servers())
 
 		if err != nil {
-			r.errHandler.ServeHTTP(w, req, err)
-			return
+			log.Infof("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
 		}
+
 		if present {
 			newReq.URL = cookie_url
 			stuck = true
