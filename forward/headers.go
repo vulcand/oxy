@@ -4,7 +4,9 @@ const (
 	XForwardedProto    = "X-Forwarded-Proto"
 	XForwardedFor      = "X-Forwarded-For"
 	XForwardedHost     = "X-Forwarded-Host"
+	XForwardedPort     = "X-Forwarded-Port"
 	XForwardedServer   = "X-Forwarded-Server"
+	XRealIp            = "X-Real-Ip"
 	Connection         = "Connection"
 	KeepAlive          = "Keep-Alive"
 	ProxyAuthenticate  = "Proxy-Authenticate"
@@ -28,4 +30,13 @@ var HopHeaders = []string{
 	Trailers,
 	TransferEncoding,
 	Upgrade,
+}
+
+var XHeaders = []string{
+	XForwardedProto,
+	XForwardedFor,
+	XForwardedHost,
+	XForwardedPort,
+	XForwardedServer,
+	XRealIp,
 }
