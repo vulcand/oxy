@@ -7,16 +7,16 @@ import (
 )
 
 type StickySession struct {
-	cookiename string
+	cookieName string
 }
 
-func NewStickySession(c string) *StickySession {
-	return &StickySession{c}
+func NewStickySession(cookieName string) *StickySession {
+	return &StickySession{cookieName}
 }
 
 // GetBackend returns the backend URL stored in the sticky cookie, iff the backend is still in the valid list of servers.
 func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.URL, bool, error) {
-	cookie, err := req.Cookie(s.cookiename)
+	cookie, err := req.Cookie(s.cookieName)
 	switch err {
 	case nil:
 	case http.ErrNoCookie:
@@ -38,9 +38,8 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 }
 
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
-	cookie := &http.Cookie{Name: s.cookiename, Value: backend.String(), Path: "/"}
+	cookie := &http.Cookie{Name: s.cookieName, Value: backend.String(), Path: "/"}
 	http.SetCookie(*w, cookie)
-	return
 }
 
 func (s *StickySession) isBackendAlive(needle *url.URL, haystack []*url.URL) bool {

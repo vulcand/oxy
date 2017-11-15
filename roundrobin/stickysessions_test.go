@@ -12,13 +12,13 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func TestSS(t *testing.T) { TestingT(t) }
+func TestStickySession(t *testing.T) { TestingT(t) }
 
-type SSSuite struct{}
+type StickySessionSuite struct{}
 
-var _ = Suite(&SSSuite{})
+var _ = Suite(&StickySessionSuite{})
 
-func (s *SSSuite) TestBasic(c *C) {
+func (s *StickySessionSuite) TestBasic(c *C) {
 	a := testutils.NewResponder("a")
 	b := testutils.NewResponder("b")
 
@@ -34,13 +34,15 @@ func (s *SSSuite) TestBasic(c *C) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	c.Assert(err, IsNil)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL))
-	lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	c.Assert(err, IsNil)
+	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	client := &http.Client{}
+	client := http.DefaultClient
 
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
@@ -58,7 +60,7 @@ func (s *SSSuite) TestBasic(c *C) {
 	}
 }
 
-func (s *SSSuite) TestStickCookie(c *C) {
+func (s *StickySessionSuite) TestStickCookie(c *C) {
 	a := testutils.NewResponder("a")
 	b := testutils.NewResponder("b")
 
@@ -74,8 +76,10 @@ func (s *SSSuite) TestStickCookie(c *C) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	c.Assert(err, IsNil)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL))
-	lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	c.Assert(err, IsNil)
+	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
@@ -88,7 +92,7 @@ func (s *SSSuite) TestStickCookie(c *C) {
 	c.Assert(cookie.Value, Equals, a.URL)
 }
 
-func (s *SSSuite) TestRemoveRespondingServer(c *C) {
+func (s *StickySessionSuite) TestRemoveRespondingServer(c *C) {
 	a := testutils.NewResponder("a")
 	b := testutils.NewResponder("b")
 
@@ -104,45 +108,49 @@ func (s *SSSuite) TestRemoveRespondingServer(c *C) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	c.Assert(err, IsNil)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL))
-	lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	c.Assert(err, IsNil)
+	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	http_cli := &http.Client{}
+	client := http.DefaultClient
 
 	for i := 0; i < 10; i++ {
-		req, err := http.NewRequest("GET", proxy.URL, nil)
-		c.Assert(err, IsNil)
+		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
+		c.Assert(errReq, IsNil)
 		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
 
-		resp, err := http_cli.Do(req)
-		c.Assert(err, IsNil)
+		resp, errReq := client.Do(req)
+		c.Assert(errReq, IsNil)
 
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, errReq := ioutil.ReadAll(resp.Body)
 
-		c.Assert(err, IsNil)
+		c.Assert(errReq, IsNil)
 		c.Assert(string(body), Equals, "a")
 	}
 
-	lb.RemoveServer(testutils.ParseURI(a.URL))
+	err = lb.RemoveServer(testutils.ParseURI(a.URL))
+	c.Assert(err, IsNil)
 
 	// Now, use the organic cookie response in our next requests.
-	req, err := http.NewRequest("GET", proxy.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
+	c.Assert(err, IsNil)
 	req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
-	resp, err := http_cli.Do(req)
+	resp, err := client.Do(req)
 	c.Assert(err, IsNil)
 
 	c.Assert(resp.Cookies()[0].Name, Equals, "test")
 	c.Assert(resp.Cookies()[0].Value, Equals, b.URL)
 
 	for i := 0; i < 10; i++ {
-		req, err := http.NewRequest("GET", proxy.URL, nil)
+		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		c.Assert(err, IsNil)
 
-		resp, err := http_cli.Do(req)
+		resp, err := client.Do(req)
 		c.Assert(err, IsNil)
 
 		defer resp.Body.Close()
@@ -153,7 +161,7 @@ func (s *SSSuite) TestRemoveRespondingServer(c *C) {
 	}
 }
 
-func (s *SSSuite) TestRemoveAllServers(c *C) {
+func (s *StickySessionSuite) TestRemoveAllServers(c *C) {
 	a := testutils.NewResponder("a")
 	b := testutils.NewResponder("b")
 
@@ -169,41 +177,46 @@ func (s *SSSuite) TestRemoveAllServers(c *C) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	c.Assert(err, IsNil)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL))
-	lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	c.Assert(err, IsNil)
+	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	http_cli := &http.Client{}
+	client := http.DefaultClient
 
 	for i := 0; i < 10; i++ {
-		req, err := http.NewRequest("GET", proxy.URL, nil)
-		c.Assert(err, IsNil)
+		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
+		c.Assert(errReq, IsNil)
 		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
 
-		resp, err := http_cli.Do(req)
-		c.Assert(err, IsNil)
+		resp, errReq := client.Do(req)
+		c.Assert(errReq, IsNil)
 
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, errReq := ioutil.ReadAll(resp.Body)
 
-		c.Assert(err, IsNil)
+		c.Assert(errReq, IsNil)
 		c.Assert(string(body), Equals, "a")
 	}
 
-	lb.RemoveServer(testutils.ParseURI(a.URL))
-	lb.RemoveServer(testutils.ParseURI(b.URL))
+	err = lb.RemoveServer(testutils.ParseURI(a.URL))
+	c.Assert(err, IsNil)
+	err = lb.RemoveServer(testutils.ParseURI(b.URL))
+	c.Assert(err, IsNil)
 
 	// Now, use the organic cookie response in our next requests.
-	req, err := http.NewRequest("GET", proxy.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
+	c.Assert(err, IsNil)
 	req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
-	resp, err := http_cli.Do(req)
+	resp, err := client.Do(req)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusInternalServerError)
 }
 
-func (s *SSSuite) TestBadCookieVal(c *C) {
+func (s *StickySessionSuite) TestBadCookieVal(c *C) {
 	a := testutils.NewResponder("a")
 
 	defer a.Close()
@@ -217,35 +230,33 @@ func (s *SSSuite) TestBadCookieVal(c *C) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	c.Assert(err, IsNil)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	c.Assert(err, IsNil)
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	http_cli := &http.Client{}
+	client := http.DefaultClient
 
-	req, err := http.NewRequest("GET", proxy.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 	c.Assert(err, IsNil)
 	req.AddCookie(&http.Cookie{Name: "test", Value: "This is a patently invalid url!  You can't parse it!  :-)"})
 
-	resp, err := http_cli.Do(req)
+	resp, err := client.Do(req)
 	c.Assert(err, IsNil)
 
 	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, IsNil)
 	c.Assert(string(body), Equals, "a")
 
 	// Now, cycle off the good server to cause an error
-	lb.RemoveServer(testutils.ParseURI(a.URL))
-
-	http_cli = &http.Client{}
-
-	req, err = http.NewRequest("GET", proxy.URL, nil)
-	c.Assert(err, IsNil)
-	req.AddCookie(&http.Cookie{Name: "test", Value: "This is a patently invalid url!  You can't parse it!  :-)"})
-
-	resp, err = http_cli.Do(req)
+	err = lb.RemoveServer(testutils.ParseURI(a.URL))
 	c.Assert(err, IsNil)
 
-	body, err = ioutil.ReadAll(resp.Body)
+	resp, err = client.Do(req)
+	c.Assert(err, IsNil)
+
+	_, err = ioutil.ReadAll(resp.Body)
+	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusInternalServerError)
 }
