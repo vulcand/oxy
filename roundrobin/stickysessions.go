@@ -25,21 +25,21 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 		return nil, false, err
 	}
 
-	s_url, err := url.Parse(cookie.Value)
+	serverURL, err := url.Parse(cookie.Value)
 	if err != nil {
 		return nil, false, err
 	}
 
-	if s.isBackendAlive(s_url, servers) {
-		return s_url, true, nil
+	if s.isBackendAlive(serverURL, servers) {
+		return serverURL, true, nil
 	} else {
 		return nil, false, nil
 	}
 }
 
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
-	c := &http.Cookie{Name: s.cookiename, Value: backend.String(), Path: "/"}
-	http.SetCookie(*w, c)
+	cookie := &http.Cookie{Name: s.cookiename, Value: backend.String(), Path: "/"}
+	http.SetCookie(*w, cookie)
 	return
 }
 
@@ -48,8 +48,8 @@ func (s *StickySession) isBackendAlive(needle *url.URL, haystack []*url.URL) boo
 		return false
 	}
 
-	for _, s := range haystack {
-		if sameURL(needle, s) {
+	for _, serverURL := range haystack {
+		if sameURL(needle, serverURL) {
 			return true
 		}
 	}

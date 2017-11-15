@@ -30,9 +30,9 @@ func ErrorHandler(h utils.ErrorHandler) LBOption {
 	}
 }
 
-func EnableStickySession(ss *StickySession) LBOption {
+func EnableStickySession(stickySession *StickySession) LBOption {
 	return func(s *RoundRobin) error {
-		s.ss = ss
+		s.stickySession = stickySession
 		return nil
 	}
 }
@@ -53,17 +53,17 @@ type RoundRobin struct {
 	index                  int
 	servers                []*server
 	currentWeight          int
-	ss                     *StickySession
+	stickySession          *StickySession
 	requestRewriteListener RequestRewriteListener
 }
 
 func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 	rr := &RoundRobin{
-		next:    next,
-		index:   -1,
-		mutex:   &sync.Mutex{},
-		servers: []*server{},
-		ss:      nil,
+		next:          next,
+		index:         -1,
+		mutex:         &sync.Mutex{},
+		servers:       []*server{},
+		stickySession: nil,
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -90,15 +90,15 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
 	stuck := false
-	if r.ss != nil {
-		cookie_url, present, err := r.ss.GetBackend(&newReq, r.Servers())
+	if r.stickySession != nil {
+		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
 
 		if err != nil {
 			log.Infof("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
 		}
 
 		if present {
-			newReq.URL = cookie_url
+			newReq.URL = cookieURL
 			stuck = true
 		}
 	}
@@ -110,8 +110,8 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if r.ss != nil {
-			r.ss.StickBackend(url, &w)
+		if r.stickySession != nil {
+			r.stickySession.StickBackend(url, &w)
 		}
 		newReq.URL = url
 	}

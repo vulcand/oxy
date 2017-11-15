@@ -40,14 +40,14 @@ func (s *SSSuite) TestBasic(c *C) {
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	http_cli := &http.Client{}
+	client := &http.Client{}
 
 	for i := 0; i < 10; i++ {
-		req, err := http.NewRequest("GET", proxy.URL, nil)
+		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		c.Assert(err, IsNil)
 		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
 
-		resp, err := http_cli.Do(req)
+		resp, err := client.Do(req)
 		c.Assert(err, IsNil)
 
 		defer resp.Body.Close()
@@ -83,9 +83,9 @@ func (s *SSSuite) TestStickCookie(c *C) {
 	resp, err := http.Get(proxy.URL)
 	c.Assert(err, IsNil)
 
-	c_out := resp.Cookies()[0]
-	c.Assert(c_out.Name, Equals, "test")
-	c.Assert(c_out.Value, Equals, a.URL)
+	cookie := resp.Cookies()[0]
+	c.Assert(cookie.Name, Equals, "test")
+	c.Assert(cookie.Value, Equals, a.URL)
 }
 
 func (s *SSSuite) TestRemoveRespondingServer(c *C) {
