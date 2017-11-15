@@ -96,6 +96,13 @@ func StateListener(stateListener UrlForwardingStateListener) optSetter {
 	}
 }
 
+func ResponseModifier(responseModifier func(*http.Response) error) optSetter {
+	return func(f *Forwarder) error {
+		f.httpForwarder.modifyResponse = responseModifier
+		return nil
+	}
+}
+
 func StreamingFlushInterval(flushInterval time.Duration) optSetter {
 	return func(f *Forwarder) error {
 		f.httpForwarder.flushInterval = flushInterval
@@ -137,10 +144,11 @@ type handlerContext struct {
 // httpForwarder is a handler that can reverse proxy
 // HTTP traffic
 type httpForwarder struct {
-	roundTripper  http.RoundTripper
-	rewriter      ReqRewriter
-	passHost      bool
-	flushInterval time.Duration
+	roundTripper   http.RoundTripper
+	rewriter       ReqRewriter
+	passHost       bool
+	flushInterval  time.Duration
+	modifyResponse func(*http.Response) error
 
 	tlsClientConfig *tls.Config
 
@@ -386,8 +394,9 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ct
 		Director: func(req *http.Request) {
 			f.modifyRequest(req, inReq.URL)
 		},
-		Transport:     f.roundTripper,
-		FlushInterval: f.flushInterval,
+		Transport:      f.roundTripper,
+		FlushInterval:  f.flushInterval,
+		ModifyResponse: f.modifyResponse,
 	}
 	revproxy.ServeHTTP(pw, outReq)
 
