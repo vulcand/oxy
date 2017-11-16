@@ -295,7 +295,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	dialer := websocket.DefaultDialer
 	if outReq.URL.Scheme == "wss" && f.tlsClientConfig != nil {
 		dialer.TLSClientConfig = f.tlsClientConfig.Clone()
-		//WebSocket is only in http/1.1
+		// WebSocket is only in http/1.1
 		dialer.TLSClientConfig.NextProtos = []string{"http/1.1"}
 	}
 	targetConn, resp, err := dialer.Dial(outReq.URL.String(), outReq.Header)
@@ -329,7 +329,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
-	//Only the targetConn choose to CheckOrigin or not
+	// Only the targetConn choose to CheckOrigin or not
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 		return true
 	}}
@@ -357,18 +357,18 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	go replicate(targetConn.UnderlyingConn(), underlyingConn.UnderlyingConn(), "backend", "client")
 
 	// Try to read the first message
-	t, msg, err := targetConn.ReadMessage()
+	msgType, msg, err := targetConn.ReadMessage()
 	if err != nil {
 		log.Errorf("vulcand/oxy/forward/websocket: Couldn't read first message : %v", err)
 	} else {
-		underlyingConn.WriteMessage(t, msg)
+		underlyingConn.WriteMessage(msgType, msg)
 	}
 
 	go replicate(underlyingConn.UnderlyingConn(), targetConn.UnderlyingConn(), "client", "backend")
 	<-errc
 }
 
-// copyRequest makes a copy of the specified request.
+// copyWebsocketRequest makes a copy of the specified request.
 func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Request) {
 	outReq = new(http.Request)
 	*outReq = *req // includes shallow copies of maps, but we handle this below
@@ -376,7 +376,7 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 	outReq.URL = utils.CopyURL(req.URL)
 	outReq.URL.Scheme = req.URL.Scheme
 
-	//sometimes backends might be registered as HTTP/HTTPS servers so translate URLs to websocket URLs.
+	// sometimes backends might be registered as HTTP/HTTPS servers so translate URLs to websocket URLs.
 	switch req.URL.Scheme {
 	case "https":
 		outReq.URL.Scheme = "wss"
@@ -396,7 +396,7 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 	outReq.URL.Host = req.URL.Host
 
 	outReq.Header = make(http.Header)
-	//gorilla websocket use this header to set the request.Host tested in checkSameOrigin
+	// gorilla websocket use this header to set the request.Host tested in checkSameOrigin
 	outReq.Header.Set("Host", outReq.Host)
 	utils.CopyHeaders(outReq.Header, req.Header)
 	utils.RemoveHeaders(outReq.Header, WebsocketDialHeaders...)

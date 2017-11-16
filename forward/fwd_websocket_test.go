@@ -287,7 +287,7 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 
 	req.Write(conn)
 
-	//First request works with 400
+	// First request works with 400
 	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, req)
 
