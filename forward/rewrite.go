@@ -57,7 +57,7 @@ func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 		}
 	}
 
-	if xfp := req.Header.Get(XForwardedPort); xfp == "" {
+	if xfPort := req.Header.Get(XForwardedPort); xfPort == "" {
 		req.Header.Set(XForwardedPort, forwardedPort(req))
 	}
 

@@ -156,7 +156,8 @@ type httpForwarder struct {
 }
 
 const (
-	StateConnected = iota
+	defaultFlushInterval = time.Duration(100) * time.Millisecond
+	StateConnected       = iota
 	StateDisconnected
 )
 
@@ -177,7 +178,7 @@ func New(setters ...optSetter) (*Forwarder, error) {
 	if !f.stream {
 		f.flushInterval = 0
 	} else if f.flushInterval == 0 {
-		f.flushInterval = time.Duration(100) * time.Millisecond
+		f.flushInterval = defaultFlushInterval
 	}
 
 	if f.httpForwarder.rewriter == nil {
@@ -228,16 +229,17 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (f *httpForwarder) modifyRequest(outReq *http.Request, u *url.URL) {
+// Modify the request to handle the target URL
+func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 	outReq.URL = utils.CopyURL(outReq.URL)
-	outReq.URL.Scheme = u.Scheme
-	outReq.URL.Host = u.Host
+	outReq.URL.Scheme = target.Scheme
+	outReq.URL.Host = target.Host
 	outReq.URL.Opaque = outReq.RequestURI
 	// raw query is already included in RequestURI, so ignore it to avoid dupes
 	outReq.URL.RawQuery = ""
 	// Do not pass client Host header unless optsetter PassHostHeader is set.
 	if !f.passHost {
-		outReq.Host = u.Host
+		outReq.Host = target.Host
 	}
 
 	outReq.Proto = "HTTP/1.1"
