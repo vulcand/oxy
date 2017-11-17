@@ -89,15 +89,11 @@ func (s *RRSuite) TestConcurrentRecords(c *C) {
 	rr, _ := NewRTMetrics(RTClock(s.tm))
 
 	for code := 0; code < 100; code++ {
-		l := sync.RWMutex{}
-		l.Lock()
 		for numRecords := 0; numRecords < 10; numRecords++ {
-			go func() {
-				l.RLock()
-				rr.recordStatusCode(code)
-			}()
+			go func(statusCode int) {
+				rr.recordStatusCode(statusCode)
+			}(code)
 		}
-		l.Unlock()
 	}
 }
 

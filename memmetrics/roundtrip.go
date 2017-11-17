@@ -258,13 +258,13 @@ func (m *RTMetrics) recordLatency(d time.Duration) error {
 }
 
 func (m *RTMetrics) recordStatusCode(statusCode int) error {
-	m.statusCodesLock.RLock()
+	m.statusCodesLock.Lock()
 	if c, ok := m.statusCodes[statusCode]; ok {
 		c.Inc(1)
-		m.statusCodesLock.RUnlock()
+		m.statusCodesLock.Unlock()
 		return nil
 	}
-	m.statusCodesLock.RUnlock()
+	m.statusCodesLock.Unlock()
 
 	m.statusCodesLock.Lock()
 	defer m.statusCodesLock.Unlock()
