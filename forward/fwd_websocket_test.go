@@ -190,7 +190,7 @@ func (s *FwdSuite) TestWebSocketRequestWithEncodedChar(c *C) {
 			return
 		}
 		defer conn.Close()
-		c.Assert(r.URL.Path, Equals, "/%3A%2F%2F")
+		c.Assert(r.URL.EscapedPath(), Equals, "/%3A%2F%2F")
 		for {
 			mt, message, err := conn.ReadMessage()
 			if err != nil {

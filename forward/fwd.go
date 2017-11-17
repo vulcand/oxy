@@ -228,14 +228,35 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (f *httpForwarder) getUrlFromRequest(req *http.Request) *url.URL {
+	// If the Request was created by Go via a real HTTP request,  RequestURI will
+	// contain the original query string. If the Request was created in code, RequestURI
+	// will be empty, and we will use the URL object instead
+	u := req.URL
+	if req.RequestURI != "" {
+		parsedURL, err := url.ParseRequestURI(req.RequestURI)
+		if err == nil {
+			u = parsedURL
+		} else {
+			f.log.Warnf("vulcand/oxy/forward: error when parsing RequestURI: %s", err)
+		}
+	}
+	return u
+}
+
 // Modify the request to handle the target URL
 func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 	outReq.URL = utils.CopyURL(outReq.URL)
 	outReq.URL.Scheme = target.Scheme
 	outReq.URL.Host = target.Host
-	outReq.URL.Opaque = outReq.RequestURI
-	// raw query is already included in RequestURI, so ignore it to avoid dupes
-	outReq.URL.RawQuery = ""
+
+	u := f.getUrlFromRequest(outReq)
+
+	outReq.URL.Path = u.Path
+	outReq.URL.RawPath = u.RawPath
+	outReq.URL.RawQuery = u.RawQuery
+	outReq.RequestURI = "" // Outgoing request should not have RequestURI
+
 	// Do not pass client Host header unless optsetter PassHostHeader is set.
 	if !f.passHost {
 		outReq.Host = target.Host
@@ -352,14 +373,12 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 		outReq.URL.Scheme = "ws"
 	}
 
-	if requestURI, err := url.ParseRequestURI(outReq.RequestURI); err == nil {
-		if requestURI.RawPath != "" {
-			outReq.URL.Path = requestURI.RawPath
-		} else {
-			outReq.URL.Path = requestURI.Path
-		}
-		outReq.URL.RawQuery = requestURI.RawQuery
-	}
+	u := f.getUrlFromRequest(outReq)
+
+	outReq.URL.Path = u.Path
+	outReq.URL.RawPath = u.RawPath
+	outReq.URL.RawQuery = u.RawQuery
+	outReq.RequestURI = "" // Outgoing request should not have RequestURI
 
 	outReq.URL.Host = req.URL.Host
 
