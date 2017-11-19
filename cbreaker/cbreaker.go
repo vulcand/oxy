@@ -1,4 +1,4 @@
-// package cbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
+// Package cbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
 //
 // Vulcan circuit breaker watches the error condtion to match
 // after which it activates the fallback scenario, e.g. returns the response code

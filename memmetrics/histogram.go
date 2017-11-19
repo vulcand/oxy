@@ -179,8 +179,8 @@ func (r *RollingHDRHistogram) Merged() (*HDRHistogram, error) {
 		return m, err
 	}
 	for _, h := range r.buckets {
-		if m.Merge(h); err != nil {
-			return nil, err
+		if errMerge := m.Merge(h); errMerge != nil {
+			return nil, errMerge
 		}
 	}
 	return m, nil

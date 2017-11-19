@@ -135,7 +135,7 @@ func (m *RTMetrics) CounterWindowSize() time.Duration {
 }
 
 // GetNetworkErrorRatio calculates the amont of network errors such as time outs and dropped connection
-// that occured in the given time window compared to the total requests count.
+// that occurred in the given time window compared to the total requests count.
 func (m *RTMetrics) NetworkErrorRatio() float64 {
 	if m.total.Count() == 0 {
 		return 0
@@ -244,11 +244,6 @@ func (m *RTMetrics) Reset() {
 	m.total.Reset()
 	m.netErrors.Reset()
 	m.statusCodes = make(map[int]*RollingCounter)
-}
-
-func (m *RTMetrics) recordNetError() error {
-	m.netErrors.Inc(1)
-	return nil
 }
 
 func (m *RTMetrics) recordLatency(d time.Duration) error {
