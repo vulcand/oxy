@@ -7,6 +7,8 @@ go:
 
 sudo: false
 
+go_import_path: github.com/vulcand/oxy
+
 notifications:
   email:
     on_success: never
