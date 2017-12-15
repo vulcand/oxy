@@ -274,7 +274,7 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 	defer proxy.Close()
 
 	proxyAddr := proxy.Listener.Addr().String()
-	conn, err := net.DialTimeout("tcp", proxyAddr, dialTimeout)
+	conn, err := net.DialTimeout("tcp", proxyAddr, time.Second*5)
 
 	c.Assert(err, IsNil)
 	defer conn.Close()

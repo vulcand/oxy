@@ -92,6 +92,30 @@ func (s *FwdSuite) TestCustomErrHandler(c *C) {
 	c.Assert(string(body), Equals, http.StatusText(http.StatusTeapot))
 }
 
+func (s *FwdSuite) TestResponseModifier(c *C) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	f, err := New(ResponseModifier(func(resp *http.Response) error {
+		resp.Header.Add("X-Test", "CUSTOM")
+		return nil
+	}))
+	c.Assert(err, IsNil)
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	re, _, err := testutils.Get(proxy.URL)
+	c.Assert(err, IsNil)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	c.Assert(re.Header.Get("X-Test"), Equals, "CUSTOM")
+}
+
 // Makes sure hop-by-hop headers are removed
 func (s *FwdSuite) TestForwardedHeaders(c *C) {
 	var outHeaders http.Header
