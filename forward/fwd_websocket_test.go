@@ -290,16 +290,17 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 	// First request works with 400
 	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, req)
-
+	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, 400)
 
 	req, err = http.NewRequest(http.MethodGet, "ws://127.0.0.1/ws2", nil)
+	c.Assert(err, IsNil)
 	req.Header.Add("upgrade", "websocket")
 	req.Header.Add("Connection", "upgrade")
 	req.Write(conn)
 
 	br = bufio.NewReader(conn)
-	resp, err = http.ReadResponse(br, req)
+	_, err = http.ReadResponse(br, req)
 	c.Assert(err, Equals, io.ErrUnexpectedEOF)
 }
 

@@ -104,8 +104,9 @@ func (s *TraceSuite) TestTraceTLS(c *C) {
 	conn, err := tls.Dial("tcp", u.Host, config)
 	c.Assert(err, IsNil)
 
-	fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
+	fmt.Fprint(conn, "GET / HTTP/1.0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
+	c.Assert(err, IsNil)
 	c.Assert(status, Equals, "HTTP/1.0 200 OK\r\n")
 	state := conn.ConnectionState()
 	conn.Close()

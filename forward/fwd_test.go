@@ -243,6 +243,7 @@ func (s *FwdSuite) TestEscapedURL(c *C) {
 	path := "/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b"
 
 	request, err := http.NewRequest("GET", proxy.URL, nil)
+	c.Assert(err, IsNil)
 	parsed := testutils.ParseURI(proxy.URL)
 	parsed.Opaque = path
 	request.URL = parsed

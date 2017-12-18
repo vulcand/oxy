@@ -90,7 +90,7 @@ func (s *CBSuite) TestFullCycle(c *C) {
 
 	cb.metrics = statsNetErrors(0.6)
 	s.advanceTime(defaultCheckPeriod + time.Millisecond)
-	re, _, err = testutils.Get(srv.URL)
+	_, _, err = testutils.Get(srv.URL)
 	c.Assert(err, IsNil)
 	c.Assert(cb.state, Equals, cbState(stateTripped))
 
@@ -139,7 +139,7 @@ func (s *CBSuite) TestRedirectWithPath(c *C) {
 	defer srv.Close()
 
 	cb.metrics = statsNetErrors(0.6)
-	re, _, err := testutils.Get(srv.URL)
+	_, _, err = testutils.Get(srv.URL)
 	c.Assert(err, IsNil)
 
 	client := &http.Client{
@@ -148,7 +148,7 @@ func (s *CBSuite) TestRedirectWithPath(c *C) {
 		},
 	}
 
-	re, err = client.Get(srv.URL + "/somePath")
+	re, err := client.Get(srv.URL + "/somePath")
 	c.Assert(err, NotNil)
 	c.Assert(re.StatusCode, Equals, http.StatusFound)
 	c.Assert(re.Header.Get("Location"), Equals, "http://localhost:6000/somePath")
@@ -166,7 +166,7 @@ func (s *CBSuite) TestRedirect(c *C) {
 	defer srv.Close()
 
 	cb.metrics = statsNetErrors(0.6)
-	re, _, err := testutils.Get(srv.URL)
+	_, _, err = testutils.Get(srv.URL)
 	c.Assert(err, IsNil)
 
 	client := &http.Client{
@@ -175,7 +175,7 @@ func (s *CBSuite) TestRedirect(c *C) {
 		},
 	}
 
-	re, err = client.Get(srv.URL + "/somePath")
+	re, err := client.Get(srv.URL + "/somePath")
 	c.Assert(err, NotNil)
 	c.Assert(re.StatusCode, Equals, http.StatusFound)
 	c.Assert(re.Header.Get("Location"), Equals, "http://localhost:5000")
@@ -193,13 +193,13 @@ func (s *CBSuite) TestTriggerDuringRecovery(c *C) {
 	defer srv.Close()
 
 	cb.metrics = statsNetErrors(0.6)
-	re, _, err := testutils.Get(srv.URL)
+	_, _, err = testutils.Get(srv.URL)
 	c.Assert(err, IsNil)
 	c.Assert(cb.state, Equals, cbState(stateTripped))
 
 	// We should be in recovering state by now
 	s.advanceTime(10*time.Second + time.Millisecond)
-	re, _, err = testutils.Get(srv.URL)
+	re, _, err := testutils.Get(srv.URL)
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusServiceUnavailable)
 	c.Assert(cb.state, Equals, cbState(stateRecovering))

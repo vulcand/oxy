@@ -38,8 +38,8 @@ func (s *ConnLimiterSuite) TestHitLimitAndRelease(c *C) {
 	defer srv.Close()
 
 	go func() {
-		re, _, err := testutils.Get(srv.URL, testutils.Header("Limit", "a"), testutils.Header("wait", "yes"))
-		c.Assert(err, IsNil)
+		re, _, errGet := testutils.Get(srv.URL, testutils.Header("Limit", "a"), testutils.Header("wait", "yes"))
+		c.Assert(errGet, IsNil)
 		c.Assert(re.StatusCode, Equals, http.StatusOK)
 	}()
 

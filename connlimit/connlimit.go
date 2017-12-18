@@ -78,7 +78,7 @@ func (cl *ConnLimiter) acquire(token string, amount int64) error {
 	}
 
 	cl.connections[token] += amount
-	cl.totalConnections += int64(amount)
+	cl.totalConnections += amount
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (cl *ConnLimiter) release(token string, amount int64) {
 	defer cl.mutex.Unlock()
 
 	cl.connections[token] -= amount
-	cl.totalConnections -= int64(amount)
+	cl.totalConnections -= amount
 
 	// Otherwise it would grow forever
 	if cl.connections[token] == 0 {

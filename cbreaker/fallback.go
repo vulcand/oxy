@@ -39,7 +39,10 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(f.r.Body)))
 	w.WriteHeader(f.r.StatusCode)
-	w.Write(f.r.Body)
+	_, err := w.Write(f.r.Body)
+	if err != nil {
+		log.Errorf("vulcand/oxy/fallback/response: failed to write response, err: %v", err)
+	}
 }
 
 type Redirect struct {
@@ -74,5 +77,8 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Location", location)
 	w.WriteHeader(http.StatusFound)
-	w.Write([]byte(http.StatusText(http.StatusFound)))
+	_, err := w.Write([]byte(http.StatusText(http.StatusFound)))
+	if err != nil {
+		log.Errorf("vulcand/oxy/fallback/redirect: failed to write response, err: %v", err)
+	}
 }

@@ -13,9 +13,10 @@ import (
 	"github.com/vulcand/oxy/forward"
 	"github.com/vulcand/oxy/testutils"
 
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	. "gopkg.in/check.v1"
-	"time"
 )
 
 func TestStream(t *testing.T) { TestingT(t) }
@@ -107,10 +108,11 @@ func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 
 	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
 	c.Assert(err, IsNil)
-	fmt.Fprintf(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+	fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	reader := bufio.NewReader(conn)
 
 	status, err := reader.ReadString('\n')
+	c.Assert(err, IsNil)
 
 	reader.ReadString('\n') //content type
 	reader.ReadString('\n') //Date

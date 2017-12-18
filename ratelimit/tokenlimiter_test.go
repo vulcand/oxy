@@ -96,7 +96,7 @@ func (s *LimiterSuite) TestFailure(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusInternalServerError)
 }
 
-// Make sure rates from different ips are controlled separatedly
+// Make sure rates from different ips are controlled separately
 func (s *LimiterSuite) TestIsolation(c *C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))

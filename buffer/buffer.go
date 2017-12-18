@@ -1,5 +1,5 @@
 /*
-package buffer provides http.Handler middleware that solves several problems when dealing with http requests:
+Package buffer provides http.Handler middleware that solves several problems when dealing with http requests:
 
 Reads the entire request and response into buffer, optionally buffering it to disk for large requests.
 Checks the limits for the requests and responses, rejecting in case if the limit was exceeded.
@@ -51,18 +51,18 @@ import (
 )
 
 const (
-	// Store up to 1MB in RAM
+	// DefaultMemBodyBytes Store up to 1MB in RAM
 	DefaultMemBodyBytes = 1048576
-	// No limit by default
+	// DefaultMaxBodyBytes No limit by default
 	DefaultMaxBodyBytes = -1
-	// Maximum retry attempts
+	// DefaultMaxRetryAttempts Maximum retry attempts
 	DefaultMaxRetryAttempts = 10
 )
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
 
 // Buffer is responsible for buffering requests and responses
-// It buffers large reqeuests and responses to disk,
+// It buffers large requests and responses to disk,
 type Buffer struct {
 	maxRequestBodyBytes int64
 	memRequestBodyBytes int64
@@ -212,7 +212,10 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// and we don'w want to mess with standard library
 	defer func() {
 		if body != nil {
-			body.Close()
+			errClose := body.Close()
+			if errClose != nil {
+				log.Errorf("vulcand/oxy/buffer: failed to close body, err: %v", errClose)
+			}
 		}
 	}()
 
@@ -303,7 +306,7 @@ func (s *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int
 	if body == nil {
 		o.Body = nil
 	} else {
-		o.Body = ioutil.NopCloser(body)
+		o.Body = ioutil.NopCloser(body.(io.Reader))
 	}
 	return &o
 }
