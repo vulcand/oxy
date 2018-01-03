@@ -223,10 +223,10 @@ func (s *FwdSuite) TestCustomLogger(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
-func (s *FwdSuite) TestEscapedURL(c *C) {
-	var outURL string
+func (s *FwdSuite) TestRouteForwarding(c *C) {
+	var outPath string
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		outURL = req.RequestURI
+		outPath = req.RequestURI
 		w.Write([]byte("hello"))
 	})
 	defer srv.Close()
@@ -240,17 +240,32 @@ func (s *FwdSuite) TestEscapedURL(c *C) {
 	})
 	defer proxy.Close()
 
-	path := "/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b"
+	tests := []struct {
+		Path  string
+		Query string
 
-	request, err := http.NewRequest("GET", proxy.URL, nil)
-	c.Assert(err, IsNil)
-	parsed := testutils.ParseURI(proxy.URL)
-	parsed.Opaque = path
-	request.URL = parsed
-	re, err := http.DefaultClient.Do(request)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
-	c.Assert(outURL, Equals, path)
+		ExpectedPath string
+	}{
+		{"/hello", "", "/hello"},
+		{"//hello", "", "//hello"},
+		{"///hello", "", "///hello"},
+		{"/hello", "abc=def&def=123", "/hello?abc=def&def=123"},
+		{"/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b", "", "/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b"},
+	}
+
+	for _, test := range tests {
+		proxyURL := proxy.URL + test.Path
+		if test.Query != "" {
+			proxyURL = proxyURL + "?" + test.Query
+		}
+		request, err := http.NewRequest("GET", proxyURL, nil)
+		c.Assert(err, IsNil)
+
+		re, err := http.DefaultClient.Do(request)
+		c.Assert(err, IsNil)
+		c.Assert(re.StatusCode, Equals, http.StatusOK)
+		c.Assert(outPath, Equals, test.ExpectedPath)
+	}
 }
 
 func (s *FwdSuite) TestForwardedProto(c *C) {
