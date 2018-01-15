@@ -2,16 +2,62 @@
 package roundrobin
 
 import (
+	"crypto/md5"
+	"fmt"
 	"net/http"
 	"net/url"
 )
 
-type StickySession struct {
-	cookieName string
+var (
+	defaultSalt       = "vulcand/oxy"
+	defaultObfuscator = &MD5Obfucator{salt: defaultSalt, data: make(map[string]string)}
+)
+
+type Obfuscator interface {
+	Obfuscate(string) string
+	Normalize(string) string
 }
 
-func NewStickySession(cookieName string) *StickySession {
-	return &StickySession{cookieName}
+// md5Table stores two mappings, one is plaintext to md5, the other is md5 to plaintext
+type MD5Obfucator struct {
+	salt string
+	data map[string]string
+}
+
+func MD5(text, salt string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(text+salt)))
+}
+
+func (m *MD5Obfucator) Obfuscate(text string) string {
+	v, ok := m.data[text]
+	if ok {
+		return v
+	}
+
+	md5_value := MD5(text, m.salt)
+	m.data[md5_value] = text
+	m.data[text] = md5_value
+	return md5_value
+}
+
+func (m *MD5Obfucator) Normalize(md5_value string) string {
+	v, ok := m.data[md5_value]
+	if !ok {
+		return ""
+	}
+	return v
+}
+
+type StickySession struct {
+	cookieName string
+	obfuscator Obfuscator
+}
+
+func NewStickySession(cookieName string, o Obfuscator) *StickySession {
+	if o == nil {
+		o = defaultObfuscator
+	}
+	return &StickySession{cookieName: cookieName, obfuscator: o}
 }
 
 // GetBackend returns the backend URL stored in the sticky cookie, iff the backend is still in the valid list of servers.
@@ -24,8 +70,8 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 	default:
 		return nil, false, err
 	}
-
-	serverURL, err := url.Parse(cookie.Value)
+	backend := s.obfuscator.Normalize(cookie.Value)
+	serverURL, err := url.Parse(backend)
 	if err != nil {
 		return nil, false, err
 	}
@@ -38,7 +84,8 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 }
 
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
-	cookie := &http.Cookie{Name: s.cookieName, Value: backend.String(), Path: "/"}
+	cookieValue := s.obfuscator.Obfuscate(backend.String())
+	cookie := &http.Cookie{Name: s.cookieName, Value: cookieValue, Path: "/"}
 	http.SetCookie(*w, cookie)
 }
 

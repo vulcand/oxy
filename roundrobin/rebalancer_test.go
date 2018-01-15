@@ -345,7 +345,7 @@ func (s *RBSuite) TestRebalancerStickySession(c *C) {
 	defer b.Close()
 	defer x.Close()
 
-	sticky := NewStickySession("test")
+	sticky := NewStickySession("test", nil)
 	c.Assert(sticky, NotNil)
 
 	fwd, err := forward.New()
@@ -367,7 +367,7 @@ func (s *RBSuite) TestRebalancerStickySession(c *C) {
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		c.Assert(err, IsNil)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: MD5(a.URL, defaultSalt)})
 
 		resp, err := http.DefaultClient.Do(req)
 		c.Assert(err, IsNil)

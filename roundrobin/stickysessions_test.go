@@ -28,7 +28,7 @@ func (s *StickySessionSuite) TestBasic(c *C) {
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
 
-	sticky := NewStickySession("test")
+	sticky := NewStickySession("test", nil)
 	c.Assert(sticky, NotNil)
 
 	lb, err := New(fwd, EnableStickySession(sticky))
@@ -47,7 +47,7 @@ func (s *StickySessionSuite) TestBasic(c *C) {
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		c.Assert(err, IsNil)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: MD5(a.URL, defaultSalt)})
 
 		resp, err := client.Do(req)
 		c.Assert(err, IsNil)
@@ -70,7 +70,7 @@ func (s *StickySessionSuite) TestStickCookie(c *C) {
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
 
-	sticky := NewStickySession("test")
+	sticky := NewStickySession("test", nil)
 	c.Assert(sticky, NotNil)
 
 	lb, err := New(fwd, EnableStickySession(sticky))
@@ -89,7 +89,7 @@ func (s *StickySessionSuite) TestStickCookie(c *C) {
 
 	cookie := resp.Cookies()[0]
 	c.Assert(cookie.Name, Equals, "test")
-	c.Assert(cookie.Value, Equals, a.URL)
+	c.Assert(cookie.Value, Equals, MD5(a.URL, defaultSalt))
 }
 
 func (s *StickySessionSuite) TestRemoveRespondingServer(c *C) {
@@ -102,7 +102,7 @@ func (s *StickySessionSuite) TestRemoveRespondingServer(c *C) {
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
 
-	sticky := NewStickySession("test")
+	sticky := NewStickySession("test", nil)
 	c.Assert(sticky, NotNil)
 
 	lb, err := New(fwd, EnableStickySession(sticky))
@@ -121,7 +121,7 @@ func (s *StickySessionSuite) TestRemoveRespondingServer(c *C) {
 	for i := 0; i < 10; i++ {
 		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		c.Assert(errReq, IsNil)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: MD5(a.URL, defaultSalt)})
 
 		resp, errReq := client.Do(req)
 		c.Assert(errReq, IsNil)
@@ -139,12 +139,12 @@ func (s *StickySessionSuite) TestRemoveRespondingServer(c *C) {
 	// Now, use the organic cookie response in our next requests.
 	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 	c.Assert(err, IsNil)
-	req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+	req.AddCookie(&http.Cookie{Name: "test", Value: MD5(a.URL, defaultSalt)})
 	resp, err := client.Do(req)
 	c.Assert(err, IsNil)
 
 	c.Assert(resp.Cookies()[0].Name, Equals, "test")
-	c.Assert(resp.Cookies()[0].Value, Equals, b.URL)
+	c.Assert(resp.Cookies()[0].Value, Equals, MD5(b.URL, defaultSalt))
 
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
@@ -171,7 +171,7 @@ func (s *StickySessionSuite) TestRemoveAllServers(c *C) {
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
 
-	sticky := NewStickySession("test")
+	sticky := NewStickySession("test", nil)
 	c.Assert(sticky, NotNil)
 
 	lb, err := New(fwd, EnableStickySession(sticky))
@@ -190,7 +190,7 @@ func (s *StickySessionSuite) TestRemoveAllServers(c *C) {
 	for i := 0; i < 10; i++ {
 		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		c.Assert(errReq, IsNil)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: MD5(a.URL, defaultSalt)})
 
 		resp, errReq := client.Do(req)
 		c.Assert(errReq, IsNil)
@@ -210,7 +210,7 @@ func (s *StickySessionSuite) TestRemoveAllServers(c *C) {
 	// Now, use the organic cookie response in our next requests.
 	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 	c.Assert(err, IsNil)
-	req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+	req.AddCookie(&http.Cookie{Name: "test", Value: MD5(a.URL, defaultSalt)})
 	resp, err := client.Do(req)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusInternalServerError)
@@ -224,7 +224,7 @@ func (s *StickySessionSuite) TestBadCookieVal(c *C) {
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
 
-	sticky := NewStickySession("test")
+	sticky := NewStickySession("test", nil)
 	c.Assert(sticky, NotNil)
 
 	lb, err := New(fwd, EnableStickySession(sticky))
