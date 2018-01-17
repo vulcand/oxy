@@ -274,7 +274,7 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 	defer proxy.Close()
 
 	proxyAddr := proxy.Listener.Addr().String()
-	conn, err := net.DialTimeout("tcp", proxyAddr, time.Second*5)
+	conn, err := net.DialTimeout("tcp", proxyAddr, dialTimeout)
 
 	c.Assert(err, IsNil)
 	defer conn.Close()
@@ -291,6 +291,7 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, req)
 	c.Assert(err, IsNil)
+
 	c.Assert(resp.StatusCode, Equals, 400)
 
 	req, err = http.NewRequest(http.MethodGet, "ws://127.0.0.1/ws2", nil)
