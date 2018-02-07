@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"time"
 
 	gorillawebsocket "github.com/gorilla/websocket"
@@ -17,9 +18,9 @@ import (
 )
 
 func (s *FwdSuite) TestWebSocketEcho(c *C) {
+	num := runtime.NumGoroutine()
 	f, err := New()
 	c.Assert(err, IsNil)
-
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
 		msg := make([]byte, 4)
@@ -32,10 +33,13 @@ func (s *FwdSuite) TestWebSocketEcho(c *C) {
 		mux.ServeHTTP(w, req)
 	})
 	defer srv.Close()
+
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
+	defer proxy.Close()
+
 	serverAddr := proxy.Listener.Addr().String()
 	c.Log(serverAddr)
 	headers := http.Header{}
@@ -49,6 +53,12 @@ func (s *FwdSuite) TestWebSocketEcho(c *C) {
 	conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
 	c.Log(conn.ReadMessage())
 
+	srv.Close()
+	proxy.Close()
+	conn.Close()
+
+	time.Sleep(time.Second)
+	c.Assert(runtime.NumGoroutine(), Equals, num)
 }
 
 func (s *FwdSuite) TestWebSocketServerWithoutCheckOrigin(c *C) {
