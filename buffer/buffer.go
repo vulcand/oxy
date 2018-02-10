@@ -101,6 +101,18 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 
 type optSetter func(b *Buffer) error
 
+// CondSetter Conditional setter.
+// ex: Cond(a > 4, MemRequestBodyBytes(a))
+func CondSetter(condition bool, setter optSetter) optSetter {
+	if condition {
+		// NoOp setter
+		return func(*Buffer) error {
+			return nil
+		}
+	}
+	return setter
+}
+
 // Retry provides a predicate that allows buffer middleware to replay the request
 // if it matches certain condition, e.g. returns special error code. Available functions are:
 //
