@@ -254,7 +254,7 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		s.next.ServeHTTP(b, outreq)
 		if b.hijacked {
-			log.Infof("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
+			log.Debugf("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
 			return
 		}
 
@@ -290,7 +290,7 @@ func (s *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		outreq = s.copyRequest(req, body, totalSize)
-		log.Infof("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
+		log.Debugf("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
 	}
 }
 
