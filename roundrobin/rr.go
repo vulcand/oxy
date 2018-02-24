@@ -304,7 +304,15 @@ type server struct {
 	weight int
 }
 
-const defaultWeight = 1
+var defaultWeight = 1
+
+func SetDefaultWeight(weight int) error {
+	if weight < 0 {
+		return fmt.Errorf("default weight should be >= 0")
+	}
+	defaultWeight = weight
+	return nil
+}
 
 func sameURL(a, b *url.URL) bool {
 	return a.Path == b.Path && a.Host == b.Host && a.Scheme == b.Scheme
