@@ -124,6 +124,35 @@ func (s *BFSuite) TestChunkedEncodingLimitReached(c *C) {
 	c.Assert(status, Equals, "HTTP/1.1 413 Request Entity Too Large\r\n")
 }
 
+func (s *BFSuite) TestChunkedResponse(c *C) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		h := w.(http.Hijacker)
+		conn, _, _ := h.Hijack()
+		fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+		conn.Close()
+	})
+	defer srv.Close()
+
+	fwd, err := forward.New()
+	c.Assert(err, IsNil)
+
+	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		fwd.ServeHTTP(w, req)
+	})
+	st, err := New(rdr)
+	c.Assert(err, IsNil)
+	proxy := httptest.NewServer(st)
+
+	defer proxy.Close()
+
+	re, body, err := testutils.Get(proxy.URL)
+	c.Assert(err, IsNil)
+	c.Assert(string(body), Equals, "testtest1test2")
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	c.Assert(re.Header.Get("Content-Length"), Equals, fmt.Sprintf("%d", len("testtest1test2")))
+}
+
 func (s *BFSuite) TestRequestLimitReached(c *C) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
