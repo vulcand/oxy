@@ -221,7 +221,9 @@ func New(setters ...optSetter) (*Forwarder, error) {
 	}
 
 	if f.tlsClientConfig == nil {
-		f.tlsClientConfig = f.httpForwarder.roundTripper.(*http.Transport).TLSClientConfig
+		if ht, ok := f.httpForwarder.roundTripper.(*http.Transport); ok {
+			f.tlsClientConfig = ht.TLSClientConfig
+		}
 	}
 
 	f.httpForwarder.roundTripper = ErrorHandlingRoundTripper{
