@@ -172,11 +172,17 @@ func (s *RRSuite) TestUpsertWeight(c *C) {
 }
 
 func (s *RRSuite) TestWeighted(c *C) {
+	SetDefaultWeight(0)
+	defer SetDefaultWeight(1)
+
 	a := testutils.NewResponder("a")
 	defer a.Close()
 
 	b := testutils.NewResponder("b")
 	defer b.Close()
+
+	z := testutils.NewResponder("z")
+	defer z.Close()
 
 	fwd, err := forward.New()
 	c.Assert(err, IsNil)
@@ -186,6 +192,7 @@ func (s *RRSuite) TestWeighted(c *C) {
 
 	lb.UpsertServer(testutils.ParseURI(a.URL), Weight(3))
 	lb.UpsertServer(testutils.ParseURI(b.URL), Weight(2))
+	lb.UpsertServer(testutils.ParseURI(z.URL), Weight(0))
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
@@ -198,6 +205,10 @@ func (s *RRSuite) TestWeighted(c *C) {
 
 	w, ok = lb.ServerWeight(testutils.ParseURI(b.URL))
 	c.Assert(w, Equals, 2)
+	c.Assert(ok, Equals, true)
+
+	w, ok = lb.ServerWeight(testutils.ParseURI(z.URL))
+	c.Assert(w, Equals, 0)
 	c.Assert(ok, Equals, true)
 
 	w, ok = lb.ServerWeight(testutils.ParseURI("http://caramba:4000"))
