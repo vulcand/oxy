@@ -4,6 +4,7 @@
 package forward
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -294,6 +295,12 @@ func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 
 	if f.rewriter != nil {
 		f.rewriter.Rewrite(outReq)
+	}
+
+	// Disable closeNotify when method GET for http pipelining
+	if outReq.Method == http.MethodGet {
+		quietReq := outReq.WithContext(context.Background())
+		*outReq = *quietReq
 	}
 }
 
