@@ -302,7 +302,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	if f.log.GetLevel() >= log.DebugLevel {
 		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/forward/websocket: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/forward/websocket: competed ServeHttp on request")
+		defer logEntry.Debug("vulcand/oxy/forward/websocket: completed ServeHttp on request")
 	}
 
 	outReq := f.copyWebSocketRequest(req)
