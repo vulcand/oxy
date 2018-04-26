@@ -17,6 +17,44 @@ import (
 	. "gopkg.in/check.v1"
 )
 
+func (s *FwdSuite) TestWebSocketTCPClose(c *C) {
+	f, err := New()
+	c.Assert(err, IsNil)
+
+	errChan := make(chan error, 1)
+	upgrader := gorillawebsocket.Upgrader{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		for {
+			_, _, err := c.ReadMessage()
+			if err != nil {
+				errChan <- err
+				break
+			}
+		}
+	}))
+	defer srv.Close()
+
+	proxy := createProxyWithForwarder(f, srv.URL)
+
+	proxyAddr := proxy.Listener.Addr().String()
+	_, conn, err := newWebsocketRequest(
+		withServer(proxyAddr),
+		withPath("/ws"),
+	).open()
+	conn.Close()
+
+	serverErr := <- errChan
+
+	wsErr, ok := serverErr.(*gorillawebsocket.CloseError)
+	c.Assert(ok, Equals, true)
+	c.Assert(wsErr.Code, Equals, 1006)
+}
+
 func (s *FwdSuite) TestWebSocketEcho(c *C) {
 	num := runtime.NumGoroutine()
 	f, err := New()
@@ -488,11 +526,7 @@ type websocketRequest struct {
 }
 
 func (w *websocketRequest) send() (string, error) {
-	client, err := net.DialTimeout("tcp", w.ServerAddr, dialTimeout)
-	if err != nil {
-		return "", err
-	}
-	conn, err := websocket.NewClient(w.Config, client)
+	conn, _, err := w.open()
 	if err != nil {
 		return "", err
 	}
@@ -509,4 +543,16 @@ func (w *websocketRequest) send() (string, error) {
 
 	received := string(msg[:n])
 	return received, nil
+}
+
+func (w* websocketRequest) open() (*websocket.Conn, net.Conn, error) {
+	client, err := net.DialTimeout("tcp", w.ServerAddr, dialTimeout)
+	if err != nil {
+		return nil, nil, err
+	}
+	conn, err := websocket.NewClient(w.Config, client)
+	if err != nil {
+		return nil, nil, err
+	}
+	return conn, client, err
 }

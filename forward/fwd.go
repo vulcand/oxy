@@ -370,11 +370,20 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 				m := websocket.FormatCloseMessage(websocket.CloseNormalClosure, fmt.Sprintf("%v", err))
 				if e, ok := err.(*websocket.CloseError); ok {
 					if e.Code != websocket.CloseNoStatusReceived {
-						m = websocket.FormatCloseMessage(e.Code, e.Text)
+						m = nil
+						// Following codes are not valid on the wire so just close the
+						// underlying TCP connection without sending a close frame.
+						if e.Code != websocket.CloseAbnormalClosure &&
+							e.Code != websocket.CloseTLSHandshake {
+
+							m = websocket.FormatCloseMessage(e.Code, e.Text)
+						}
 					}
 				}
 				errc <- err
-				dst.WriteMessage(websocket.CloseMessage, m)
+				if m != nil {
+					dst.WriteMessage(websocket.CloseMessage, m)
+				}
 				break
 			}
 			err = dst.WriteMessage(msgType, msg)
