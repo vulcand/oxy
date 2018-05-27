@@ -85,6 +85,10 @@ func forwardedPort(req *http.Request) string {
 		return port
 	}
 
+	if req.Header.Get(XForwardedProto) == "https" {
+		return "443"
+	}
+
 	if req.TLS != nil {
 		return "443"
 	}
