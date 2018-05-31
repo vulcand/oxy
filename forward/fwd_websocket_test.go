@@ -227,6 +227,42 @@ func (s *FwdSuite) TestWebSocketRequestWithQueryParams(c *C) {
 	c.Assert(resp, Equals, "ok")
 }
 
+func (s *FwdSuite) TestWebSocketRequestWithHeadersInResponseWriter(c *C) {
+	f, err := New()
+	c.Assert(err, IsNil)
+
+	mux := http.NewServeMux()
+	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
+		conn.Close()
+	}))
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		mux.ServeHTTP(w, req)
+	})
+	defer srv.Close()
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		w.Header().Set("HEADER-KEY", "HEADER-VALUE")
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	serverAddr := proxy.Listener.Addr().String()
+	c.Log(serverAddr)
+
+	headers := http.Header{}
+	webSocketURL := "ws://" + serverAddr + "/ws"
+	headers.Add("Origin", webSocketURL)
+	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
+	defer conn.Close()
+	if err != nil {
+		c.Errorf("Error [%s] during Dial with response: %+v", err, resp)
+		return
+	}
+
+	c.Assert(resp.Header.Get("HEADER-KEY"), Equals, "HEADER-VALUE")
+}
+
 func (s *FwdSuite) TestWebSocketRequestWithEncodedChar(c *C) {
 	f, err := New()
 	c.Assert(err, IsNil)
