@@ -351,6 +351,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	}}
 
 	utils.RemoveHeaders(resp.Header, WebsocketUpgradeHeaders...)
+	utils.CopyHeaders(resp.Header, w.Header())
 
 	underlyingConn, err := upgrader.Upgrade(w, req, resp.Header)
 	if err != nil {
