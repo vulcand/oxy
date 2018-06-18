@@ -1,10 +1,8 @@
 package forward
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -348,34 +346,4 @@ func (s *FwdSuite) TestContextWithValueInErrHandler(c *C) {
 	re, _, err := testutils.Get(proxy.URL)
 	c.Assert(re.StatusCode, Equals, http.StatusBadGateway)
 	c.Assert(*originalPBool, Equals, true)
-}
-
-func (s *FwdSuite) TestHTTPPipelining(c *C) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.WriteHeader(200)
-	})
-	defer srv.Close()
-
-	f, err := New()
-	c.Assert(err, IsNil)
-
-	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
-		f.ServeHTTP(w, req)
-	})
-	defer proxy.Close()
-
-	proxyURL := testutils.ParseURI(proxy.URL)
-	conn, err := net.Dial("tcp", proxyURL.Host)
-	c.Assert(err, IsNil)
-
-	fmt.Fprint(conn, "GET /some HTTP/1.1\r\nHost: test.com\r\n\r\n")
-	fmt.Fprint(conn, "GET /some HTTP/1.1\r\nHost: test.com\r\n\r\n")
-	fmt.Fprint(conn, "GET /some HTTP/1.1\r\nHost: test.com\r\n\r\n")
-	status, _ := bufio.NewReader(conn).ReadString('\n')
-	c.Assert(status, Equals, "HTTP/1.1 200 OK\r\n")
-	status, _ = bufio.NewReader(conn).ReadString('\n')
-	c.Assert(status, Equals, "HTTP/1.1 200 OK\r\n")
-	status, _ = bufio.NewReader(conn).ReadString('\n')
-	c.Assert(status, Equals, "HTTP/1.1 200 OK\r\n")
 }
