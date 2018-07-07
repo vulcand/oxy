@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// SplitRatios provides simple anomaly detection for requests latencies.
+// SplitLatencies provides simple anomaly detection for requests latencies.
 // it splits values into good or bad category based on the threshold and the median value.
 // If all values are not far from the median, it will return all values in 'good' set.
 // Precision is the smallest value to consider, e.g. if set to millisecond, microseconds will be ignored.

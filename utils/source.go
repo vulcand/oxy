@@ -6,21 +6,25 @@ import (
 	"strings"
 )
 
-// ExtractSource extracts the source from the request, e.g. that may be client ip, or particular header that
+// SourceExtractor extracts the source from the request, e.g. that may be client ip, or particular header that
 // identifies the source. amount stands for amount of connections the source consumes, usually 1 for connection limiters
 // error should be returned when source can not be identified
 type SourceExtractor interface {
 	Extract(req *http.Request) (token string, amount int64, err error)
 }
 
+// ExtractorFunc extractor function type
 type ExtractorFunc func(req *http.Request) (token string, amount int64, err error)
 
+// Extract extract from request
 func (f ExtractorFunc) Extract(req *http.Request) (string, int64, error) {
 	return f(req)
 }
 
+// ExtractSource extract source function type
 type ExtractSource func(req *http.Request)
 
+// NewExtractor creates a new SourceExtractor
 func NewExtractor(variable string) (SourceExtractor, error) {
 	if variable == "client.ip" {
 		return ExtractorFunc(extractClientIP), nil

@@ -147,7 +147,7 @@ type Record struct {
 	Response Response `json:"response"`
 }
 
-// Req contains information about an HTTP request
+// Request contains information about an HTTP request
 type Request struct {
 	Method    string      `json:"method"`            // Method - request method
 	BodyBytes int64       `json:"body_bytes"`        // BodyBytes - size of request body in bytes
@@ -156,7 +156,7 @@ type Request struct {
 	TLS       *TLS        `json:"tls,omitempty"`     // TLS - optional TLS record, will be recorded if it's a TLS connection
 }
 
-// Resp contains information about HTTP response
+// Response contains information about HTTP response
 type Response struct {
 	Code      int         `json:"code"`              // Code - response status code
 	Roundtrip float64     `json:"roundtrip"`         // Roundtrip - round trip time in milliseconds

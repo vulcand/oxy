@@ -1,4 +1,4 @@
-// Tokenbucket based request rate limiter
+// Package ratelimit Tokenbucket based request rate limiter
 package ratelimit
 
 import (
@@ -13,6 +13,7 @@ import (
 	"github.com/vulcand/oxy/utils"
 )
 
+// DefaultCapacity default capacity
 const DefaultCapacity = 65536
 
 // RateSet maintains a set of rates. It can contain only one rate per period at a time.
@@ -47,12 +48,15 @@ func (rs *RateSet) String() string {
 	return fmt.Sprint(rs.m)
 }
 
+// RateExtractor rate extractor
 type RateExtractor interface {
 	Extract(r *http.Request) (*RateSet, error)
 }
 
+// RateExtractorFunc rate extractor function type
 type RateExtractorFunc func(r *http.Request) (*RateSet, error)
 
+// Extract extract from request
 func (e RateExtractorFunc) Extract(r *http.Request) (*RateSet, error) {
 	return e(r)
 }
@@ -112,6 +116,7 @@ func Logger(l *log.Logger) TokenLimiterOption {
 	}
 }
 
+// Wrap sets the next handler to be called by token limiter handler.
 func (tl *TokenLimiter) Wrap(next http.Handler) {
 	tl.next = next
 }
@@ -181,6 +186,7 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 	return rates
 }
 
+// MaxRateError max rate error
 type MaxRateError struct {
 	delay time.Duration
 }
@@ -189,8 +195,8 @@ func (m *MaxRateError) Error() string {
 	return fmt.Sprintf("max rate reached: retry-in %v", m.delay)
 }
 
-type RateErrHandler struct {
-}
+// RateErrHandler error handler
+type RateErrHandler struct{}
 
 func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if rerr, ok := err.(*MaxRateError); ok {
@@ -202,6 +208,7 @@ func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }
 
+// TokenLimiterOption token limiter option type
 type TokenLimiterOption func(l *TokenLimiter) error
 
 // ErrorHandler sets error handler of the server
@@ -212,6 +219,7 @@ func ErrorHandler(h utils.ErrorHandler) TokenLimiterOption {
 	}
 }
 
+// ExtractRates sets the rate extractor
 func ExtractRates(e RateExtractor) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.extractRates = e
@@ -219,6 +227,7 @@ func ExtractRates(e RateExtractor) TokenLimiterOption {
 	}
 }
 
+// Clock sets the clock
 func Clock(clock timetools.TimeProvider) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.clock = clock
@@ -226,6 +235,7 @@ func Clock(clock timetools.TimeProvider) TokenLimiterOption {
 	}
 }
 
+// Capacity sets the capacity
 func Capacity(cap int) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		if cap <= 0 {

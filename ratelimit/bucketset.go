@@ -17,7 +17,7 @@ type TokenBucketSet struct {
 	clock     timetools.TimeProvider
 }
 
-// newTokenBucketSet creates a `TokenBucketSet` from the specified `rates`.
+// NewTokenBucketSet creates a `TokenBucketSet` from the specified `rates`.
 func NewTokenBucketSet(rates *RateSet, clock timetools.TimeProvider) *TokenBucketSet {
 	tbs := new(TokenBucketSet)
 	tbs.clock = clock
@@ -55,6 +55,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 	}
 }
 
+// Consume consume tokens
 func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	var maxDelay time.Duration = UndefinedDelay
 	var firstErr error
@@ -81,6 +82,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	return maxDelay, firstErr
 }
 
+// GetMaxPeriod returns the max period
 func (tbs *TokenBucketSet) GetMaxPeriod() time.Duration {
 	return tbs.maxPeriod
 }

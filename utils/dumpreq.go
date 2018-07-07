@@ -9,6 +9,7 @@ import (
 	"net/url"
 )
 
+// SerializableHttpRequest serializable HTTP request
 type SerializableHttpRequest struct {
 	Method           string
 	URL              *url.URL
@@ -28,6 +29,7 @@ type SerializableHttpRequest struct {
 	TLS              *tls.ConnectionState
 }
 
+// Clone clone a request
 func Clone(r *http.Request) *SerializableHttpRequest {
 	if r == nil {
 		return nil
@@ -47,6 +49,7 @@ func Clone(r *http.Request) *SerializableHttpRequest {
 	return rc
 }
 
+// ToJson serializes to JSON
 func (s *SerializableHttpRequest) ToJson() string {
 	jsonVal, err := json.Marshal(s)
 	if err != nil || jsonVal == nil {
@@ -55,6 +58,7 @@ func (s *SerializableHttpRequest) ToJson() string {
 	return string(jsonVal)
 }
 
+// DumpHttpRequest dump a HTTP request to JSON
 func DumpHttpRequest(req *http.Request) string {
 	return Clone(req).ToJson()
 }

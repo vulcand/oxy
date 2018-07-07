@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// ProxyWriter calls recorder, used to debug logs
 type ProxyWriter struct {
 	w      http.ResponseWriter
 	code   int
@@ -20,10 +21,12 @@ type ProxyWriter struct {
 	log *log.Logger
 }
 
+// NewProxyWriter creates a new ProxyWriter
 func NewProxyWriter(w http.ResponseWriter) *ProxyWriter {
 	return NewProxyWriterWithLogger(w, log.StandardLogger())
 }
 
+// NewProxyWriterWithLogger creates a new ProxyWriter
 func NewProxyWriterWithLogger(w http.ResponseWriter, l *log.Logger) *ProxyWriter {
 	return &ProxyWriter{
 		w:   w,
@@ -31,6 +34,7 @@ func NewProxyWriterWithLogger(w http.ResponseWriter, l *log.Logger) *ProxyWriter
 	}
 }
 
+// StatusCode gets status code
 func (p *ProxyWriter) StatusCode() int {
 	if p.code == 0 {
 		// per contract standard lib will set this to http.StatusOK if not set
@@ -40,10 +44,12 @@ func (p *ProxyWriter) StatusCode() int {
 	return p.code
 }
 
+// GetLength gets content length
 func (p *ProxyWriter) GetLength() int64 {
 	return p.length
 }
 
+// Header gets response header
 func (p *ProxyWriter) Header() http.Header {
 	return p.w.Header()
 }
@@ -53,17 +59,21 @@ func (p *ProxyWriter) Write(buf []byte) (int, error) {
 	return p.w.Write(buf)
 }
 
+// WriteHeader writes status code
 func (p *ProxyWriter) WriteHeader(code int) {
 	p.code = code
 	p.w.WriteHeader(code)
 }
 
+// Flush flush the writer
 func (p *ProxyWriter) Flush() {
 	if f, ok := p.w.(http.Flusher); ok {
 		f.Flush()
 	}
 }
 
+// CloseNotify returns a channel that receives at most a single value (true)
+// when the client connection has gone away.
 func (p *ProxyWriter) CloseNotify() <-chan bool {
 	if cn, ok := p.w.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
@@ -72,6 +82,7 @@ func (p *ProxyWriter) CloseNotify() <-chan bool {
 	return make(<-chan bool)
 }
 
+// Hijack lets the caller take over the connection.
 func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := p.w.(http.Hijacker); ok {
 		return hi.Hijack()
@@ -80,6 +91,7 @@ func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.w))
 }
 
+// NewBufferWriter creates a new BufferWriter
 func NewBufferWriter(w io.WriteCloser) *BufferWriter {
 	return &BufferWriter{
 		W: w,
@@ -87,16 +99,19 @@ func NewBufferWriter(w io.WriteCloser) *BufferWriter {
 	}
 }
 
+// BufferWriter buffer writer
 type BufferWriter struct {
 	H    http.Header
 	Code int
 	W    io.WriteCloser
 }
 
+// Close close the writer
 func (b *BufferWriter) Close() error {
 	return b.W.Close()
 }
 
+// Header gets response header
 func (b *BufferWriter) Header() http.Header {
 	return b.H
 }
@@ -105,11 +120,13 @@ func (b *BufferWriter) Write(buf []byte) (int, error) {
 	return b.W.Write(buf)
 }
 
-// WriteHeader sets rw.Code.
+// WriteHeader writes status code
 func (b *BufferWriter) WriteHeader(code int) {
 	b.Code = code
 }
 
+// CloseNotify returns a channel that receives at most a single value (true)
+// when the client connection has gone away.
 func (b *BufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.W.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
@@ -118,6 +135,7 @@ func (b *BufferWriter) CloseNotify() <-chan bool {
 	return make(<-chan bool)
 }
 
+// Hijack lets the caller take over the connection.
 func (b *BufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := b.W.(http.Hijacker); ok {
 		return hi.Hijack()
@@ -132,7 +150,7 @@ type nopWriteCloser struct {
 
 func (*nopWriteCloser) Close() error { return nil }
 
-// NopCloser returns a WriteCloser with a no-op Close method wrapping
+// NopWriteCloser returns a WriteCloser with a no-op Close method wrapping
 // the provided Writer w.
 func NopWriteCloser(w io.Writer) io.WriteCloser {
 	return &nopWriteCloser{w}
