@@ -102,8 +102,8 @@ func RebalancerRequestRewriteListener(rrl RequestRewriteListener) RebalancerOpti
 
 func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalancer, error) {
 	rb := &Rebalancer{
-		mtx:  &sync.Mutex{},
-		next: handler,
+		mtx:           &sync.Mutex{},
+		next:          handler,
 		stickySession: nil,
 
 		log: log.StandardLogger(),

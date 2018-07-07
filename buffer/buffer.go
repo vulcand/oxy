@@ -211,7 +211,7 @@ func (b *Buffer) Wrap(next http.Handler) error {
 
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if b.log.Level >= log.DebugLevel {
-		logEntry := s.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := b.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/buffer: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/buffer: completed ServeHttp on request")
 	}
@@ -275,13 +275,13 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			header:         make(http.Header),
 			buffer:         writer,
 			responseWriter: w,
-			log:            s.log,
+			log:            b.log,
 		}
 		defer bw.Close()
 
 		b.next.ServeHTTP(bw, outreq)
 		if bw.hijacked {
-			s.log.Infof("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
+			b.log.Infof("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
 			return
 		}
 
@@ -289,7 +289,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if bw.expectBody(outreq) {
 			rdr, err := writer.Reader()
 			if err != nil {
-				s.log.Errorf("vulcand/oxy/buffer: failed to read response, err: %v", err)
+				b.log.Errorf("vulcand/oxy/buffer: failed to read response, err: %v", err)
 				b.errHandler.ServeHTTP(w, req, err)
 				return
 			}
@@ -310,14 +310,14 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		attempt += 1
 		if body != nil {
 			if _, err := body.Seek(0, 0); err != nil {
-				s.log.Errorf("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)
+				b.log.Errorf("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)
 				b.errHandler.ServeHTTP(w, req, err)
 				return
 			}
 		}
 
 		outreq = b.copyRequest(req, body, totalSize)
-		s.log.Infof("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
+		b.log.Infof("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
 	}
 }
 

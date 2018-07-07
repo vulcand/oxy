@@ -61,10 +61,10 @@ type RoundRobin struct {
 
 func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 	rr := &RoundRobin{
-		next:    next,
-		index:   -1,
-		mutex:   &sync.Mutex{},
-		servers: []*server{},
+		next:          next,
+		index:         -1,
+		mutex:         &sync.Mutex{},
+		servers:       []*server{},
 		stickySession: nil,
 
 		log: log.StandardLogger(),
@@ -132,7 +132,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if r.log.Level >= log.DebugLevel {
 		//log which backend URL we're sending this request to
-		r.log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": url}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
+		r.log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
 	}
 
 	//Emit event to a listener if one exists
