@@ -16,13 +16,14 @@ import (
 // RebalancerOption - functional option setter for rebalancer
 type RebalancerOption func(*Rebalancer) error
 
-// Meter measures server peformance and returns it's relative value via rating
+// Meter measures server performance and returns it's relative value via rating
 type Meter interface {
 	Rating() float64
 	Record(int, time.Duration)
 	IsReady() bool
 }
 
+// NewMeterFn type of functions to create new Meter
 type NewMeterFn func() (Meter, error)
 
 // Rebalancer increases weights on servers that perform better than others. It also rolls back to original weights
@@ -56,6 +57,7 @@ type Rebalancer struct {
 	log *log.Logger
 }
 
+// RebalancerClock sets a clock
 func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.clock = clock
@@ -63,6 +65,7 @@ func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
 	}
 }
 
+// RebalancerBackoff sets a beck off duration
 func RebalancerBackoff(d time.Duration) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.backoffDuration = d
@@ -70,6 +73,7 @@ func RebalancerBackoff(d time.Duration) RebalancerOption {
 	}
 }
 
+// RebalancerMeter sets a Meter builder function
 func RebalancerMeter(newMeter NewMeterFn) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.newMeter = newMeter
@@ -85,6 +89,7 @@ func RebalancerErrorHandler(h utils.ErrorHandler) RebalancerOption {
 	}
 }
 
+// RebalancerStickySession sets a sticky session
 func RebalancerStickySession(stickySession *StickySession) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.stickySession = stickySession
@@ -92,7 +97,7 @@ func RebalancerStickySession(stickySession *StickySession) RebalancerOption {
 	}
 }
 
-// RebalancerErrorHandler is a functional argument that sets error handler of the server
+// RebalancerRequestRewriteListener is a functional argument that sets error handler of the server
 func RebalancerRequestRewriteListener(rrl RequestRewriteListener) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.requestRewriteListener = rrl
@@ -100,6 +105,7 @@ func RebalancerRequestRewriteListener(rrl RequestRewriteListener) RebalancerOpti
 	}
 }
 
+// NewRebalancer creates a new Rebalancer
 func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalancer, error) {
 	rb := &Rebalancer{
 		mtx:           &sync.Mutex{},
@@ -138,7 +144,7 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 	return rb, nil
 }
 
-// Logger defines the logger the rebalancer will use.
+// RebalancerLogger defines the logger the rebalancer will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
 func RebalancerLogger(l *log.Logger) RebalancerOption {
@@ -148,6 +154,7 @@ func RebalancerLogger(l *log.Logger) RebalancerOption {
 	}
 }
 
+// Servers gets all servers
 func (rb *Rebalancer) Servers() []*url.URL {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -190,7 +197,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if log.GetLevel() >= log.DebugLevel {
-			//log which backend URL we're sending this request to
+			// log which backend URL we're sending this request to
 			log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": url}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 		}
 
@@ -201,7 +208,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		newReq.URL = url
 	}
 
-	//Emit event to a listener if one exists
+	// Emit event to a listener if one exists
 	if rb.requestRewriteListener != nil {
 		rb.requestRewriteListener(req, &newReq)
 	}
@@ -229,6 +236,7 @@ func (rb *Rebalancer) reset() {
 	rb.ratings = make([]float64, len(rb.servers))
 }
 
+// Wrap sets the next handler to be called by rebalancer handler.
 func (rb *Rebalancer) Wrap(next balancerHandler) error {
 	if rb.next != nil {
 		return fmt.Errorf("already bound to %T", rb.next)
@@ -237,6 +245,7 @@ func (rb *Rebalancer) Wrap(next balancerHandler) error {
 	return nil
 }
 
+// UpsertServer upsert a server
 func (rb *Rebalancer) UpsertServer(u *url.URL, options ...ServerOption) error {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -253,6 +262,7 @@ func (rb *Rebalancer) UpsertServer(u *url.URL, options ...ServerOption) error {
 	return nil
 }
 
+// RemoveServer remove a server
 func (rb *Rebalancer) RemoveServer(u *url.URL) error {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -303,7 +313,7 @@ func (rb *Rebalancer) findServer(u *url.URL) (*rbServer, int) {
 	return nil, -1
 }
 
-// Called on every load balancer ServeHTTP call, returns the suggested weights
+// adjustWeights Called on every load balancer ServeHTTP call, returns the suggested weights
 // on every call, can adjust weights if needed.
 func (rb *Rebalancer) adjustWeights() {
 	rb.mtx.Lock()
@@ -447,9 +457,8 @@ func decrease(target, current int) int {
 	adjusted := current / FSMGrowFactor
 	if adjusted < target {
 		return target
-	} else {
-		return adjusted
 	}
+	return adjusted
 }
 
 // rebalancer server record that keeps track of the original weight supplied by user
@@ -462,9 +471,9 @@ type rbServer struct {
 }
 
 const (
-	// This is the maximum weight that handler will set for the server
+	// FSMMaxWeight is the maximum weight that handler will set for the server
 	FSMMaxWeight = 4096
-	// Multiplier for the server weight
+	// FSMGrowFactor Multiplier for the server weight
 	FSMGrowFactor = 4
 )
 
@@ -474,10 +483,12 @@ type codeMeter struct {
 	codeE int
 }
 
+// Rating gets ratio
 func (n *codeMeter) Rating() float64 {
 	return n.r.Ratio()
 }
 
+// Record records a meter
 func (n *codeMeter) Record(code int, d time.Duration) {
 	if code >= n.codeS && code < n.codeE {
 		n.r.IncA(1)
@@ -486,6 +497,7 @@ func (n *codeMeter) Record(code int, d time.Duration) {
 	}
 }
 
+// IsReady returns true if the counter is ready
 func (n *codeMeter) IsReady() bool {
 	return n.r.IsReady()
 }

@@ -344,6 +344,7 @@ func (s *FwdSuite) TestContextWithValueInErrHandler(c *C) {
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
+	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusBadGateway)
 	c.Assert(*originalPBool, Equals, true)
 }

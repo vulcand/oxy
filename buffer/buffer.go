@@ -36,13 +36,12 @@ Examples of a buffering middleware:
 package buffer
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
-
-	"bufio"
 	"net"
+	"net/http"
 	"reflect"
 
 	"github.com/mailgun/multibuf"
@@ -168,7 +167,7 @@ func MaxRequestBodyBytes(m int64) optSetter {
 	}
 }
 
-// MaxRequestBody bytes sets the maximum request body to be stored in memory
+// MemRequestBodyBytes bytes sets the maximum request body to be stored in memory
 // buffer middleware will serialize the excess to disk.
 func MemRequestBodyBytes(m int64) optSetter {
 	return func(b *Buffer) error {
@@ -307,7 +306,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		attempt += 1
+		attempt++
 		if body != nil {
 			if _, err := body.Seek(0, 0); err != nil {
 				b.log.Errorf("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)
@@ -392,7 +391,7 @@ func (b *bufferWriter) WriteHeader(code int) {
 	b.code = code
 }
 
-//CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
+// CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
 func (b *bufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.responseWriter.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
@@ -401,7 +400,7 @@ func (b *bufferWriter) CloseNotify() <-chan bool {
 	return make(<-chan bool)
 }
 
-//This allows connections to be hijacked for websockets for instance.
+// Hijack This allows connections to be hijacked for websockets for instance.
 func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := b.responseWriter.(http.Hijacker); ok {
 		conn, rw, err := hi.Hijack()
@@ -414,8 +413,8 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.responseWriter))
 }
 
-type SizeErrHandler struct {
-}
+// SizeErrHandler Size error handler
+type SizeErrHandler struct{}
 
 func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {

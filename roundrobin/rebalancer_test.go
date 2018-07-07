@@ -114,7 +114,7 @@ func (s *RBSuite) TestRebalancerRecovery(c *C) {
 	proxy := httptest.NewServer(rb)
 	defer proxy.Close()
 
-	for i := 0; i < 6; i += 1 {
+	for i := 0; i < 6; i++ {
 		testutils.Get(proxy.URL)
 		testutils.Get(proxy.URL)
 		s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)
@@ -129,7 +129,7 @@ func (s *RBSuite) TestRebalancerRecovery(c *C) {
 	// server a is now recovering, the weights should go back to the original state
 	rb.servers[0].meter.(*testMeter).rating = 0
 
-	for i := 0; i < 6; i += 1 {
+	for i := 0; i < 6; i++ {
 		testutils.Get(proxy.URL)
 		testutils.Get(proxy.URL)
 		s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)
@@ -170,7 +170,7 @@ func (s *RBSuite) TestRebalancerCascading(c *C) {
 	proxy := httptest.NewServer(rb)
 	defer proxy.Close()
 
-	for i := 0; i < 6; i += 1 {
+	for i := 0; i < 6; i++ {
 		testutils.Get(proxy.URL)
 		testutils.Get(proxy.URL)
 		s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)
@@ -186,7 +186,7 @@ func (s *RBSuite) TestRebalancerCascading(c *C) {
 	rb.servers[1].meter.(*testMeter).rating = 0.2
 	rb.servers[2].meter.(*testMeter).rating = 0.2
 
-	for i := 0; i < 6; i += 1 {
+	for i := 0; i < 6; i++ {
 		testutils.Get(proxy.URL)
 		testutils.Get(proxy.URL)
 		s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)
@@ -227,7 +227,7 @@ func (s *RBSuite) TestRebalancerAllBad(c *C) {
 	proxy := httptest.NewServer(rb)
 	defer proxy.Close()
 
-	for i := 0; i < 6; i += 1 {
+	for i := 0; i < 6; i++ {
 		testutils.Get(proxy.URL)
 		testutils.Get(proxy.URL)
 		s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)
@@ -268,7 +268,7 @@ func (s *RBSuite) TestRebalancerReset(c *C) {
 	proxy := httptest.NewServer(rb)
 	defer proxy.Close()
 
-	for i := 0; i < 6; i += 1 {
+	for i := 0; i < 6; i++ {
 		testutils.Get(proxy.URL)
 		testutils.Get(proxy.URL)
 		s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)
@@ -307,7 +307,7 @@ func (s *RBSuite) TestRebalancerLive(c *C) {
 	proxy := httptest.NewServer(rb)
 	defer proxy.Close()
 
-	for i := 0; i < 1000; i += 1 {
+	for i := 0; i < 1000; i++ {
 		testutils.Get(proxy.URL)
 		if i%10 == 0 {
 			s.clock.CurrentTime = s.clock.CurrentTime.Add(rb.backoffDuration + time.Second)

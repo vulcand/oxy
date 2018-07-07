@@ -46,6 +46,7 @@ func (s *FwdSuite) TestWebSocketTCPClose(c *C) {
 		withServer(proxyAddr),
 		withPath("/ws"),
 	).open()
+	c.Assert(err, IsNil)
 	conn.Close()
 
 	serverErr := <-errChan
@@ -254,6 +255,7 @@ func (s *FwdSuite) TestWebSocketRequestWithHeadersInResponseWriter(c *C) {
 	webSocketURL := "ws://" + serverAddr + "/ws"
 	headers.Add("Origin", webSocketURL)
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
+	c.Assert(err, IsNil)
 	defer conn.Close()
 	if err != nil {
 		c.Errorf("Error [%s] during Dial with response: %+v", err, resp)

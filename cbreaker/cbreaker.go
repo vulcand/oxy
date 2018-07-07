@@ -3,7 +3,7 @@
 // Vulcan circuit breaker watches the error condtion to match
 // after which it activates the fallback scenario, e.g. returns the response code
 // or redirects the request to another location
-
+//
 // Circuit breakers start in the Standby state first, observing responses and watching location metrics.
 //
 // Once the Circuit breaker condition is met, it enters the "Tripped" state, where it activates fallback scenario
@@ -31,9 +31,8 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/mailgun/timetools"
+	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
 )
@@ -125,6 +124,7 @@ func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.serve(w, req)
 }
 
+// Wrap sets the next handler to be called by circuit breaker handler.
 func (c *CircuitBreaker) Wrap(next http.Handler) {
 	c.next = next
 }
@@ -309,7 +309,7 @@ func OnTripped(s SideEffect) CircuitBreakerOption {
 	}
 }
 
-// OnTripped sets a SideEffect to run when entering the Standby state.
+// OnStandby sets a SideEffect to run when entering the Standby state.
 // Only one SideEffect can be set for this hook.
 func OnStandby(s SideEffect) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
@@ -359,8 +359,7 @@ const (
 
 var defaultFallback = &fallback{}
 
-type fallback struct {
-}
+type fallback struct{}
 
 func (f *fallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusServiceUnavailable)

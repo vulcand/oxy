@@ -1,5 +1,5 @@
 /*
-package stream provides http.Handler middleware that passes-through the entire request
+Package stream provides http.Handler middleware that passes-through the entire request
 
 Stream works around several limitations caused by buffering implementations, but
 also introduces certain risks.
@@ -39,7 +39,7 @@ import (
 )
 
 const (
-	// No limit by default
+	// DefaultMaxBodyBytes No limit by default
 	DefaultMaxBodyBytes = -1
 )
 

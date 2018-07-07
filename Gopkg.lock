@@ -74,18 +74,6 @@
   version = "v1.1.4"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/vulcand/oxy"
-  packages = [
-    "forward",
-    "memmetrics",
-    "roundrobin",
-    "testutils",
-    "utils"
-  ]
-  revision = "adbef6bedf021985587c3c18c9d4b84b2d78f67c"
-
-[[projects]]
   name = "github.com/vulcand/predicate"
   packages = ["."]
   revision = "939c094524d124c55fa8afe0e077701db4a865e2"
@@ -133,6 +121,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d6d09a04812ccfb9e10cbc0f613c7efbe589205a775ce9f60b81041d41544f2a"
+  inputs-digest = "13c58913794cb91ced539fc4dcde957f6664b82ed886d245ca769960327f7e7f"
   solver-name = "gps-cdcl"
   solver-version = 1
