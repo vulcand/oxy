@@ -79,6 +79,6 @@ func (w *WebhookSideEffect) Exec() error {
 	if err != nil {
 		return err
 	}
-	w.log.Infof("%v got response: (%s): %s", w, re.Status, string(body))
+	w.log.Debugf("%v got response: (%s): %s", w, re.Status, string(body))
 	return nil
 }

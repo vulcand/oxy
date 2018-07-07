@@ -139,7 +139,7 @@ func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Reque
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	c.log.Infof("%v is in error state", c)
+	c.log.Warnf("%v is in error state", c)
 
 	switch c.state {
 	case stateStandby:
@@ -210,7 +210,7 @@ func (c *CircuitBreaker) exec(s SideEffect) {
 }
 
 func (c *CircuitBreaker) setState(new cbState, until time.Time) {
-	c.log.Infof("%v setting state to %v, until %v", c, new, until)
+	c.log.Debugf("%v setting state to %v, until %v", c, new, until)
 	c.state = new
 	c.until = until
 	switch new {
@@ -243,7 +243,7 @@ func (c *CircuitBreaker) checkAndSet() {
 	c.lastCheck = c.clock.UtcNow().Add(c.checkPeriod)
 
 	if c.state == stateTripped {
-		c.log.Infof("%v skip set tripped", c)
+		c.log.Debugf("%v skip set tripped", c)
 		return
 	}
 

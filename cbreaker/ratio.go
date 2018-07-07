@@ -38,17 +38,17 @@ func (r *ratioController) String() string {
 }
 
 func (r *ratioController) allowRequest() bool {
-	r.log.Infof("%v", r)
+	r.log.Debugf("%v", r)
 	t := r.targetRatio()
 	// This condition answers the question - would we satisfy the target ratio if we allow this request?
 	e := r.computeRatio(r.allowed+1, r.denied)
 	if e < t {
 		r.allowed++
-		r.log.Infof("%v allowed", r)
+		r.log.Debugf("%v allowed", r)
 		return true
 	}
 	r.denied++
-	r.log.Infof("%v denied", r)
+	r.log.Debugf("%v denied", r)
 	return false
 }
 

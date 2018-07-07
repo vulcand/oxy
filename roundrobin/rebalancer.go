@@ -333,7 +333,7 @@ func (rb *Rebalancer) adjustWeights() {
 
 func (rb *Rebalancer) applyWeights() {
 	for _, srv := range rb.servers {
-		rb.log.Infof("upsert server %v, weight %v", srv.url, srv.curWeight)
+		rb.log.Debugf("upsert server %v, weight %v", srv.url, srv.curWeight)
 		rb.next.UpsertServer(srv.url, Weight(srv.curWeight))
 	}
 }
@@ -345,7 +345,7 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 		if srv.good {
 			weight := increase(srv.curWeight)
 			if weight <= FSMMaxWeight {
-				rb.log.Infof("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
+				rb.log.Debugf("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
 				srv.curWeight = weight
 				changed = true
 			}
@@ -392,7 +392,7 @@ func (rb *Rebalancer) markServers() bool {
 		}
 	}
 	if len(g) != 0 && len(b) != 0 {
-		rb.log.Infof("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
+		rb.log.Debugf("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
 	}
 	return len(g) != 0 && len(b) != 0
 }

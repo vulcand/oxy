@@ -68,7 +68,7 @@ func (p *ProxyWriter) CloseNotify() <-chan bool {
 	if cn, ok := p.w.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
-	p.log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(p.w))
+	p.log.Debugf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(p.w))
 	return make(<-chan bool)
 }
 
@@ -76,7 +76,7 @@ func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := p.w.(http.Hijacker); ok {
 		return hi.Hijack()
 	}
-	p.log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.w))
+	p.log.Debugf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.w))
 	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.w))
 }
 
