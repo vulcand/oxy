@@ -1,78 +1,68 @@
 package cbreaker
 
 import (
-	"github.com/vulcand/oxy/memmetrics"
+	"testing"
 	"time"
 
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/memmetrics"
 )
 
-type PredicatesSuite struct {
-}
-
-var _ = Suite(&PredicatesSuite{})
-
-func (s *PredicatesSuite) TestTripped(c *C) {
-	predicates := []struct {
-		Expression string
-		M          *memmetrics.RTMetrics
-		V          bool
+func TestTripped(t *testing.T) {
+	testCases := []struct {
+		expression string
+		metrics    *memmetrics.RTMetrics
+		expected   bool
 	}{
 		{
-			Expression: "NetworkErrorRatio() > 0.5",
-			M:          statsNetErrors(0.6),
-			V:          true,
+			expression: "NetworkErrorRatio() > 0.5",
+			metrics:    statsNetErrors(0.6),
+			expected:   true,
 		},
 		{
-			Expression: "NetworkErrorRatio() < 0.5",
-			M:          statsNetErrors(0.6),
-			V:          false,
+			expression: "NetworkErrorRatio() < 0.5",
+			metrics:    statsNetErrors(0.6),
+			expected:   false,
 		},
 		{
-			Expression: "LatencyAtQuantileMS(50.0) > 50",
-			M:          statsLatencyAtQuantile(50, time.Millisecond*51),
-			V:          true,
+			expression: "LatencyAtQuantileMS(50.0) > 50",
+			metrics:    statsLatencyAtQuantile(50, time.Millisecond*51),
+			expected:   true,
 		},
 		{
-			Expression: "LatencyAtQuantileMS(50.0) < 50",
-			M:          statsLatencyAtQuantile(50, time.Millisecond*51),
-			V:          false,
+			expression: "LatencyAtQuantileMS(50.0) < 50",
+			metrics:    statsLatencyAtQuantile(50, time.Millisecond*51),
+			expected:   false,
 		},
 		{
-			Expression: "ResponseCodeRatio(500, 600, 0, 600) > 0.5",
-			M:          statsResponseCodes(statusCode{Code: 200, Count: 5}, statusCode{Code: 500, Count: 6}),
-			V:          true,
+			expression: "ResponseCodeRatio(500, 600, 0, 600) > 0.5",
+			metrics:    statsResponseCodes(statusCode{Code: 200, Count: 5}, statusCode{Code: 500, Count: 6}),
+			expected:   true,
 		},
 		{
-			Expression: "ResponseCodeRatio(500, 600, 0, 600) > 0.5",
-			M:          statsResponseCodes(statusCode{Code: 200, Count: 5}, statusCode{Code: 500, Count: 4}),
-			V:          false,
+			expression: "ResponseCodeRatio(500, 600, 0, 600) > 0.5",
+			metrics:    statsResponseCodes(statusCode{Code: 200, Count: 5}, statusCode{Code: 500, Count: 4}),
+			expected:   false,
+		},
+		{
+			// quantile not defined
+			expression: "LatencyAtQuantileMS(40.0) > 50",
+			metrics:    statsNetErrors(0.6),
+			expected:   false,
 		},
 	}
-	for _, t := range predicates {
-		p, err := parseExpression(t.Expression)
-		c.Assert(err, IsNil)
-		c.Assert(p, NotNil)
 
-		c.Assert(p(&CircuitBreaker{metrics: t.M}), Equals, t.V)
-	}
-}
+	for _, test := range testCases {
+		test := test
+		t.Run(test.expression, func(t *testing.T) {
+			t.Parallel()
 
-func (s *PredicatesSuite) TestErrors(c *C) {
-	predicates := []struct {
-		Expression string
-		M          *memmetrics.RTMetrics
-	}{
-		{
-			Expression: "LatencyAtQuantileMS(40.0) > 50", // quantile not defined
-			M:          statsNetErrors(0.6),
-		},
-	}
-	for _, t := range predicates {
-		p, err := parseExpression(t.Expression)
-		c.Assert(err, IsNil)
-		c.Assert(p, NotNil)
+			p, err := parseExpression(test.expression)
+			require.NoError(t, err)
+			require.NotNil(t, p)
 
-		c.Assert(p(&CircuitBreaker{metrics: t.M}), Equals, false)
+			assert.Equal(t, test.expected, p(&CircuitBreaker{metrics: test.metrics}))
+		})
 	}
 }

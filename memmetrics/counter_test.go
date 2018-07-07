@@ -1,34 +1,32 @@
 package memmetrics
 
 import (
+	"testing"
 	"time"
 
 	"github.com/mailgun/timetools"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type CounterSuite struct {
-	clock *timetools.FreezedTime
-}
-
-var _ = Suite(&CounterSuite{})
-
-func (s *CounterSuite) SetUpSuite(c *C) {
-	s.clock = &timetools.FreezedTime{
+func TestCloneExpired(t *testing.T) {
+	clockTest := &timetools.FreezedTime{
 		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
 	}
-}
 
-func (s *CounterSuite) TestCloneExpired(c *C) {
-	cnt, err := NewCounter(3, time.Second, CounterClock(s.clock))
-	c.Assert(err, IsNil)
-	cnt.Inc(1)
-	s.clock.Sleep(time.Second)
-	cnt.Inc(1)
-	s.clock.Sleep(time.Second)
-	cnt.Inc(1)
-	s.clock.Sleep(time.Second)
+	cnt, err := NewCounter(3, time.Second, CounterClock(clockTest))
+	require.NoError(t, err)
 
+	cnt.Inc(1)
+
+	clockTest.Sleep(time.Second)
+	cnt.Inc(1)
+
+	clockTest.Sleep(time.Second)
+	cnt.Inc(1)
+
+	clockTest.Sleep(time.Second)
 	out := cnt.Clone()
-	c.Assert(out.Count(), Equals, int64(2))
+
+	assert.EqualValues(t, 2, out.Count())
 }

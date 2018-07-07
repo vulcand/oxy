@@ -9,17 +9,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"testing"
 	"time"
 
 	gorillawebsocket "github.com/gorilla/websocket"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
 	"golang.org/x/net/websocket"
-	. "gopkg.in/check.v1"
 )
 
-func (s *FwdSuite) TestWebSocketTCPClose(c *C) {
+func TestWebSocketTCPClose(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	errChan := make(chan error, 1)
 	upgrader := gorillawebsocket.Upgrader{}
@@ -46,28 +48,30 @@ func (s *FwdSuite) TestWebSocketTCPClose(c *C) {
 		withServer(proxyAddr),
 		withPath("/ws"),
 	).open()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 	conn.Close()
 
 	serverErr := <-errChan
 
 	wsErr, ok := serverErr.(*gorillawebsocket.CloseError)
-	c.Assert(ok, Equals, true)
-	c.Assert(wsErr.Code, Equals, 1006)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, 1006, wsErr.Code)
 }
 
-func (s *FwdSuite) TestWebSocketEcho(c *C) {
+func TestWebSocketEcho(t *testing.T) {
 	num := runtime.NumGoroutine()
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
+
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
 		msg := make([]byte, 4)
 		conn.Read(msg)
-		c.Log(msg)
+		fmt.Println(string(msg))
 		conn.Write(msg)
 		conn.Close()
 	}))
+
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		mux.ServeHTTP(w, req)
 	})
@@ -80,29 +84,28 @@ func (s *FwdSuite) TestWebSocketEcho(c *C) {
 	defer proxy.Close()
 
 	serverAddr := proxy.Listener.Addr().String()
-	c.Log(serverAddr)
+
 	headers := http.Header{}
 	webSocketURL := "ws://" + serverAddr + "/ws"
 	headers.Add("Origin", webSocketURL)
+
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
-	if err != nil {
-		c.Errorf("Error [%s] during Dial with response: %+v", err, resp)
-		return
-	}
+	require.NoError(t, err, "Error during Dial with response: %+v", resp)
+
 	conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
-	c.Log(conn.ReadMessage())
+	fmt.Println(conn.ReadMessage())
 
 	srv.Close()
 	proxy.Close()
 	conn.Close()
 
 	time.Sleep(time.Second)
-	c.Assert(runtime.NumGoroutine(), Equals, num)
+	assert.Equal(t, num, runtime.NumGoroutine())
 }
 
-func (s *FwdSuite) TestWebSocketServerWithoutCheckOrigin(c *C) {
+func TestWebSocketServerWithoutCheckOrigin(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	upgrader := gorillawebsocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 		return true
@@ -137,12 +140,13 @@ func (s *FwdSuite) TestWebSocketServerWithoutCheckOrigin(c *C) {
 		withOrigin("http://127.0.0.2"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 }
-func (s *FwdSuite) TestWebSocketRequestWithOrigin(c *C) {
+
+func TestWebSocketRequestWithOrigin(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	upgrader := gorillawebsocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -174,9 +178,7 @@ func (s *FwdSuite) TestWebSocketRequestWithOrigin(c *C) {
 		withData("echo"),
 		withOrigin("http://127.0.0.2"),
 	).send()
-
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "bad status")
+	require.EqualError(t, err, "bad status")
 
 	resp, err := newWebsocketRequest(
 		withServer(proxyAddr),
@@ -184,13 +186,13 @@ func (s *FwdSuite) TestWebSocketRequestWithOrigin(c *C) {
 		withData("ok"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 }
 
-func (s *FwdSuite) TestWebSocketRequestWithQueryParams(c *C) {
+func TestWebSocketRequestWithQueryParams(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	upgrader := gorillawebsocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +201,7 @@ func (s *FwdSuite) TestWebSocketRequestWithQueryParams(c *C) {
 			return
 		}
 		defer conn.Close()
-		c.Assert(r.URL.Query().Get("query"), Equals, "test")
+		assert.Equal(t, "test", r.URL.Query().Get("query"))
 		for {
 			mt, message, err := conn.ReadMessage()
 			if err != nil {
@@ -224,13 +226,13 @@ func (s *FwdSuite) TestWebSocketRequestWithQueryParams(c *C) {
 		withData("ok"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 }
 
-func (s *FwdSuite) TestWebSocketRequestWithHeadersInResponseWriter(c *C) {
+func TestWebSocketRequestWithHeadersInResponseWriter(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
@@ -249,25 +251,20 @@ func (s *FwdSuite) TestWebSocketRequestWithHeadersInResponseWriter(c *C) {
 	defer proxy.Close()
 
 	serverAddr := proxy.Listener.Addr().String()
-	c.Log(serverAddr)
 
 	headers := http.Header{}
 	webSocketURL := "ws://" + serverAddr + "/ws"
 	headers.Add("Origin", webSocketURL)
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
-	c.Assert(err, IsNil)
+	require.NoError(t, err, "Error during Dial with response: %+v", err, resp)
 	defer conn.Close()
-	if err != nil {
-		c.Errorf("Error [%s] during Dial with response: %+v", err, resp)
-		return
-	}
 
-	c.Assert(resp.Header.Get("HEADER-KEY"), Equals, "HEADER-VALUE")
+	assert.Equal(t, "HEADER-VALUE", resp.Header.Get("HEADER-KEY"))
 }
 
-func (s *FwdSuite) TestWebSocketRequestWithEncodedChar(c *C) {
+func TestWebSocketRequestWithEncodedChar(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	upgrader := gorillawebsocket.Upgrader{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -276,7 +273,7 @@ func (s *FwdSuite) TestWebSocketRequestWithEncodedChar(c *C) {
 			return
 		}
 		defer conn.Close()
-		c.Assert(r.URL.EscapedPath(), Equals, "/%3A%2F%2F")
+		assert.Equal(t, "/%3A%2F%2F", r.URL.EscapedPath())
 		for {
 			mt, message, err := conn.ReadMessage()
 			if err != nil {
@@ -301,11 +298,11 @@ func (s *FwdSuite) TestWebSocketRequestWithEncodedChar(c *C) {
 		withData("ok"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 }
 
-func (s *FwdSuite) TestDetectsWebSocketRequest(c *C) {
+func TestDetectsWebSocketRequest(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
 		conn.Write([]byte("ok"))
@@ -313,7 +310,7 @@ func (s *FwdSuite) TestDetectsWebSocketRequest(c *C) {
 	}))
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		websocketRequest := IsWebsocketRequest(req)
-		c.Assert(websocketRequest, Equals, true)
+		assert.Equal(t, true, websocketRequest)
 		mux.ServeHTTP(w, req)
 	})
 	defer srv.Close()
@@ -326,13 +323,13 @@ func (s *FwdSuite) TestDetectsWebSocketRequest(c *C) {
 		withData("echo"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 }
 
-func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
+func TestWebSocketUpgradeFailed(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, req *http.Request) {
@@ -351,7 +348,7 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 			req.URL = testutils.ParseURI(srv.URL)
 			req.URL.Path = path
 			websocketRequest := IsWebsocketRequest(req)
-			c.Assert(websocketRequest, Equals, true)
+			assert.Equal(t, true, websocketRequest)
 			f.ServeHTTP(w, req)
 		} else {
 			w.WriteHeader(200)
@@ -362,11 +359,11 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 	proxyAddr := proxy.Listener.Addr().String()
 	conn, err := net.DialTimeout("tcp", proxyAddr, dialTimeout)
 
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 	defer conn.Close()
 
 	req, err := http.NewRequest(http.MethodGet, "ws://127.0.0.1/ws", nil)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	req.Header.Add("upgrade", "websocket")
 	req.Header.Add("Connection", "upgrade")
@@ -376,24 +373,24 @@ func (s *FwdSuite) TestWebSocketUpgradeFailed(c *C) {
 	// First request works with 400
 	br := bufio.NewReader(conn)
 	resp, err := http.ReadResponse(br, req)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	c.Assert(resp.StatusCode, Equals, 400)
+	assert.Equal(t, 400, resp.StatusCode)
 
 	req, err = http.NewRequest(http.MethodGet, "ws://127.0.0.1/ws2", nil)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 	req.Header.Add("upgrade", "websocket")
 	req.Header.Add("Connection", "upgrade")
 	req.Write(conn)
 
 	br = bufio.NewReader(conn)
 	_, err = http.ReadResponse(br, req)
-	c.Assert(err, Equals, io.ErrUnexpectedEOF)
+	assert.Equal(t, io.ErrUnexpectedEOF, err)
 }
 
-func (s *FwdSuite) TestForwardsWebsocketTraffic(c *C) {
+func TestForwardsWebsocketTraffic(t *testing.T) {
 	f, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
@@ -415,8 +412,8 @@ func (s *FwdSuite) TestForwardsWebsocketTraffic(c *C) {
 		withData("echo"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 }
 
 func createTLSWebsocketServer() *httptest.Server {
@@ -452,12 +449,12 @@ func createProxyWithForwarder(forwarder *Forwarder, URL string) *httptest.Server
 	})
 }
 
-func (s *FwdSuite) TestWebSocketTransferTLSConfig(c *C) {
+func TestWebSocketTransferTLSConfig(t *testing.T) {
 	srv := createTLSWebsocketServer()
 	defer srv.Close()
 
 	forwarderWithoutTLSConfig, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxyWithoutTLSConfig := createProxyWithForwarder(forwarderWithoutTLSConfig, srv.URL)
 	defer proxyWithoutTLSConfig.Close()
@@ -470,14 +467,13 @@ func (s *FwdSuite) TestWebSocketTransferTLSConfig(c *C) {
 		withData("ok"),
 	).send()
 
-	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, "bad status")
+	require.EqualError(t, err, "bad status")
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	forwarderWithTLSConfig, err := New(RoundTripper(transport))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxyWithTLSConfig := createProxyWithForwarder(forwarderWithTLSConfig, srv.URL)
 	defer proxyWithTLSConfig.Close()
@@ -490,13 +486,13 @@ func (s *FwdSuite) TestWebSocketTransferTLSConfig(c *C) {
 		withData("ok"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	forwarderWithTLSConfigFromDefaultTransport, err := New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxyWithTLSConfigFromDefaultTransport := createProxyWithForwarder(forwarderWithTLSConfigFromDefaultTransport, srv.URL)
 	defer proxyWithTLSConfig.Close()
@@ -509,8 +505,8 @@ func (s *FwdSuite) TestWebSocketTransferTLSConfig(c *C) {
 		withData("ok"),
 	).send()
 
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
+	require.NoError(t, err)
+	assert.Equal(t, "ok", resp)
 }
 
 const dialTimeout = time.Second

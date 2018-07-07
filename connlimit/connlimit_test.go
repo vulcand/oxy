@@ -6,64 +6,59 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
-
-	. "gopkg.in/check.v1"
 )
 
-func TestConn(t *testing.T) { TestingT(t) }
-
-type ConnLimiterSuite struct {
-}
-
-var _ = Suite(&ConnLimiterSuite{})
-
 // We've hit the limit and were able to proceed once the request has completed
-func (s *ConnLimiterSuite) TestHitLimitAndRelease(c *C) {
+func TestHitLimitAndRelease(t *testing.T) {
 	wait := make(chan bool)
 	proceed := make(chan bool)
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Header.Get("wait") != "" {
+		fmt.Println(req.Header)
+		if req.Header.Get("Wait") != "" {
 			proceed <- true
 			<-wait
 		}
 		w.Write([]byte("hello"))
 	})
 
-	l, err := New(handler, headerLimit, 1)
-	c.Assert(err, Equals, nil)
+	cl, err := New(handler, headerLimit, 1)
+	require.NoError(t, err)
 
-	srv := httptest.NewServer(l)
+	srv := httptest.NewServer(cl)
 	defer srv.Close()
 
 	go func() {
 		re, _, errGet := testutils.Get(srv.URL, testutils.Header("Limit", "a"), testutils.Header("wait", "yes"))
-		c.Assert(errGet, IsNil)
-		c.Assert(re.StatusCode, Equals, http.StatusOK)
+		require.NoError(t, errGet)
+		assert.Equal(t, http.StatusOK, re.StatusCode)
 	}()
 
 	<-proceed
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Limit", "a"))
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, 429)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusTooManyRequests, re.StatusCode)
 
 	// request from another source succeeds
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Limit", "b"))
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 
 	// Once the first request finished, next one succeeds
 	close(wait)
 
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Limit", "a"))
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
 // We've hit the limit and were able to proceed once the request has completed
-func (s *ConnLimiterSuite) TestCustomHandlers(c *C) {
+func TestCustomHandlers(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -74,38 +69,38 @@ func (s *ConnLimiterSuite) TestCustomHandlers(c *C) {
 	})
 
 	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler))
-	c.Assert(err, Equals, nil)
+	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
 	defer srv.Close()
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Limit", "a"))
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusTeapot)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusTeapot, re.StatusCode)
 }
 
 // We've hit the limit and were able to proceed once the request has completed
-func (s *ConnLimiterSuite) TestFaultyExtract(c *C) {
+func TestFaultyExtract(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
 
 	l, err := New(handler, faultyExtract, 1)
-	c.Assert(err, Equals, nil)
+	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
 	defer srv.Close()
 
 	re, _, err := testutils.Get(srv.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusInternalServerError)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, re.StatusCode)
 }
 
 func headerLimiter(req *http.Request) (string, int64, error) {
 	return req.Header.Get("Limit"), 1, nil
 }
 
-func faultyExtractor(req *http.Request) (string, int64, error) {
+func faultyExtractor(_ *http.Request) (string, int64, error) {
 	return "", -1, fmt.Errorf("oops")
 }
 

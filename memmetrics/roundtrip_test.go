@@ -3,109 +3,109 @@ package memmetrics
 import (
 	"runtime"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/mailgun/timetools"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/testutils"
 )
 
-type RRSuite struct {
-	tm *timetools.FreezedTime
-}
-
-var _ = Suite(&RRSuite{})
-
-func (s *RRSuite) SetUpSuite(c *C) {
-	s.tm = &timetools.FreezedTime{
-		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
-	}
-}
-
-func (s *RRSuite) TestDefaults(c *C) {
-	rr, err := NewRTMetrics(RTClock(s.tm))
-	c.Assert(err, IsNil)
-	c.Assert(rr, NotNil)
+func TestDefaults(t *testing.T) {
+	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	require.NoError(t, err)
+	require.NotNil(t, rr)
 
 	rr.Record(200, time.Second)
 	rr.Record(502, 2*time.Second)
 	rr.Record(200, time.Second)
 	rr.Record(200, time.Second)
 
-	c.Assert(rr.NetworkErrorCount(), Equals, int64(1))
-	c.Assert(rr.TotalCount(), Equals, int64(4))
-	c.Assert(rr.StatusCodesCounts(), DeepEquals, map[int]int64{502: 1, 200: 3})
-	c.Assert(rr.NetworkErrorRatio(), Equals, float64(1)/float64(4))
-	c.Assert(rr.ResponseCodeRatio(500, 503, 200, 300), Equals, 1.0/3.0)
+	assert.EqualValues(t, 1, rr.NetworkErrorCount())
+	assert.EqualValues(t, 4, rr.TotalCount())
+	assert.Equal(t, map[int]int64{502: 1, 200: 3}, rr.StatusCodesCounts())
+	assert.Equal(t, float64(1)/float64(4), rr.NetworkErrorRatio())
+	assert.Equal(t, 1.0/3.0, rr.ResponseCodeRatio(500, 503, 200, 300))
 
 	h, err := rr.LatencyHistogram()
-	c.Assert(err, IsNil)
-	c.Assert(int(h.LatencyAtQuantile(100)/time.Second), Equals, 2)
+	require.NoError(t, err)
+	assert.Equal(t, 2, int(h.LatencyAtQuantile(100)/time.Second))
 
 	rr.Reset()
-	c.Assert(rr.NetworkErrorCount(), Equals, int64(0))
-	c.Assert(rr.TotalCount(), Equals, int64(0))
-	c.Assert(rr.StatusCodesCounts(), DeepEquals, map[int]int64{})
-	c.Assert(rr.NetworkErrorRatio(), Equals, float64(0))
-	c.Assert(rr.ResponseCodeRatio(500, 503, 200, 300), Equals, float64(0))
+	assert.EqualValues(t, 0, rr.NetworkErrorCount())
+	assert.EqualValues(t, 0, rr.TotalCount())
+	assert.Equal(t, map[int]int64{}, rr.StatusCodesCounts())
+	assert.Equal(t, float64(0), rr.NetworkErrorRatio())
+	assert.Equal(t, float64(0), rr.ResponseCodeRatio(500, 503, 200, 300))
 
 	h, err = rr.LatencyHistogram()
-	c.Assert(err, IsNil)
-	c.Assert(h.LatencyAtQuantile(100), Equals, time.Duration(0))
-
+	require.NoError(t, err)
+	assert.Equal(t, time.Duration(0), h.LatencyAtQuantile(100))
 }
 
-func (s *RRSuite) TestAppend(c *C) {
-	rr, err := NewRTMetrics(RTClock(s.tm))
-	c.Assert(err, IsNil)
-	c.Assert(rr, NotNil)
+func TestAppend(t *testing.T) {
+	clock := testutils.GetClock()
+
+	rr, err := NewRTMetrics(RTClock(clock))
+	require.NoError(t, err)
+	require.NotNil(t, rr)
 
 	rr.Record(200, time.Second)
 	rr.Record(502, 2*time.Second)
 	rr.Record(200, time.Second)
 	rr.Record(200, time.Second)
 
-	rr2, err := NewRTMetrics(RTClock(s.tm))
-	c.Assert(err, IsNil)
-	c.Assert(rr2, NotNil)
+	rr2, err := NewRTMetrics(RTClock(clock))
+	require.NoError(t, err)
+	require.NotNil(t, rr2)
 
 	rr2.Record(200, 3*time.Second)
 	rr2.Record(501, 3*time.Second)
 	rr2.Record(200, 3*time.Second)
 	rr2.Record(200, 3*time.Second)
 
-	c.Assert(rr2.Append(rr), IsNil)
-	c.Assert(rr2.StatusCodesCounts(), DeepEquals, map[int]int64{501: 1, 502: 1, 200: 6})
-	c.Assert(rr2.NetworkErrorCount(), Equals, int64(1))
+	require.NoError(t, rr2.Append(rr))
+	assert.Equal(t, map[int]int64{501: 1, 502: 1, 200: 6}, rr2.StatusCodesCounts())
+	assert.EqualValues(t, 1, rr2.NetworkErrorCount())
 
 	h, err := rr2.LatencyHistogram()
-	c.Assert(err, IsNil)
-	c.Assert(int(h.LatencyAtQuantile(100)/time.Second), Equals, 3)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, h.LatencyAtQuantile(100)/time.Second)
 }
 
-func (s *RRSuite) TestConcurrentRecords(c *C) {
+func TestConcurrentRecords(t *testing.T) {
 	// This test asserts a race condition which requires parallelism
 	runtime.GOMAXPROCS(100)
 
-	rr, _ := NewRTMetrics(RTClock(s.tm))
+	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	require.NoError(t, err)
 
 	for code := 0; code < 100; code++ {
 		for numRecords := 0; numRecords < 10; numRecords++ {
 			go func(statusCode int) {
-				rr.recordStatusCode(statusCode)
+				_ = rr.recordStatusCode(statusCode)
 			}(code)
 		}
 	}
 }
 
-func (s *RRSuite) TestRTMetricExportReturnsNewCopy(c *C) {
-	a := RTMetrics{}
-	a.clock = &timetools.RealTime{}
-	a.total, _ = NewCounter(1, time.Second, CounterClock(a.clock))
-	a.netErrors, _ = NewCounter(1, time.Second, CounterClock(a.clock))
-	a.statusCodes = map[int]*RollingCounter{}
-	a.statusCodesLock = sync.RWMutex{}
-	a.histogram = &RollingHDRHistogram{}
-	a.histogramLock = sync.RWMutex{}
+func TestRTMetricExportReturnsNewCopy(t *testing.T) {
+	a := RTMetrics{
+		clock:           &timetools.RealTime{},
+		statusCodes:     map[int]*RollingCounter{},
+		statusCodesLock: sync.RWMutex{},
+		histogram:       &RollingHDRHistogram{},
+		histogramLock:   sync.RWMutex{},
+	}
+
+	var err error
+	a.total, err = NewCounter(1, time.Second, CounterClock(a.clock))
+	require.NoError(t, err)
+
+	a.netErrors, err = NewCounter(1, time.Second, CounterClock(a.clock))
+	require.NoError(t, err)
+
 	a.newCounter = func() (*RollingCounter, error) {
 		return NewCounter(counterBuckets, counterResolution, CounterClock(a.clock))
 	}
@@ -122,13 +122,13 @@ func (s *RRSuite) TestRTMetricExportReturnsNewCopy(c *C) {
 	a.newHist = nil
 	a.clock = nil
 
-	c.Assert(b.total, NotNil)
-	c.Assert(b.netErrors, NotNil)
-	c.Assert(b.statusCodes, NotNil)
-	c.Assert(b.histogram, NotNil)
-	c.Assert(b.newCounter, NotNil)
-	c.Assert(b.newHist, NotNil)
-	c.Assert(b.clock, NotNil)
+	assert.NotNil(t, b.total)
+	assert.NotNil(t, b.netErrors)
+	assert.NotNil(t, b.statusCodes)
+	assert.NotNil(t, b.histogram)
+	assert.NotNil(t, b.newCounter)
+	assert.NotNil(t, b.newHist)
+	assert.NotNil(t, b.clock)
 
 	// a and b should have different locks
 	locksSucceed := make(chan bool)
@@ -145,7 +145,7 @@ func (s *RRSuite) TestRTMetricExportReturnsNewCopy(c *C) {
 		case <-locksSucceed:
 			return
 		case <-time.After(10 * time.Second):
-			c.FailNow()
+			t.FailNow()
 		}
 	}
 }

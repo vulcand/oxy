@@ -1,18 +1,14 @@
 package utils
 
 import (
-	. "gopkg.in/check.v1"
 	"net/http"
 	"net/url"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-type DumpHttpReqSuite struct {
-}
-
-var _ = Suite(&DumpHttpReqSuite{})
-
-type readCloserTestImpl struct {
-}
+type readCloserTestImpl struct{}
 
 func (r *readCloserTestImpl) Read(p []byte) (n int, err error) {
 	return 0, nil
@@ -22,15 +18,15 @@ func (r *readCloserTestImpl) Close() error {
 	return nil
 }
 
-//Just to make sure we don't panic, return err and not
-//username and pass and cover the function
-func (s *DumpHttpReqSuite) TestHttpReqToString(c *C) {
+// Just to make sure we don't panic, return err and not
+// username and pass and cover the function
+func TestHttpReqToString(t *testing.T) {
 	req := &http.Request{
 		URL:    &url.URL{Host: "localhost:2374", Path: "/unittest"},
-		Method: "DELETE",
+		Method: http.MethodDelete,
 		Cancel: make(chan struct{}),
 		Body:   &readCloserTestImpl{},
 	}
 
-	c.Assert(len(DumpHttpRequest(req)) > 0, Equals, true)
+	assert.True(t, len(DumpHttpRequest(req)) > 0)
 }

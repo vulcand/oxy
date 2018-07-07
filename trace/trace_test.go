@@ -11,47 +11,41 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
-
-	. "gopkg.in/check.v1"
 )
 
-func TestTrace(t *testing.T) { TestingT(t) }
-
-type TraceSuite struct{}
-
-var _ = Suite(&TraceSuite{})
-
-func (s *TraceSuite) TestTraceSimple(c *C) {
+func TestTraceSimple(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Length", "5")
 		w.Write([]byte("hello"))
 	})
 
 	trace := &bytes.Buffer{}
-	t, err := New(handler, trace)
-	c.Assert(err, IsNil)
+	tr, err := New(handler, trace)
+	require.NoError(t, err)
 
-	srv := httptest.NewServer(t)
+	srv := httptest.NewServer(tr)
 	defer srv.Close()
 
-	re, _, err := testutils.MakeRequest(srv.URL+"/hello", testutils.Method("POST"), testutils.Body("123456"))
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	re, _, err := testutils.MakeRequest(srv.URL+"/hello", testutils.Method(http.MethodPost), testutils.Body("123456"))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 
 	var r *Record
-	c.Assert(json.Unmarshal(trace.Bytes(), &r), IsNil)
+	require.NoError(t, json.Unmarshal(trace.Bytes(), &r))
 
-	c.Assert(r.Request.Method, Equals, "POST")
-	c.Assert(r.Request.URL, Equals, "/hello")
-	c.Assert(r.Response.Code, Equals, http.StatusOK)
-	c.Assert(r.Request.BodyBytes, Equals, int64(6))
-	c.Assert(r.Response.Roundtrip, Not(Equals), float64(0))
-	c.Assert(r.Response.BodyBytes, Equals, int64(5))
+	assert.Equal(t, http.MethodPost, r.Request.Method)
+	assert.Equal(t, "/hello", r.Request.URL)
+	assert.Equal(t, http.StatusOK, r.Response.Code)
+	assert.EqualValues(t, 6, r.Request.BodyBytes)
+	assert.NotEqual(t, float64(0), r.Response.Roundtrip)
+	assert.EqualValues(t, 5, r.Response.BodyBytes)
 }
 
-func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
+func TestTraceCaptureHeaders(t *testing.T) {
 	respHeaders := http.Header{
 		"X-Re-1": []string{"6", "7"},
 		"X-Re-2": []string{"2", "3"},
@@ -63,34 +57,34 @@ func (s *TraceSuite) TestTraceCaptureHeaders(c *C) {
 	})
 
 	trace := &bytes.Buffer{}
-	t, err := New(handler, trace, RequestHeaders("X-Req-B", "X-Req-A"), ResponseHeaders("X-Re-1", "X-Re-2"))
-	c.Assert(err, IsNil)
+	tr, err := New(handler, trace, RequestHeaders("X-Req-B", "X-Req-A"), ResponseHeaders("X-Re-1", "X-Re-2"))
+	require.NoError(t, err)
 
-	srv := httptest.NewServer(t)
+	srv := httptest.NewServer(tr)
 	defer srv.Close()
 
 	reqHeaders := http.Header{"X-Req-A": []string{"1", "2"}, "X-Req-B": []string{"3", "4"}}
 	re, _, err := testutils.Get(srv.URL+"/hello", testutils.Headers(reqHeaders))
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 
 	var r *Record
-	c.Assert(json.Unmarshal(trace.Bytes(), &r), IsNil)
+	require.NoError(t, json.Unmarshal(trace.Bytes(), &r))
 
-	c.Assert(r.Request.Headers, DeepEquals, reqHeaders)
-	c.Assert(r.Response.Headers, DeepEquals, respHeaders)
+	assert.Equal(t, reqHeaders, r.Request.Headers)
+	assert.Equal(t, respHeaders, r.Response.Headers)
 }
 
-func (s *TraceSuite) TestTraceTLS(c *C) {
+func TestTraceTLS(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
 
 	trace := &bytes.Buffer{}
-	t, err := New(handler, trace)
-	c.Assert(err, IsNil)
+	tr, err := New(handler, trace)
+	require.NoError(t, err)
 
-	srv := httptest.NewUnstartedServer(t)
+	srv := httptest.NewUnstartedServer(tr)
 	srv.StartTLS()
 	defer srv.Close()
 
@@ -99,19 +93,19 @@ func (s *TraceSuite) TestTraceTLS(c *C) {
 	}
 
 	u, err := url.Parse(srv.URL)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	conn, err := tls.Dial("tcp", u.Host, config)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	fmt.Fprint(conn, "GET / HTTP/1.0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
-	c.Assert(err, IsNil)
-	c.Assert(status, Equals, "HTTP/1.0 200 OK\r\n")
+	require.NoError(t, err)
+	assert.Equal(t, "HTTP/1.0 200 OK\r\n", status)
 	state := conn.ConnectionState()
 	conn.Close()
 
 	var r *Record
-	c.Assert(json.Unmarshal(trace.Bytes(), &r), IsNil)
-	c.Assert(r.Request.TLS.Version, Equals, versionToString(state.Version))
+	require.NoError(t, json.Unmarshal(trace.Bytes(), &r))
+	assert.Equal(t, versionToString(state.Version), r.Request.TLS.Version)
 }

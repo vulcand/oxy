@@ -32,15 +32,15 @@ func NewRateSet() *RateSet {
 // set then the new rate overrides the old one.
 func (rs *RateSet) Add(period time.Duration, average int64, burst int64) error {
 	if period <= 0 {
-		return fmt.Errorf("Invalid period: %v", period)
+		return fmt.Errorf("invalid period: %v", period)
 	}
 	if average <= 0 {
-		return fmt.Errorf("Invalid average: %v", average)
+		return fmt.Errorf("invalid average: %v", average)
 	}
 	if burst <= 0 {
-		return fmt.Errorf("Invalid burst: %v", burst)
+		return fmt.Errorf("invalid burst: %v", burst)
 	}
-	rs.m[period] = &rate{period, average, burst}
+	rs.m[period] = &rate{period: period, average: average, burst: burst}
 	return nil
 }
 
@@ -79,10 +79,10 @@ type TokenLimiter struct {
 // New constructs a `TokenLimiter` middleware instance.
 func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet, opts ...TokenLimiterOption) (*TokenLimiter, error) {
 	if defaultRates == nil || len(defaultRates.m) == 0 {
-		return nil, fmt.Errorf("Provide default rates")
+		return nil, fmt.Errorf("provide default rates")
 	}
 	if extract == nil {
-		return nil, fmt.Errorf("Provide extract function")
+		return nil, fmt.Errorf("provide extract function")
 	}
 	tl := &TokenLimiter{
 		next:         next,

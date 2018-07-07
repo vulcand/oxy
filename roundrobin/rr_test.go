@@ -5,102 +5,74 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/forward"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
-
-	. "gopkg.in/check.v1"
 )
 
-func TestRR(t *testing.T) { TestingT(t) }
-
-type RRSuite struct{}
-
-var _ = Suite(&RRSuite{})
-
-func (s *RRSuite) TestNoServers(c *C) {
+func TestNoServers(t *testing.T) {
 	fwd, err := forward.New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	lb, err := New(fwd)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusInternalServerError)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, re.StatusCode)
 }
 
-func (s *RRSuite) TestRemoveBadServer(c *C) {
+func TestRemoveBadServer(t *testing.T) {
 	lb, err := New(nil)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	c.Assert(lb.RemoveServer(testutils.ParseURI("http://google.com")), NotNil)
+	assert.Error(t, lb.RemoveServer(testutils.ParseURI("http://google.com")))
 }
 
-func (s *RRSuite) TestCustomErrHandler(c *C) {
+func TestCustomErrHandler(t *testing.T) {
 	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
 		w.WriteHeader(http.StatusTeapot)
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
 	fwd, err := forward.New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	lb, err := New(fwd, ErrorHandler(errHandler))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusTeapot)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusTeapot, re.StatusCode)
 }
 
-func (s *RRSuite) TestOneServer(c *C) {
+func TestOneServer(t *testing.T) {
 	a := testutils.NewResponder("a")
 	defer a.Close()
 
 	fwd, err := forward.New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	lb, err := New(fwd)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "a", "a"})
+	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
 }
 
-func (s *RRSuite) TestSimple(c *C) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
-
-	b := testutils.NewResponder("b")
-	defer b.Close()
-
-	fwd, err := forward.New()
-	c.Assert(err, IsNil)
-
-	lb, err := New(fwd)
-	c.Assert(err, IsNil)
-
-	lb.UpsertServer(testutils.ParseURI(a.URL))
-	lb.UpsertServer(testutils.ParseURI(b.URL))
-
-	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
-
-	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
-}
-
-func (s *RRSuite) TestRemoveServer(c *C) {
+func TestSimple(t *testing.T) {
 	a := testutils.NewResponder("a")
 	defer a.Close()
 
@@ -108,44 +80,21 @@ func (s *RRSuite) TestRemoveServer(c *C) {
 	defer b.Close()
 
 	fwd, err := forward.New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	lb, err := New(fwd)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL))
-	lb.UpsertServer(testutils.ParseURI(b.URL))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
-
-	lb.RemoveServer(testutils.ParseURI(a.URL))
-
-	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"b", "b", "b"})
+	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 }
 
-func (s *RRSuite) TestUpsertSame(c *C) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
-
-	fwd, err := forward.New()
-	c.Assert(err, IsNil)
-
-	lb, err := New(fwd)
-	c.Assert(err, IsNil)
-
-	c.Assert(lb.UpsertServer(testutils.ParseURI(a.URL)), IsNil)
-	c.Assert(lb.UpsertServer(testutils.ParseURI(a.URL)), IsNil)
-
-	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
-
-	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "a", "a"})
-}
-
-func (s *RRSuite) TestUpsertWeight(c *C) {
+func TestRemoveServer(t *testing.T) {
 	a := testutils.NewResponder("a")
 	defer a.Close()
 
@@ -153,26 +102,72 @@ func (s *RRSuite) TestUpsertWeight(c *C) {
 	defer b.Close()
 
 	fwd, err := forward.New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	lb, err := New(fwd)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	c.Assert(lb.UpsertServer(testutils.ParseURI(a.URL)), IsNil)
-	c.Assert(lb.UpsertServer(testutils.ParseURI(b.URL)), IsNil)
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(seq(c, proxy.URL, 3), DeepEquals, []string{"a", "b", "a"})
+	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 
-	c.Assert(lb.UpsertServer(testutils.ParseURI(b.URL), Weight(3)), IsNil)
+	err = lb.RemoveServer(testutils.ParseURI(a.URL))
+	require.NoError(t, err)
 
-	c.Assert(seq(c, proxy.URL, 4), DeepEquals, []string{"b", "b", "a", "b"})
+	assert.Equal(t, []string{"b", "b", "b"}, seq(t, proxy.URL, 3))
 }
 
-func (s *RRSuite) TestWeighted(c *C) {
-	SetDefaultWeight(0)
+func TestUpsertSame(t *testing.T) {
+	a := testutils.NewResponder("a")
+	defer a.Close()
+
+	fwd, err := forward.New()
+	require.NoError(t, err)
+
+	lb, err := New(fwd)
+	require.NoError(t, err)
+
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
+
+	proxy := httptest.NewServer(lb)
+	defer proxy.Close()
+
+	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
+}
+
+func TestUpsertWeight(t *testing.T) {
+	a := testutils.NewResponder("a")
+	defer a.Close()
+
+	b := testutils.NewResponder("b")
+	defer b.Close()
+
+	fwd, err := forward.New()
+	require.NoError(t, err)
+
+	lb, err := New(fwd)
+	require.NoError(t, err)
+
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
+
+	proxy := httptest.NewServer(lb)
+	defer proxy.Close()
+
+	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
+
+	assert.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL), Weight(3)))
+
+	assert.Equal(t, []string{"b", "b", "a", "b"}, seq(t, proxy.URL, 4))
+}
+
+func TestWeighted(t *testing.T) {
+	require.NoError(t, SetDefaultWeight(0))
 	defer SetDefaultWeight(1)
 
 	a := testutils.NewResponder("a")
@@ -185,38 +180,38 @@ func (s *RRSuite) TestWeighted(c *C) {
 	defer z.Close()
 
 	fwd, err := forward.New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	lb, err := New(fwd)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	lb.UpsertServer(testutils.ParseURI(a.URL), Weight(3))
-	lb.UpsertServer(testutils.ParseURI(b.URL), Weight(2))
-	lb.UpsertServer(testutils.ParseURI(z.URL), Weight(0))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL), Weight(3)))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL), Weight(2)))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(z.URL), Weight(0)))
 
 	proxy := httptest.NewServer(lb)
 	defer proxy.Close()
 
-	c.Assert(seq(c, proxy.URL, 6), DeepEquals, []string{"a", "a", "b", "a", "b", "a"})
+	assert.Equal(t, []string{"a", "a", "b", "a", "b", "a"}, seq(t, proxy.URL, 6))
 
 	w, ok := lb.ServerWeight(testutils.ParseURI(a.URL))
-	c.Assert(w, Equals, 3)
-	c.Assert(ok, Equals, true)
+	assert.Equal(t, 3, w)
+	assert.Equal(t, true, ok)
 
 	w, ok = lb.ServerWeight(testutils.ParseURI(b.URL))
-	c.Assert(w, Equals, 2)
-	c.Assert(ok, Equals, true)
+	assert.Equal(t, 2, w)
+	assert.Equal(t, true, ok)
 
 	w, ok = lb.ServerWeight(testutils.ParseURI(z.URL))
-	c.Assert(w, Equals, 0)
-	c.Assert(ok, Equals, true)
+	assert.Equal(t, 0, w)
+	assert.Equal(t, true, ok)
 
 	w, ok = lb.ServerWeight(testutils.ParseURI("http://caramba:4000"))
-	c.Assert(w, Equals, -1)
-	c.Assert(ok, Equals, false)
+	assert.Equal(t, -1, w)
+	assert.Equal(t, false, ok)
 }
 
-func (s *RRSuite) TestRequestRewriteListener(c *C) {
+func TestRequestRewriteListener(t *testing.T) {
 	a := testutils.NewResponder("a")
 	defer a.Close()
 
@@ -224,21 +219,20 @@ func (s *RRSuite) TestRequestRewriteListener(c *C) {
 	defer b.Close()
 
 	fwd, err := forward.New()
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	lb, err := New(fwd,
-		RoundRobinRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {
-		}))
-	c.Assert(err, IsNil)
+		RoundRobinRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {}))
+	require.NoError(t, err)
 
-	c.Assert(lb.requestRewriteListener, NotNil)
+	assert.NotNil(t, lb.requestRewriteListener)
 }
 
-func seq(c *C, url string, repeat int) []string {
-	out := []string{}
+func seq(t *testing.T, url string, repeat int) []string {
+	var out []string
 	for i := 0; i < repeat; i++ {
 		_, body, err := testutils.Get(url)
-		c.Assert(err, IsNil)
+		require.NoError(t, err)
 		out = append(out, string(body))
 	}
 	return out
