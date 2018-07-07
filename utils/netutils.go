@@ -12,9 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// ProxyWriter helps to capture response headers and status code
-// from the ServeHTTP. It can be safely passed to ServeHTTP handler,
-// wrapping the real response writer.
 type ProxyWriter struct {
 	w      http.ResponseWriter
 	Code   int
@@ -31,16 +28,21 @@ func NewProxyWriterWithLogger(w http.ResponseWriter, l *log.Logger) *ProxyWriter
 	return &ProxyWriter{
 		w:   w,
 		log: l,
-	}
+  }
 }
 
+
 func (p *ProxyWriter) StatusCode() int {
-	if p.Code == 0 {
+	if p.code == 0 {
 		// per contract standard lib will set this to http.StatusOK if not set
 		// by user, here we avoid the confusion by mirroring this logic
 		return http.StatusOK
 	}
-	return p.Code
+	return p.code
+}
+
+func (p *ProxyWriter) GetLength() int64 {
+	return p.length
 }
 
 func (p *ProxyWriter) Header() http.Header {
@@ -48,13 +50,13 @@ func (p *ProxyWriter) Header() http.Header {
 }
 
 func (p *ProxyWriter) Write(buf []byte) (int, error) {
-	p.Length = p.Length + int64(len(buf))
-	return p.w.Write(buf)
+	p.length = p.length + int64(len(buf))
+	return p.W.Write(buf)
 }
 
 func (p *ProxyWriter) WriteHeader(code int) {
-	p.Code = code
-	p.w.WriteHeader(code)
+	p.code = code
+	p.W.WriteHeader(code)
 }
 
 func (p *ProxyWriter) Flush() {
@@ -76,7 +78,7 @@ func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return hi.Hijack()
 	}
 	p.log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.w))
-	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.w))
+	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.W))
 }
 
 func NewBufferWriter(w io.WriteCloser) *BufferWriter {
@@ -121,8 +123,8 @@ func (b *BufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := b.W.(http.Hijacker); ok {
 		return hi.Hijack()
 	}
-	log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.W))
-	return nil, nil, fmt.Errorf("The response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.W))
+	log.Debugf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.W))
+	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.W))
 }
 
 type nopWriteCloser struct {

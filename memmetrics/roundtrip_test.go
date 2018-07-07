@@ -1,6 +1,8 @@
 package memmetrics
 
 import (
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/mailgun/timetools"
@@ -78,4 +80,72 @@ func (s *RRSuite) TestAppend(c *C) {
 	h, err := rr2.LatencyHistogram()
 	c.Assert(err, IsNil)
 	c.Assert(int(h.LatencyAtQuantile(100)/time.Second), Equals, 3)
+}
+
+func (s *RRSuite) TestConcurrentRecords(c *C) {
+	// This test asserts a race condition which requires parallelism
+	runtime.GOMAXPROCS(100)
+
+	rr, _ := NewRTMetrics(RTClock(s.tm))
+
+	for code := 0; code < 100; code++ {
+		for numRecords := 0; numRecords < 10; numRecords++ {
+			go func(statusCode int) {
+				rr.recordStatusCode(statusCode)
+			}(code)
+		}
+	}
+}
+
+func (s *RRSuite) TestRTMetricExportReturnsNewCopy(c *C) {
+	a := RTMetrics{}
+	a.clock = &timetools.RealTime{}
+	a.total, _ = NewCounter(1, time.Second, CounterClock(a.clock))
+	a.netErrors, _ = NewCounter(1, time.Second, CounterClock(a.clock))
+	a.statusCodes = map[int]*RollingCounter{}
+	a.statusCodesLock = sync.RWMutex{}
+	a.histogram = &RollingHDRHistogram{}
+	a.histogramLock = sync.RWMutex{}
+	a.newCounter = func() (*RollingCounter, error) {
+		return NewCounter(counterBuckets, counterResolution, CounterClock(a.clock))
+	}
+	a.newHist = func() (*RollingHDRHistogram, error) {
+		return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets, RollingClock(a.clock))
+	}
+
+	b := a.Export()
+	a.total = nil
+	a.netErrors = nil
+	a.statusCodes = nil
+	a.histogram = nil
+	a.newCounter = nil
+	a.newHist = nil
+	a.clock = nil
+
+	c.Assert(b.total, NotNil)
+	c.Assert(b.netErrors, NotNil)
+	c.Assert(b.statusCodes, NotNil)
+	c.Assert(b.histogram, NotNil)
+	c.Assert(b.newCounter, NotNil)
+	c.Assert(b.newHist, NotNil)
+	c.Assert(b.clock, NotNil)
+
+	// a and b should have different locks
+	locksSucceed := make(chan bool)
+	go func() {
+		a.statusCodesLock.Lock()
+		b.statusCodesLock.Lock()
+		a.histogramLock.Lock()
+		b.histogramLock.Lock()
+		locksSucceed <- true
+	}()
+
+	for {
+		select {
+		case <-locksSucceed:
+			return
+		case <-time.After(10 * time.Second):
+			c.FailNow()
+		}
+	}
 }

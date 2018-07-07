@@ -1,8 +1,8 @@
 package forward
 
 import (
+	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,7 +12,6 @@ import (
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
 
-	"golang.org/x/net/websocket"
 	. "gopkg.in/check.v1"
 )
 
@@ -92,6 +91,30 @@ func (s *FwdSuite) TestCustomErrHandler(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(re.StatusCode, Equals, http.StatusTeapot)
 	c.Assert(string(body), Equals, http.StatusText(http.StatusTeapot))
+}
+
+func (s *FwdSuite) TestResponseModifier(c *C) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	f, err := New(ResponseModifier(func(resp *http.Response) error {
+		resp.Header.Add("X-Test", "CUSTOM")
+		return nil
+	}))
+	c.Assert(err, IsNil)
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	re, _, err := testutils.Get(proxy.URL)
+	c.Assert(err, IsNil)
+	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	c.Assert(re.Header.Get("X-Test"), Equals, "CUSTOM")
 }
 
 // Makes sure hop-by-hop headers are removed
@@ -201,10 +224,10 @@ func (s *FwdSuite) TestCustomLogger(c *C) {
 	c.Assert(re.StatusCode, Equals, http.StatusOK)
 }
 
-func (s *FwdSuite) TestEscapedURL(c *C) {
-	var outURL string
+func (s *FwdSuite) TestRouteForwarding(c *C) {
+	var outPath string
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		outURL = req.RequestURI
+		outPath = req.RequestURI
 		w.Write([]byte("hello"))
 	})
 	defer srv.Close()
@@ -218,16 +241,32 @@ func (s *FwdSuite) TestEscapedURL(c *C) {
 	})
 	defer proxy.Close()
 
-	path := "/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b"
+	tests := []struct {
+		Path  string
+		Query string
 
-	request, err := http.NewRequest("GET", proxy.URL, nil)
-	parsed := testutils.ParseURI(proxy.URL)
-	parsed.Opaque = path
-	request.URL = parsed
-	re, err := http.DefaultClient.Do(request)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
-	c.Assert(outURL, Equals, path)
+		ExpectedPath string
+	}{
+		{"/hello", "", "/hello"},
+		{"//hello", "", "//hello"},
+		{"///hello", "", "///hello"},
+		{"/hello", "abc=def&def=123", "/hello?abc=def&def=123"},
+		{"/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b", "", "/log/http%3A%2F%2Fwww.site.com%2Fsomething?a=b"},
+	}
+
+	for _, test := range tests {
+		proxyURL := proxy.URL + test.Path
+		if test.Query != "" {
+			proxyURL = proxyURL + "?" + test.Query
+		}
+		request, err := http.NewRequest("GET", proxyURL, nil)
+		c.Assert(err, IsNil)
+
+		re, err := http.DefaultClient.Do(request)
+		c.Assert(err, IsNil)
+		c.Assert(re.StatusCode, Equals, http.StatusOK)
+		c.Assert(outPath, Equals, test.ExpectedPath)
+	}
 }
 
 func (s *FwdSuite) TestForwardedProto(c *C) {
@@ -280,82 +319,31 @@ func (s *FwdSuite) TestChunkedResponseConversion(c *C) {
 	c.Assert(re.Header.Get("Content-Length"), Equals, fmt.Sprintf("%d", len("testtest1test2")))
 }
 
-func (s *FwdSuite) TestDetectsWebsocketRequest(c *C) {
-	mux := http.NewServeMux()
-	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
-		conn.Write([]byte("ok"))
-		conn.Close()
-	}))
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		websocketRequest := IsWebsocketRequest(req)
-		c.Assert(websocketRequest, Equals, true)
-		mux.ServeHTTP(w, req)
-	})
-	defer srv.Close()
+func (s *FwdSuite) TestContextWithValueInErrHandler(c *C) {
+	var originalPBool *bool
+	originalBool := false
+	originalPBool = &originalBool
 
-	serverAddr := srv.Listener.Addr().String()
-	resp, err := sendWebsocketRequest(serverAddr, "/ws", "echo", c)
+	f, err := New(ErrorHandler(utils.ErrorHandlerFunc(func(rw http.ResponseWriter, req *http.Request, err error) {
+		test, isBool := req.Context().Value("test").(*bool)
+		if isBool {
+			*test = true
+		}
+		if err != nil {
+			rw.WriteHeader(http.StatusBadGateway)
+		}
+	})))
 	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
-}
-
-func (s *FwdSuite) TestForwardsWebsocketTraffic(c *C) {
-	f, err := New()
-	c.Assert(err, IsNil)
-
-	mux := http.NewServeMux()
-	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
-		conn.Write([]byte("ok"))
-		conn.Close()
-	}))
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		mux.ServeHTTP(w, req)
-	})
-	defer srv.Close()
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		path := req.URL.Path // keep the original path
-		// Set new backend URL
-		req.URL = testutils.ParseURI(srv.URL)
-		req.URL.Path = path
-		f.ServeHTTP(w, req)
+		// We need a network error
+		req.URL = testutils.ParseURI("http://localhost:63450")
+		newReq := req.WithContext(context.WithValue(req.Context(), "test", originalPBool))
+		f.ServeHTTP(w, newReq)
 	})
 	defer proxy.Close()
 
-	proxyAddr := proxy.Listener.Addr().String()
-	resp, err := sendWebsocketRequest(proxyAddr, "/ws", "echo", c)
-	c.Assert(err, IsNil)
-	c.Assert(resp, Equals, "ok")
-}
-
-const dialTimeout = time.Second
-
-func sendWebsocketRequest(serverAddr, path, data string, c *C) (received string, err error) {
-	client, err := net.DialTimeout("tcp", serverAddr, dialTimeout)
-	if err != nil {
-		return "", err
-	}
-	config := newWebsocketConfig(serverAddr, path)
-	conn, err := websocket.NewClient(config, client)
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	if _, err := conn.Write([]byte(data)); err != nil {
-		return "", err
-	}
-	var msg = make([]byte, 512)
-	var n int
-	n, err = conn.Read(msg)
-	if err != nil {
-		return "", err
-	}
-
-	received = string(msg[:n])
-	return received, nil
-}
-
-func newWebsocketConfig(serverAddr, path string) *websocket.Config {
-	config, _ := websocket.NewConfig(fmt.Sprintf("ws://%s%s", serverAddr, path), "http://localhost")
-	return config
+	re, _, err := testutils.Get(proxy.URL)
+	c.Assert(re.StatusCode, Equals, http.StatusBadGateway)
+	c.Assert(*originalPBool, Equals, true)
 }

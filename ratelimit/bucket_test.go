@@ -172,7 +172,7 @@ func (s *BucketSuite) TestUpdateInvalidPeriod(c *C) {
 
 	// ...check that burst did not change
 	s.clock.Sleep(40 * time.Second)
-	delay, err = tb.consume(21)
+	_, err = tb.consume(21)
 	c.Assert(err, NotNil)
 	delay, err = tb.consume(20)
 	c.Assert(err, IsNil)
@@ -216,6 +216,7 @@ func (s *BucketSuite) TestUpdateRateChanged(c *C) {
 	tb.consume(15) // 5 tokens available
 	// When
 	err := tb.update(&rate{time.Second, 20, 20}) // still 5 tokens available
+	c.Assert(err, IsNil)
 	// Then
 	delay, err := tb.consume(20)
 	c.Assert(err, IsNil)

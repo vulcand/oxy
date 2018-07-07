@@ -1,4 +1,4 @@
-// package cbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
+// Package cbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
 //
 // Vulcan circuit breaker watches the error condtion to match
 // after which it activates the fallback scenario, e.g. returns the response code
@@ -116,7 +116,7 @@ func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.log.Level >= log.DebugLevel {
 		logEntry := c.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/circuitbreaker: competed ServeHttp on request")
+		defer logEntry.Debug("vulcand/oxy/circuitbreaker: completed ServeHttp on request")
 	}
 	if c.activateFallback(w, req) {
 		c.fallback.ServeHTTP(w, req)
@@ -174,7 +174,7 @@ func (c *CircuitBreaker) serve(w http.ResponseWriter, req *http.Request) {
 	c.next.ServeHTTP(p, req)
 
 	latency := c.clock.UtcNow().Sub(start)
-	c.metrics.Record(p.Code, latency)
+	c.metrics.Record(p.StatusCode(), latency)
 
 	// Note that this call is less expensive than it looks -- checkCondition only performs the real check
 	// periodically. Because of that we can afford to call it here on every single response.

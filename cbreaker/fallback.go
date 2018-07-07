@@ -37,7 +37,7 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.log.Level >= log.DebugLevel {
 		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/fallback/response: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/fallback/response: competed ServeHttp on request")
+		defer logEntry.Debug("vulcand/oxy/fallback/response: completed ServeHttp on request")
 	}
 
 	if f.r.ContentType != "" {
@@ -45,7 +45,10 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(f.r.Body)))
 	w.WriteHeader(f.r.StatusCode)
-	w.Write(f.r.Body)
+	_, err := w.Write(f.r.Body)
+	if err != nil {
+		log.Errorf("vulcand/oxy/fallback/response: failed to write response, err: %v", err)
+	}
 }
 
 type Redirect struct {
@@ -77,7 +80,7 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.log.Level >= log.DebugLevel {
 		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/fallback/redirect: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/fallback/redirect: competed ServeHttp on request")
+		defer logEntry.Debug("vulcand/oxy/fallback/redirect: completed ServeHttp on request")
 	}
 
 	location := f.u.String()
@@ -87,5 +90,8 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Location", location)
 	w.WriteHeader(http.StatusFound)
-	w.Write([]byte(http.StatusText(http.StatusFound)))
+	_, err := w.Write([]byte(http.StatusText(http.StatusFound)))
+	if err != nil {
+		log.Errorf("vulcand/oxy/fallback/redirect: failed to write response, err: %v", err)
+	}
 }
