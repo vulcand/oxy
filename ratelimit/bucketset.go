@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mailgun/timetools"
 	"sort"
+
+	"github.com/mailgun/timetools"
 )
 
 // TokenBucketSet represents a set of TokenBucket covering different time periods.
@@ -56,7 +57,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 
 func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	var maxDelay time.Duration = UndefinedDelay
-	var firstErr error = nil
+	var firstErr error
 	for _, tokenBucket := range tbs.buckets {
 		// We keep calling `Consume` even after a error is returned for one of
 		// buckets because that allows us to simplify the rollback procedure,

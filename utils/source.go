@@ -31,17 +31,17 @@ func NewExtractor(variable string) (SourceExtractor, error) {
 	if strings.HasPrefix(variable, "request.header.") {
 		header := strings.TrimPrefix(variable, "request.header.")
 		if len(header) == 0 {
-			return nil, fmt.Errorf("Wrong header: %s", header)
+			return nil, fmt.Errorf("wrong header: %s", header)
 		}
 		return makeHeaderExtractor(header), nil
 	}
-	return nil, fmt.Errorf("Unsupported limiting variable: '%s'", variable)
+	return nil, fmt.Errorf("unsupported limiting variable: '%s'", variable)
 }
 
 func extractClientIP(req *http.Request) (string, int64, error) {
 	vals := strings.SplitN(req.RemoteAddr, ":", 2)
 	if len(vals[0]) == 0 {
-		return "", 0, fmt.Errorf("Failed to parse client IP: %v", req.RemoteAddr)
+		return "", 0, fmt.Errorf("failed to parse client IP: %v", req.RemoteAddr)
 	}
 	return vals[0], 1, nil
 }

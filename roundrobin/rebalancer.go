@@ -447,9 +447,8 @@ func decrease(target, current int) int {
 	adjusted := current / FSMGrowFactor
 	if adjusted < target {
 		return target
-	} else {
-		return adjusted
 	}
+	return adjusted
 }
 
 // rebalancer server record that keeps track of the original weight supplied by user

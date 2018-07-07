@@ -32,9 +32,8 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 
 	if s.isBackendAlive(serverURL, servers) {
 		return serverURL, true, nil
-	} else {
-		return nil, false, nil
 	}
+	return nil, false, nil
 }
 
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {

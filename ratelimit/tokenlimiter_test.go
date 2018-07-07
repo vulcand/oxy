@@ -202,7 +202,7 @@ func (s *LimiterSuite) TestExtractRates(c *C) {
 func (s *LimiterSuite) TestBadRateExtractor(c *C) {
 	// Given
 	extractor := func(*http.Request) (*RateSet, error) {
-		return nil, fmt.Errorf("Boom!")
+		return nil, fmt.Errorf("boom")
 	}
 	rates := NewRateSet()
 	rates.Add(time.Second, 1, 1)

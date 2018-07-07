@@ -36,13 +36,12 @@ Examples of a buffering middleware:
 package buffer
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
-
-	"bufio"
 	"net"
+	"net/http"
 	"reflect"
 
 	"github.com/mailgun/multibuf"
@@ -307,7 +306,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		attempt += 1
+		attempt++
 		if body != nil {
 			if _, err := body.Seek(0, 0); err != nil {
 				b.log.Errorf("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)

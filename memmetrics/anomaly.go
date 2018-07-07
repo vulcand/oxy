@@ -23,10 +23,10 @@ func SplitLatencies(values []time.Duration, precision time.Duration) (good map[t
 	good, bad = make(map[time.Duration]bool), make(map[time.Duration]bool)
 	// Note that multiplier makes this function way less sensitive than ratios detector, this is to avoid noise.
 	vgood, vbad := SplitFloat64(2, 0, ratios)
-	for r, _ := range vgood {
+	for r := range vgood {
 		good[v2r[r]] = true
 	}
-	for r, _ := range vbad {
+	for r := range vbad {
 		bad[v2r[r]] = true
 	}
 	return good, bad

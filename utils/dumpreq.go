@@ -48,13 +48,13 @@ func Clone(r *http.Request) *SerializableHttpRequest {
 }
 
 func (s *SerializableHttpRequest) ToJson() string {
-	if jsonVal, err := json.Marshal(s); err != nil || jsonVal == nil {
-		return fmt.Sprintf("Error marshalling SerializableHttpRequest to json: %s", err.Error())
-	} else {
-		return string(jsonVal)
+	jsonVal, err := json.Marshal(s)
+	if err != nil || jsonVal == nil {
+		return fmt.Sprintf("Error marshalling SerializableHttpRequest to json: %s", err)
 	}
+	return string(jsonVal)
 }
 
 func DumpHttpRequest(req *http.Request) string {
-	return fmt.Sprintf("%v", Clone(req).ToJson())
+	return Clone(req).ToJson()
 }

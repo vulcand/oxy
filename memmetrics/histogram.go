@@ -34,13 +34,13 @@ func NewHDRHistogram(low, high int64, sigfigs int) (h *HDRHistogram, err error) 
 	}, nil
 }
 
-func (r *HDRHistogram) Export() *HDRHistogram {
-	var hist *hdrhistogram.Histogram = nil
-	if r.h != nil {
-		snapshot := r.h.Export()
+func (h *HDRHistogram) Export() *HDRHistogram {
+	var hist *hdrhistogram.Histogram
+	if h.h != nil {
+		snapshot := h.h.Export()
 		hist = hdrhistogram.Import(snapshot)
 	}
-	return &HDRHistogram{low: r.low, high: r.high, sigfigs: r.sigfigs, h: hist}
+	return &HDRHistogram{low: h.low, high: h.high, sigfigs: h.sigfigs, h: hist}
 }
 
 // Returns latency at quantile with microsecond precision

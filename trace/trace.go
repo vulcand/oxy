@@ -219,11 +219,11 @@ func csToString(cs uint16) string {
 }
 
 func bodyBytes(h http.Header) int64 {
-	len := h.Get("Content-Length")
-	if len == "" {
+	length := h.Get("Content-Length")
+	if length == "" {
 		return 0
 	}
-	bytes, err := strconv.ParseInt(len, 10, 0)
+	bytes, err := strconv.ParseInt(length, 10, 0)
 	if err == nil {
 		return bytes
 	}
