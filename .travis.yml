@@ -21,4 +21,6 @@ before_install:
   - curl -sI https://github.com/golang/dep/releases/latest | grep -Fi Location  | tr -d '\r' | sed "s/tag/download/g" | awk -F " " '{ print $2 "/dep-linux-amd64"}' | wget --output-document=$GOPATH/bin/dep -i -
   - chmod +x $GOPATH/bin/dep
 
-install: make dependencies
+install:
+  - make dependencies
+  - git diff --exit-code Gopkg.lock
