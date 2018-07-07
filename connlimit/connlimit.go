@@ -21,6 +21,7 @@ type ConnLimiter struct {
 	next             http.Handler
 
 	errHandler utils.ErrorHandler
+	log        *log.Logger
 }
 
 func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64, options ...ConnLimitOption) (*ConnLimiter, error) {
@@ -33,6 +34,7 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 		maxConnections: maxConnections,
 		connections:    make(map[string]int64),
 		next:           next,
+		log:            log.StandardLogger(),
 	}
 
 	for _, o := range options {
@@ -41,9 +43,21 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 		}
 	}
 	if cl.errHandler == nil {
-		cl.errHandler = defaultErrHandler
+		cl.errHandler = &ConnErrHandler{
+			log: cl.log,
+		}
 	}
 	return cl, nil
+}
+
+// Logger defines the logger the connection limiter will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) ConnLimitOption {
+	return func(cl *ConnLimiter) error {
+		cl.log = l
+		return nil
+	}
 }
 
 func (cl *ConnLimiter) Wrap(h http.Handler) {
@@ -53,12 +67,12 @@ func (cl *ConnLimiter) Wrap(h http.Handler) {
 func (cl *ConnLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token, amount, err := cl.extract.Extract(r)
 	if err != nil {
-		log.Errorf("failed to extract source of the connection: %v", err)
+		cl.log.Errorf("failed to extract source of the connection: %v", err)
 		cl.errHandler.ServeHTTP(w, r, err)
 		return
 	}
 	if err := cl.acquire(token, amount); err != nil {
-		log.Debugf("limiting request source %s: %v", token, err)
+		cl.log.Debugf("limiting request source %s: %v", token, err)
 		cl.errHandler.ServeHTTP(w, r, err)
 		return
 	}
@@ -104,11 +118,12 @@ func (m *MaxConnError) Error() string {
 }
 
 type ConnErrHandler struct {
+	log *log.Logger
 }
 
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	if log.GetLevel() >= log.DebugLevel {
-		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	if e.log.Level >= log.DebugLevel {
+		logEntry := e.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/connlimit: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/connlimit: completed ServeHttp on request")
 	}
@@ -130,5 +145,3 @@ func ErrorHandler(h utils.ErrorHandler) ConnLimitOption {
 		return nil
 	}
 }
-
-var defaultErrHandler = &ConnErrHandler{}

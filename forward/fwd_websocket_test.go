@@ -48,7 +48,7 @@ func (s *FwdSuite) TestWebSocketTCPClose(c *C) {
 	).open()
 	conn.Close()
 
-	serverErr := <- errChan
+	serverErr := <-errChan
 
 	wsErr, ok := serverErr.(*gorillawebsocket.CloseError)
 	c.Assert(ok, Equals, true)
@@ -581,7 +581,7 @@ func (w *websocketRequest) send() (string, error) {
 	return received, nil
 }
 
-func (w* websocketRequest) open() (*websocket.Conn, net.Conn, error) {
+func (w *websocketRequest) open() (*websocket.Conn, net.Conn, error) {
 	client, err := net.DialTimeout("tcp", w.ServerAddr, dialTimeout)
 	if err != nil {
 		return nil, nil, err

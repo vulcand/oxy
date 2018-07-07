@@ -14,8 +14,7 @@ type ErrorHandler interface {
 
 var DefaultHandler ErrorHandler = &StdHandler{}
 
-type StdHandler struct {
-}
+type StdHandler struct{}
 
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	statusCode := http.StatusInternalServerError

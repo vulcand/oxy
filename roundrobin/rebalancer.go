@@ -52,6 +52,8 @@ type Rebalancer struct {
 	stickySession *StickySession
 
 	requestRewriteListener RequestRewriteListener
+
+	log *log.Logger
 }
 
 func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
@@ -103,6 +105,8 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 		mtx:           &sync.Mutex{},
 		next:          handler,
 		stickySession: nil,
+
+		log: log.StandardLogger(),
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -134,6 +138,16 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 	return rb, nil
 }
 
+// Logger defines the logger the rebalancer will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func RebalancerLogger(l *log.Logger) RebalancerOption {
+	return func(rb *Rebalancer) error {
+		rb.log = l
+		return nil
+	}
+}
+
 func (rb *Rebalancer) Servers() []*url.URL {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -142,8 +156,8 @@ func (rb *Rebalancer) Servers() []*url.URL {
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if log.GetLevel() >= log.DebugLevel {
-		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	if rb.log.Level >= log.DebugLevel {
+		logEntry := rb.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request")
 	}
@@ -319,7 +333,7 @@ func (rb *Rebalancer) adjustWeights() {
 
 func (rb *Rebalancer) applyWeights() {
 	for _, srv := range rb.servers {
-		log.Debugf("upsert server %v, weight %v", srv.url, srv.curWeight)
+		rb.log.Debugf("upsert server %v, weight %v", srv.url, srv.curWeight)
 		rb.next.UpsertServer(srv.url, Weight(srv.curWeight))
 	}
 }
@@ -331,7 +345,7 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 		if srv.good {
 			weight := increase(srv.curWeight)
 			if weight <= FSMMaxWeight {
-				log.Debugf("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
+				rb.log.Debugf("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
 				srv.curWeight = weight
 				changed = true
 			}
@@ -378,7 +392,7 @@ func (rb *Rebalancer) markServers() bool {
 		}
 	}
 	if len(g) != 0 && len(b) != 0 {
-		log.Debugf("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
+		rb.log.Debugf("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
 	}
 	return len(g) != 0 && len(b) != 0
 }

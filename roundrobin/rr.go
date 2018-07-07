@@ -55,6 +55,8 @@ type RoundRobin struct {
 	currentWeight          int
 	stickySession          *StickySession
 	requestRewriteListener RequestRewriteListener
+
+	log *log.Logger
 }
 
 func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
@@ -64,6 +66,8 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 		mutex:         &sync.Mutex{},
 		servers:       []*server{},
 		stickySession: nil,
+
+		log: log.StandardLogger(),
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -76,13 +80,23 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 	return rr, nil
 }
 
+// Logger defines the logger the round robin load balancer will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func RoundRobinLogger(l *log.Logger) LBOption {
+	return func(r *RoundRobin) error {
+		r.log = l
+		return nil
+	}
+}
+
 func (r *RoundRobin) Next() http.Handler {
 	return r.next
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if log.GetLevel() >= log.DebugLevel {
-		logEntry := log.WithField("Request", utils.DumpHttpRequest(req))
+	if r.log.Level >= log.DebugLevel {
+		logEntry := r.log.WithField("Request", utils.DumpHttpRequest(req))
 		logEntry.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request")
 	}
@@ -116,9 +130,9 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		newReq.URL = url
 	}
 
-	if log.GetLevel() >= log.DebugLevel {
+	if r.log.Level >= log.DebugLevel {
 		//log which backend URL we're sending this request to
-		log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
+		r.log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
 	}
 
 	//Emit event to a listener if one exists

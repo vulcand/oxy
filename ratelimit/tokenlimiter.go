@@ -68,6 +68,8 @@ type TokenLimiter struct {
 	errHandler   utils.ErrorHandler
 	capacity     int
 	next         http.Handler
+
+	log *log.Logger
 }
 
 // New constructs a `TokenLimiter` middleware instance.
@@ -82,6 +84,8 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		next:         next,
 		defaultRates: defaultRates,
 		extract:      extract,
+
+		log: log.StandardLogger(),
 	}
 
 	for _, o := range opts {
@@ -98,6 +102,16 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 	return tl, nil
 }
 
+// Logger defines the logger the token limiter will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) TokenLimiterOption {
+	return func(tl *TokenLimiter) error {
+		tl.log = l
+		return nil
+	}
+}
+
 func (tl *TokenLimiter) Wrap(next http.Handler) {
 	tl.next = next
 }
@@ -110,7 +124,7 @@ func (tl *TokenLimiter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := tl.consumeRates(req, source, amount); err != nil {
-		log.Warnf("limiting request %v %v, limit: %v", req.Method, req.URL, err)
+		tl.log.Warnf("limiting request %v %v, limit: %v", req.Method, req.URL, err)
 		tl.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -155,7 +169,7 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 
 	rates, err := tl.extractRates.Extract(req)
 	if err != nil {
-		log.Errorf("Failed to retrieve rates: %v", err)
+		tl.log.Errorf("Failed to retrieve rates: %v", err)
 		return tl.defaultRates
 	}
 
