@@ -131,9 +131,9 @@ func MakeRequest(url string, opts ...ReqOption) (*http.Response, []byte, error) 
 	if strings.HasPrefix(url, "https") {
 		tr = &http.Transport{
 			DisableKeepAlives: true,
-			TLSClientConfig:   &tls.Config{
+			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
-				ServerName: request.Host,
+				ServerName:         request.Host,
 			},
 		}
 	} else {
