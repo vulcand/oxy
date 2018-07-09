@@ -25,9 +25,9 @@ type STSuite struct{}
 
 var _ = Suite(&STSuite{})
 
-type noOpNextHttpHandler struct{}
+type noOpNextHTTPHandler struct{}
 
-func (n noOpNextHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {}
+func (n noOpNextHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {}
 
 type noOpIoWriter struct{}
 
@@ -328,28 +328,28 @@ func (s *STSuite) TestPreservesTLS(c *C) {
 }
 
 func BenchmarkLoggingDebugLevel(b *testing.B) {
-	streamer, _ := New(noOpNextHttpHandler{})
+	streamer, _ := New(noOpNextHTTPHandler{})
 
 	log.SetLevel(log.DebugLevel)
 	log.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
-		heavyServeHttpLoad(streamer)
+		heavyServeHTTPLoad(streamer)
 	}
 }
 
 func BenchmarkLoggingInfoLevel(b *testing.B) {
-	streamer, _ := New(noOpNextHttpHandler{})
+	streamer, _ := New(noOpNextHTTPHandler{})
 
 	log.SetLevel(log.InfoLevel)
 	log.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
-		heavyServeHttpLoad(streamer)
+		heavyServeHTTPLoad(streamer)
 	}
 }
 
-func heavyServeHttpLoad(handler http.Handler) {
+func heavyServeHTTPLoad(handler http.Handler) {
 	w := httptest.NewRecorder()
 	r := &http.Request{}
 	handler.ServeHTTP(w, r)
