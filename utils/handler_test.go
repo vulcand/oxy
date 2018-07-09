@@ -5,15 +5,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"testing"
 
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type UtilsSuite struct{}
-
-var _ = Suite(&UtilsSuite{})
-
-func (s *UtilsSuite) TestDefaultHandlerErrors(c *C) {
+func TestDefaultHandlerErrors(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
@@ -21,8 +19,8 @@ func (s *UtilsSuite) TestDefaultHandlerErrors(c *C) {
 	}))
 	defer srv.Close()
 
-	request, err := http.NewRequest("GET", srv.URL, strings.NewReader(""))
-	c.Assert(err, IsNil)
+	request, err := http.NewRequest(http.MethodGet, srv.URL, strings.NewReader(""))
+	require.NoError(t, err)
 
 	_, err = http.DefaultTransport.RoundTrip(request)
 
@@ -30,5 +28,5 @@ func (s *UtilsSuite) TestDefaultHandlerErrors(c *C) {
 
 	DefaultHandler.ServeHTTP(w, nil, err)
 
-	c.Assert(w.Code, Equals, http.StatusBadGateway)
+	assert.Equal(t, http.StatusBadGateway, w.Code)
 }

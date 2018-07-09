@@ -1,38 +1,36 @@
 package utils
 
 import (
-	. "gopkg.in/check.v1"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type AuthSuite struct {
-}
-
-var _ = Suite(&AuthSuite{})
-
-//Just to make sure we don't panic, return err and not
-//username and pass and cover the function
-func (s *AuthSuite) TestParseBadHeaders(c *C) {
+// Just to make sure we don't panic, return err and not
+// username and pass and cover the function
+func TestParseBadHeaders(t *testing.T) {
 	headers := []string{
-		//just empty string
+		// just empty string
 		"",
-		//missing auth type
+		// missing auth type
 		"justplainstring",
-		//unknown auth type
+		// unknown auth type
 		"Whut justplainstring",
-		//invalid base64
+		// invalid base64
 		"Basic Shmasic",
-		//random encoded string
+		// random encoded string
 		"Basic YW55IGNhcm5hbCBwbGVhcw==",
 	}
 	for _, h := range headers {
 		_, err := ParseAuthHeader(h)
-		c.Assert(err, NotNil)
+		require.Error(t, err)
 	}
 }
 
-//Just to make sure we don't panic, return err and not
-//username and pass and cover the function
-func (s *AuthSuite) TestParseSuccess(c *C) {
+// Just to make sure we don't panic, return err and not
+// username and pass and cover the function
+func TestParseSuccess(t *testing.T) {
 	headers := []struct {
 		Header   string
 		Expected BasicAuth
@@ -46,7 +44,7 @@ func (s *AuthSuite) TestParseSuccess(c *C) {
 			(&BasicAuth{Username: "Alice", Password: "Here's bob"}).String(),
 			BasicAuth{Username: "Alice", Password: "Here's bob"},
 		},
-		//empty pass
+		// empty pass
 		{
 			"Basic QWxhZGRpbjo=",
 			BasicAuth{Username: "Aladdin", Password: ""},
@@ -54,9 +52,9 @@ func (s *AuthSuite) TestParseSuccess(c *C) {
 	}
 	for _, h := range headers {
 		request, err := ParseAuthHeader(h.Header)
-		c.Assert(err, IsNil)
-		c.Assert(request.Username, Equals, h.Expected.Username)
-		c.Assert(request.Password, Equals, h.Expected.Password)
+		require.NoError(t, err)
+		assert.Equal(t, h.Expected.Username, request.Username)
+		assert.Equal(t, h.Expected.Password, request.Password)
 
 	}
 }

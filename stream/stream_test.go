@@ -9,21 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/testutils"
-
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/oxy/testutils"
 )
-
-func TestStream(t *testing.T) { TestingT(t) }
-
-type STSuite struct{}
-
-var _ = Suite(&STSuite{})
 
 type noOpNextHTTPHandler struct{}
 
@@ -35,7 +28,7 @@ func (n noOpIoWriter) Write(bytes []byte) (int, error) {
 	return len(bytes), nil
 }
 
-func (s *STSuite) TestSimple(c *C) {
+func TestSimple(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -43,7 +36,7 @@ func (s *STSuite) TestSimple(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -53,23 +46,23 @@ func (s *STSuite) TestSimple(c *C) {
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	re, body, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
-	c.Assert(string(body), Equals, "hello")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+	assert.Equal(t, "hello", string(body))
 }
 
-func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
+func TestChunkedEncodingSuccess(t *testing.T) {
 	var reqBody string
 	var contentLength int64
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		body, err := ioutil.ReadAll(req.Body)
-		c.Assert(err, IsNil)
+		require.NoError(t, err)
 		reqBody = string(body)
 		contentLength = req.ContentLength
 
@@ -91,7 +84,7 @@ func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -101,30 +94,33 @@ func (s *STSuite) TestChunkedEncodingSuccess(c *C) {
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 	fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	reader := bufio.NewReader(conn)
 
 	status, err := reader.ReadString('\n')
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	reader.ReadString('\n') //content type
-	reader.ReadString('\n') //Date
-	transferEncoding, _ := reader.ReadString('\n')
+	_, err = reader.ReadString('\n') // content type
+	require.NoError(t, err)
+	_, err = reader.ReadString('\n') // Date
+	require.NoError(t, err)
+	transferEncoding, err := reader.ReadString('\n')
+	require.NoError(t, err)
 
-	c.Assert(transferEncoding, Equals, "Transfer-Encoding: chunked\r\n")
-	c.Assert(contentLength, Equals, int64(-1))
-	c.Assert(reqBody, Equals, "testtest1test2")
-	c.Assert(status, Equals, "HTTP/1.1 200 OK\r\n")
+	assert.Equal(t, "Transfer-Encoding: chunked\r\n", transferEncoding)
+	assert.Equal(t, int64(-1), contentLength)
+	assert.Equal(t, "testtest1test2", reqBody)
+	assert.Equal(t, "HTTP/1.1 200 OK\r\n", status)
 }
 
-func (s *STSuite) TestRequestLimitReached(c *C) {
+func TestRequestLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -132,7 +128,7 @@ func (s *STSuite) TestRequestLimitReached(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -142,17 +138,17 @@ func (s *STSuite) TestRequestLimitReached(c *C) {
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL, testutils.Body("this request is too long"))
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
-func (s *STSuite) TestResponseLimitReached(c *C) {
+func TestResponseLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello, this response is too large"))
 	})
@@ -160,7 +156,7 @@ func (s *STSuite) TestResponseLimitReached(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -170,17 +166,17 @@ func (s *STSuite) TestResponseLimitReached(c *C) {
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
-func (s *STSuite) TestFileStreamingResponse(c *C) {
+func TestFileStreamingResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
@@ -188,7 +184,7 @@ func (s *STSuite) TestFileStreamingResponse(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -198,18 +194,18 @@ func (s *STSuite) TestFileStreamingResponse(c *C) {
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	re, body, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
-	c.Assert(string(body), Equals, "hello, this response is too large to fit in memory")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+	assert.Equal(t, "hello, this response is too large to fit in memory", string(body))
 }
 
-func (s *STSuite) TestCustomErrorHandler(c *C) {
+func TestCustomErrorHandler(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello, this response is too large"))
 	})
@@ -217,7 +213,7 @@ func (s *STSuite) TestCustomErrorHandler(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -226,17 +222,17 @@ func (s *STSuite) TestCustomErrorHandler(c *C) {
 	})
 
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
-func (s *STSuite) TestNotModified(c *C) {
+func TestNotModified(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
@@ -244,7 +240,7 @@ func (s *STSuite) TestNotModified(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -254,17 +250,17 @@ func (s *STSuite) TestNotModified(c *C) {
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusNotModified)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotModified, re.StatusCode)
 }
 
-func (s *STSuite) TestNoBody(c *C) {
+func TestNoBody(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -272,7 +268,7 @@ func (s *STSuite) TestNoBody(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -282,18 +278,18 @@ func (s *STSuite) TestNoBody(c *C) {
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
 // Make sure that stream handler preserves TLS settings
-func (s *STSuite) TestPreservesTLS(c *C) {
+func TestPreservesTLS(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -302,36 +298,36 @@ func (s *STSuite) TestPreservesTLS(c *C) {
 
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New(forward.Stream(true))
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	var t *tls.ConnectionState
+	var cs *tls.ConnectionState
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		t = req.TLS
+		cs = req.TLS
 		req.URL = testutils.ParseURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
 	// stream handler will forward requests to redirect
 	st, err := New(rdr)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
 	proxy := httptest.NewUnstartedServer(st)
 	proxy.StartTLS()
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
-	c.Assert(err, IsNil)
-	c.Assert(re.StatusCode, Equals, http.StatusOK)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
 
-	c.Assert(t, NotNil)
+	assert.NotNil(t, cs)
 }
 
 func BenchmarkLoggingDebugLevel(b *testing.B) {
 	streamer, _ := New(noOpNextHTTPHandler{})
 
 	log.SetLevel(log.DebugLevel)
-	log.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
+	log.SetOutput(&noOpIoWriter{}) // Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
 		heavyServeHTTPLoad(streamer)
@@ -342,7 +338,7 @@ func BenchmarkLoggingInfoLevel(b *testing.B) {
 	streamer, _ := New(noOpNextHTTPHandler{})
 
 	log.SetLevel(log.InfoLevel)
-	log.SetOutput(&noOpIoWriter{}) //Make sure we don't emit a bunch of stuff on screen
+	log.SetOutput(&noOpIoWriter{}) // Make sure we don't emit a bunch of stuff on screen
 
 	for i := 0; i < b.N; i++ {
 		heavyServeHTTPLoad(streamer)

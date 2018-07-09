@@ -2,10 +2,9 @@ package ratelimit
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
-
-	"sort"
 
 	"github.com/mailgun/timetools"
 )

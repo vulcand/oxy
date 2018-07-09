@@ -223,7 +223,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Read the body while keeping limits in mind. This reader controls the maximum bytes
 	// to read into memory and disk. This reader returns an error if the total request size exceeds the
-	// prefefined MaxSizeBytes. This can occur if we got chunked request, in this case ContentLength would be set to -1
+	// predefined MaxSizeBytes. This can occur if we got chunked request, in this case ContentLength would be set to -1
 	// and the reader would be unbounded bufio in the http.Server
 	body, err := multibuf.New(req.Body, multibuf.MaxBytes(b.maxRequestBodyBytes), multibuf.MemBytes(b.memRequestBodyBytes))
 	if err != nil || body == nil {

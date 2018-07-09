@@ -1,139 +1,137 @@
 package memmetrics
 
 import (
+	"testing"
 	"time"
 
 	"github.com/codahale/hdrhistogram"
-	"github.com/mailgun/timetools"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/testutils"
 )
 
-type HistogramSuite struct {
-	tm *timetools.FreezedTime
-}
-
-var _ = Suite(&HistogramSuite{})
-
-func (s *HistogramSuite) SetUpSuite(c *C) {
-	s.tm = &timetools.FreezedTime{
-		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
-	}
-}
-
-func (s *HistogramSuite) TestMerge(c *C) {
+func TestMerge(t *testing.T) {
 	a, err := NewHDRHistogram(1, 3600000, 2)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	a.RecordValues(1, 2)
+	err = a.RecordValues(1, 2)
+	require.NoError(t, err)
 
 	b, err := NewHDRHistogram(1, 3600000, 2)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	b.RecordValues(2, 1)
+	require.NoError(t, b.RecordValues(2, 1))
+	require.NoError(t, a.Merge(b))
 
-	c.Assert(a.Merge(b), IsNil)
-
-	c.Assert(a.ValueAtQuantile(50), Equals, int64(1))
-	c.Assert(a.ValueAtQuantile(100), Equals, int64(2))
+	assert.EqualValues(t, 1, a.ValueAtQuantile(50))
+	assert.EqualValues(t, 2, a.ValueAtQuantile(100))
 }
 
-func (s *HistogramSuite) TestInvalidParams(c *C) {
+func TestInvalidParams(t *testing.T) {
 	_, err := NewHDRHistogram(1, 3600000, 0)
-	c.Assert(err, NotNil)
+	require.Error(t, err)
 }
 
-func (s *HistogramSuite) TestMergeNil(c *C) {
+func TestMergeNil(t *testing.T) {
 	a, err := NewHDRHistogram(1, 3600000, 1)
-	c.Assert(err, IsNil)
+	require.NoError(t, err)
 
-	c.Assert(a.Merge(nil), NotNil)
+	require.Error(t, a.Merge(nil))
 }
 
-func (s *HistogramSuite) TestRotation(c *C) {
+func TestRotation(t *testing.T) {
+	clock := testutils.GetClock()
+
 	h, err := NewRollingHDRHistogram(
 		1,           // min value
 		3600000,     // max value
-		3,           // significant figurwes
+		3,           // significant figures
 		time.Second, // 1 second is a rolling period
 		2,           // 2 histograms in a window
-		RollingClock(s.tm))
+		RollingClock(clock))
 
-	c.Assert(err, IsNil)
-	c.Assert(h, NotNil)
+	require.NoError(t, err)
+	require.NotNil(t, h)
 
-	h.RecordValues(5, 1)
+	err = h.RecordValues(5, 1)
+	require.NoError(t, err)
 
 	m, err := h.Merged()
-	c.Assert(err, IsNil)
-	c.Assert(m.ValueAtQuantile(100), Equals, int64(5))
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
-	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	h.RecordValues(2, 1)
-	h.RecordValues(1, 1)
+	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	require.NoError(t, h.RecordValues(2, 1))
+	require.NoError(t, h.RecordValues(1, 1))
 
 	m, err = h.Merged()
-	c.Assert(err, IsNil)
-	c.Assert(m.ValueAtQuantile(100), Equals, int64(5))
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
 	// rotate, this means that the old value would evaporate
-	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	h.RecordValues(1, 1)
+	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+
+	require.NoError(t, h.RecordValues(1, 1))
+
 	m, err = h.Merged()
-	c.Assert(err, IsNil)
-	c.Assert(m.ValueAtQuantile(100), Equals, int64(2))
+	require.NoError(t, err)
+	assert.EqualValues(t, 2, m.ValueAtQuantile(100))
 }
 
-func (s *HistogramSuite) TestReset(c *C) {
+func TestReset(t *testing.T) {
+	clock := testutils.GetClock()
+
 	h, err := NewRollingHDRHistogram(
 		1,           // min value
 		3600000,     // max value
-		3,           // significant figurwes
+		3,           // significant figures
 		time.Second, // 1 second is a rolling period
 		2,           // 2 histograms in a window
-		RollingClock(s.tm))
+		RollingClock(clock))
 
-	c.Assert(err, IsNil)
-	c.Assert(h, NotNil)
+	require.NoError(t, err)
+	require.NotNil(t, h)
 
-	h.RecordValues(5, 1)
+	require.NoError(t, h.RecordValues(5, 1))
 
 	m, err := h.Merged()
-	c.Assert(err, IsNil)
-	c.Assert(m.ValueAtQuantile(100), Equals, int64(5))
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
-	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	h.RecordValues(2, 1)
-	h.RecordValues(1, 1)
+	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	require.NoError(t, h.RecordValues(2, 1))
+	require.NoError(t, h.RecordValues(1, 1))
 
 	m, err = h.Merged()
-	c.Assert(err, IsNil)
-	c.Assert(m.ValueAtQuantile(100), Equals, int64(5))
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
 	h.Reset()
 
-	h.RecordValues(5, 1)
+	require.NoError(t, h.RecordValues(5, 1))
 
 	m, err = h.Merged()
-	c.Assert(err, IsNil)
-	c.Assert(m.ValueAtQuantile(100), Equals, int64(5))
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
-	s.tm.CurrentTime = s.tm.CurrentTime.Add(time.Second)
-	h.RecordValues(2, 1)
-	h.RecordValues(1, 1)
+	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	require.NoError(t, h.RecordValues(2, 1))
+	require.NoError(t, h.RecordValues(1, 1))
 
 	m, err = h.Merged()
-	c.Assert(err, IsNil)
-	c.Assert(m.ValueAtQuantile(100), Equals, int64(5))
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
 }
 
-func (s *HistogramSuite) TestHDRHistogramExportReturnsNewCopy(c *C) {
+func TestHDRHistogramExportReturnsNewCopy(t *testing.T) {
 	// Create HDRHistogram instance
-	a := HDRHistogram{}
-	a.low = 1
-	a.high = 2
-	a.sigfigs = 3
-	a.h = hdrhistogram.New(0, 1, 2)
+	a := HDRHistogram{
+		low:     1,
+		high:    2,
+		sigfigs: 3,
+		h:       hdrhistogram.New(0, 1, 2),
+	}
 
 	// Get a copy and modify the original
 	b := a.Export()
@@ -143,24 +141,26 @@ func (s *HistogramSuite) TestHDRHistogramExportReturnsNewCopy(c *C) {
 	a.h = nil
 
 	// Assert the copy has not been modified
-	c.Assert(b.low, Equals, int64(1))
-	c.Assert(b.high, Equals, int64(2))
-	c.Assert(b.sigfigs, Equals, 3)
-	c.Assert(b.h, NotNil)
+	assert.EqualValues(t, 1, b.low)
+	assert.EqualValues(t, 2, b.high)
+	assert.Equal(t, 3, b.sigfigs)
+	require.NotNil(t, b.h)
 }
 
-func (s *HistogramSuite) TestRollingHDRHistogramExportReturnsNewCopy(c *C) {
-	a := RollingHDRHistogram{}
-	a.idx = 1
+func TestRollingHDRHistogramExportReturnsNewCopy(t *testing.T) {
 	origTime := time.Now()
-	a.lastRoll = origTime
-	a.period = 2 * time.Second
-	a.bucketCount = 3
-	a.low = 4
-	a.high = 5
-	a.sigfigs = 1
-	a.buckets = []*HDRHistogram{}
-	a.clock = s.tm
+
+	a := RollingHDRHistogram{
+		idx:         1,
+		lastRoll:    origTime,
+		period:      2 * time.Second,
+		bucketCount: 3,
+		low:         4,
+		high:        5,
+		sigfigs:     1,
+		buckets:     []*HDRHistogram{},
+		clock:       testutils.GetClock(),
+	}
 
 	b := a.Export()
 	a.idx = 11
@@ -173,12 +173,12 @@ func (s *HistogramSuite) TestRollingHDRHistogramExportReturnsNewCopy(c *C) {
 	a.buckets = nil
 	a.clock = nil
 
-	c.Assert(b.idx, Equals, 1)
-	c.Assert(b.lastRoll, Equals, origTime)
-	c.Assert(b.period, Equals, 2*time.Second)
-	c.Assert(b.bucketCount, Equals, 3)
-	c.Assert(b.low, Equals, int64(4))
-	c.Assert(b.high, Equals, int64(5))
-	c.Assert(b.buckets, NotNil)
-	c.Assert(b.clock, NotNil)
+	assert.Equal(t, 1, b.idx)
+	assert.Equal(t, origTime, b.lastRoll)
+	assert.Equal(t, 2*time.Second, b.period)
+	assert.Equal(t, 3, b.bucketCount)
+	assert.Equal(t, int64(4), b.low)
+	assert.EqualValues(t, 5, b.high)
+	assert.NotNil(t, b.buckets)
+	assert.NotNil(t, b.clock)
 }

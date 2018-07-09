@@ -69,9 +69,12 @@
 
 [[projects]]
   name = "github.com/stretchr/testify"
-  packages = ["assert"]
-  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
-  version = "v1.1.4"
+  packages = [
+    "assert",
+    "require"
+  ]
+  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
+  version = "v1.2.2"
 
 [[projects]]
   name = "github.com/vulcand/predicate"
@@ -104,12 +107,6 @@
   revision = "1e2299c37cc91a509f1b12369872d27be0ce98a6"
 
 [[projects]]
-  branch = "v1"
-  name = "gopkg.in/check.v1"
-  packages = ["."]
-  revision = "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"
-
-[[projects]]
   branch = "v2"
   name = "gopkg.in/mgo.v2"
   packages = [
@@ -121,6 +118,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "13c58913794cb91ced539fc4dcde957f6664b82ed886d245ca769960327f7e7f"
+  inputs-digest = "8365c0bc24ea7e144c8e47dcbfd8e88213516587c1c2b89ddc6fbae5e662ed52"
   solver-name = "gps-cdcl"
   solver-version = 1

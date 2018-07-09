@@ -12,7 +12,7 @@ type StickySession struct {
 
 // NewStickySession creates a new StickySession
 func NewStickySession(cookieName string) *StickySession {
-	return &StickySession{cookieName}
+	return &StickySession{cookieName: cookieName}
 }
 
 // GetBackend returns the backend URL stored in the sticky cookie, iff the backend is still in the valid list of servers.

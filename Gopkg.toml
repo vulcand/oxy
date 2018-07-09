@@ -20,7 +20,7 @@
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.1.4"
+  version = "1.2.2"
 
 [[constraint]]
   name = "github.com/vulcand/predicate"
@@ -29,10 +29,6 @@
 [[constraint]]
   branch = "master"
   name = "golang.org/x/net"
-
-[[constraint]]
-  branch = "v1"
-  name = "gopkg.in/check.v1"
 
 [[override]]
   branch = "master"

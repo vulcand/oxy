@@ -1,23 +1,44 @@
 package memmetrics
 
 import (
+	"strconv"
+	"testing"
 	"time"
 
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
 
-type AnomalySuite struct {
+func TestMedian(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		values   []float64
+		expected float64
+	}{
+		{
+			desc:     "2 values",
+			values:   []float64{0.1, 0.2},
+			expected: (float64(0.1) + float64(0.2)) / 2.0,
+		},
+		{
+			desc:     "3 values",
+			values:   []float64{0.3, 0.2, 0.5},
+			expected: 0.3,
+		},
+	}
+
+	for _, test := range testCases {
+		test := test
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+
+			actual := median(test.values)
+			assert.Equal(t, test.expected, actual)
+		})
+	}
 }
 
-var _ = Suite(&AnomalySuite{})
-
-func (s *AnomalySuite) TestMedian(c *C) {
-	c.Assert(median([]float64{0.1, 0.2}), Equals, (float64(0.1)+float64(0.2))/2.0)
-	c.Assert(median([]float64{0.3, 0.2, 0.5}), Equals, 0.3)
-}
-
-func (s *AnomalySuite) TestSplitRatios(c *C) {
-	vals := []struct {
+func TestSplitRatios(t *testing.T) {
+	testCases := []struct {
 		values []float64
 		good   []float64
 		bad    []float64
@@ -80,23 +101,32 @@ func (s *AnomalySuite) TestSplitRatios(c *C) {
 			bad:    []float64{0.01, 0.02, 1},
 		},
 	}
-	for _, v := range vals {
-		good, bad := SplitRatios(v.values)
-		vgood, vbad := make(map[float64]bool, len(v.good)), make(map[float64]bool, len(v.bad))
-		for _, v := range v.good {
-			vgood[v] = true
-		}
-		for _, v := range v.bad {
-			vbad[v] = true
-		}
 
-		c.Assert(good, DeepEquals, vgood)
-		c.Assert(bad, DeepEquals, vbad)
+	for ind, test := range testCases {
+		test := test
+		t.Run(strconv.Itoa(ind), func(t *testing.T) {
+			t.Parallel()
+
+			good, bad := SplitRatios(test.values)
+
+			vgood := make(map[float64]bool, len(test.good))
+			for _, v := range test.good {
+				vgood[v] = true
+			}
+
+			vbad := make(map[float64]bool, len(test.bad))
+			for _, v := range test.bad {
+				vbad[v] = true
+			}
+
+			assert.Equal(t, vgood, good)
+			assert.Equal(t, vbad, bad)
+		})
 	}
 }
 
-func (s *AnomalySuite) TestSplitLatencies(c *C) {
-	vals := []struct {
+func TestSplitLatencies(t *testing.T) {
+	testCases := []struct {
 		values []int
 		good   []int
 		bad    []int
@@ -137,22 +167,30 @@ func (s *AnomalySuite) TestSplitLatencies(c *C) {
 			bad:    []int{1000},
 		},
 	}
-	for _, v := range vals {
-		vvalues := make([]time.Duration, len(v.values))
-		for i, d := range v.values {
-			vvalues[i] = time.Millisecond * time.Duration(d)
-		}
-		good, bad := SplitLatencies(vvalues, time.Millisecond)
 
-		vgood, vbad := make(map[time.Duration]bool, len(v.good)), make(map[time.Duration]bool, len(v.bad))
-		for _, v := range v.good {
-			vgood[time.Duration(v)*time.Millisecond] = true
-		}
-		for _, v := range v.bad {
-			vbad[time.Duration(v)*time.Millisecond] = true
-		}
+	for ind, test := range testCases {
+		test := test
+		t.Run(strconv.Itoa(ind), func(t *testing.T) {
+			t.Parallel()
 
-		c.Assert(good, DeepEquals, vgood)
-		c.Assert(bad, DeepEquals, vbad)
+			values := make([]time.Duration, len(test.values))
+			for i, d := range test.values {
+				values[i] = time.Millisecond * time.Duration(d)
+			}
+
+			good, bad := SplitLatencies(values, time.Millisecond)
+
+			vgood := make(map[time.Duration]bool, len(test.good))
+			for _, v := range test.good {
+				vgood[time.Duration(v)*time.Millisecond] = true
+			}
+			assert.Equal(t, vgood, good)
+
+			vbad := make(map[time.Duration]bool, len(test.bad))
+			for _, v := range test.bad {
+				vbad[time.Duration(v)*time.Millisecond] = true
+			}
+			assert.Equal(t, vbad, bad)
+		})
 	}
 }

@@ -2,42 +2,30 @@ package cbreaker
 
 import (
 	"math"
+	"testing"
 	"time"
 
-	"github.com/mailgun/timetools"
 	log "github.com/sirupsen/logrus"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/vulcand/oxy/testutils"
 )
 
-type RatioSuite struct {
-	tm *timetools.FreezedTime
-}
-
-var _ = Suite(&RatioSuite{
-	tm: &timetools.FreezedTime{
-		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
-	},
-})
-
-func (s *RatioSuite) advanceTime(d time.Duration) {
-	s.tm.CurrentTime = s.tm.CurrentTime.Add(d)
-}
-
-func (s *RatioSuite) TestRampUp(c *C) {
+func TestRampUp(t *testing.T) {
+	clock := testutils.GetClock()
 	duration := 10 * time.Second
-	rc := newRatioController(s.tm, duration, log.StandardLogger())
+	rc := newRatioController(clock, duration, log.StandardLogger())
 
 	allowed, denied := 0, 0
 	for i := 0; i < int(duration/time.Millisecond); i++ {
-		ratio := s.sendRequest(&allowed, &denied, rc)
+		ratio := sendRequest(&allowed, &denied, rc)
 		expected := rc.targetRatio()
 		diff := math.Abs(expected - ratio)
-		c.Assert(round(diff, 0.5, 1), Equals, float64(0))
-		s.advanceTime(time.Millisecond)
+		assert.EqualValues(t, 0, round(diff, 0.5, 1))
+		clock.CurrentTime = clock.CurrentTime.Add(time.Millisecond)
 	}
 }
 
-func (s *RatioSuite) sendRequest(allowed, denied *int, rc *ratioController) float64 {
+func sendRequest(allowed, denied *int, rc *ratioController) float64 {
 	if rc.allowRequest() {
 		*allowed++
 	} else {

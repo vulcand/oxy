@@ -5,18 +5,12 @@ import (
 	"net/url"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
-
-func TestUtils(t *testing.T) { TestingT(t) }
-
-type NetUtilsSuite struct{}
-
-var _ = Suite(&NetUtilsSuite{})
 
 // Make sure copy does it right, so the copied url
 // is safe to alter without modifying the other
-func (s *NetUtilsSuite) TestCopyUrl(c *C) {
+func TestCopyUrl(t *testing.T) {
 	urlA := &url.URL{
 		Scheme:   "http",
 		Host:     "localhost:5000",
@@ -26,45 +20,51 @@ func (s *NetUtilsSuite) TestCopyUrl(c *C) {
 		Fragment: "#hello",
 		User:     &url.Userinfo{},
 	}
+
 	urlB := CopyURL(urlA)
-	c.Assert(urlB, DeepEquals, urlA)
+	assert.Equal(t, urlA, urlB)
+
 	urlB.Scheme = "https"
-	c.Assert(urlB, Not(DeepEquals), urlA)
+	assert.NotEqual(t, urlA, urlB)
 }
 
 // Make sure copy headers is not shallow and copies all headers
-func (s *NetUtilsSuite) TestCopyHeaders(c *C) {
+func TestCopyHeaders(t *testing.T) {
 	source, destination := make(http.Header), make(http.Header)
 	source.Add("a", "b")
 	source.Add("c", "d")
 
 	CopyHeaders(destination, source)
 
-	c.Assert(destination.Get("a"), Equals, "b")
-	c.Assert(destination.Get("c"), Equals, "d")
+	assert.Equal(t, "b", destination.Get("a"))
+	assert.Equal(t, "d", destination.Get("c"))
 
 	// make sure that altering source does not affect the destination
 	source.Del("a")
-	c.Assert(source.Get("a"), Equals, "")
-	c.Assert(destination.Get("a"), Equals, "b")
+
+	assert.Equal(t, "", source.Get("a"))
+	assert.Equal(t, "b", destination.Get("a"))
 }
 
-func (s *NetUtilsSuite) TestHasHeaders(c *C) {
+func TestHasHeaders(t *testing.T) {
 	source := make(http.Header)
 	source.Add("a", "b")
 	source.Add("c", "d")
-	c.Assert(HasHeaders([]string{"a", "f"}, source), Equals, true)
-	c.Assert(HasHeaders([]string{"i", "j"}, source), Equals, false)
+
+	assert.True(t, HasHeaders([]string{"a", "f"}, source))
+	assert.False(t, HasHeaders([]string{"i", "j"}, source))
 }
 
-func (s *NetUtilsSuite) TestRemoveHeaders(c *C) {
+func TestRemoveHeaders(t *testing.T) {
 	source := make(http.Header)
 	source.Add("a", "b")
 	source.Add("a", "m")
 	source.Add("c", "d")
+
 	RemoveHeaders(source, "a")
-	c.Assert(source.Get("a"), Equals, "")
-	c.Assert(source.Get("c"), Equals, "d")
+
+	assert.Equal(t, "", source.Get("a"))
+	assert.Equal(t, "d", source.Get("c"))
 }
 
 func BenchmarkCopyHeaders(b *testing.B) {

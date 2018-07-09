@@ -190,7 +190,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if !stuck {
-		url, err := rb.next.NextServer()
+		fwdURL, err := rb.next.NextServer()
 		if err != nil {
 			rb.errHandler.ServeHTTP(w, req, err)
 			return
@@ -198,14 +198,14 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		if log.GetLevel() >= log.DebugLevel {
 			// log which backend URL we're sending this request to
-			log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": url}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
+			log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": fwdURL}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 		}
 
 		if rb.stickySession != nil {
-			rb.stickySession.StickBackend(url, &w)
+			rb.stickySession.StickBackend(fwdURL, &w)
 		}
 
-		newReq.URL = url
+		newReq.URL = fwdURL
 	}
 
 	// Emit event to a listener if one exists
