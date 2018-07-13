@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -415,16 +414,6 @@ func TestWebSocketUpgradeFailed(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 400, resp.StatusCode)
-
-	req, err = http.NewRequest(http.MethodGet, "ws://127.0.0.1/ws2", nil)
-	require.NoError(t, err)
-	req.Header.Add("upgrade", "websocket")
-	req.Header.Add("Connection", "upgrade")
-	req.Write(conn)
-
-	br = bufio.NewReader(conn)
-	_, err = http.ReadResponse(br, req)
-	assert.Equal(t, io.ErrUnexpectedEOF, err)
 }
 
 func TestForwardsWebsocketTraffic(t *testing.T) {
