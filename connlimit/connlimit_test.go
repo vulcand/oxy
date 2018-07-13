@@ -16,6 +16,7 @@ import (
 func TestHitLimitAndRelease(t *testing.T) {
 	wait := make(chan bool)
 	proceed := make(chan bool)
+	finish := make(chan bool)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		fmt.Println(req.Header)
@@ -36,6 +37,7 @@ func TestHitLimitAndRelease(t *testing.T) {
 		re, _, errGet := testutils.Get(srv.URL, testutils.Header("Limit", "a"), testutils.Header("wait", "yes"))
 		require.NoError(t, errGet)
 		assert.Equal(t, http.StatusOK, re.StatusCode)
+		finish <- true
 	}()
 
 	<-proceed
@@ -51,6 +53,7 @@ func TestHitLimitAndRelease(t *testing.T) {
 
 	// Once the first request finished, next one succeeds
 	close(wait)
+	<-finish
 
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Limit", "a"))
 	require.NoError(t, err)
