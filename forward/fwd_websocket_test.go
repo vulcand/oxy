@@ -57,6 +57,54 @@ func TestWebSocketTCPClose(t *testing.T) {
 	assert.Equal(t, 1006, wsErr.Code)
 }
 
+func TestWebsocketConnectionClosedHook(t *testing.T) {
+	closed := make(chan struct{})
+	f, err := New(WebsocketConnectionClosedHook(func(req *http.Request, conn net.Conn) {
+		close(closed)
+	}))
+	require.NoError(t, err)
+
+	mux := http.NewServeMux()
+	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
+		msg := make([]byte, 4)
+		conn.Read(msg)
+		conn.Write(msg)
+		conn.Close()
+	}))
+
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		mux.ServeHTTP(w, req)
+	})
+	defer srv.Close()
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	serverAddr := proxy.Listener.Addr().String()
+
+	headers := http.Header{}
+	webSocketURL := "ws://" + serverAddr + "/ws"
+	headers.Add("Origin", webSocketURL)
+
+	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
+	require.NoError(t, err, "Error during Dial with response: %+v", resp)
+
+	conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
+	fmt.Println(conn.ReadMessage())
+
+	conn.Close()
+
+	select {
+	case <-time.After(time.Second):
+		t.Errorf("Websocket Hook not called")
+	case <-closed:
+
+	}
+}
+
 func TestWebSocketEcho(t *testing.T) {
 	f, err := New()
 	require.NoError(t, err)
