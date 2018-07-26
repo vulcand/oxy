@@ -109,7 +109,6 @@ func TestWebSocketPingPong(t *testing.T) {
 	f, err := New()
 	require.NoError(t, err)
 
-
 	var upgrader = gorillawebsocket.Upgrader{
 		HandshakeTimeout: 10 * time.Second,
 		CheckOrigin: func(*http.Request) bool {
@@ -123,13 +122,12 @@ func TestWebSocketPingPong(t *testing.T) {
 		require.NoError(t, err)
 
 		ws.SetPingHandler(func(appData string) error {
-			ws.WriteMessage(gorillawebsocket.PongMessage, []byte(appData + "Pong"))
+			ws.WriteMessage(gorillawebsocket.PongMessage, []byte(appData+"Pong"))
 			return nil
 		})
 
 		ws.ReadMessage()
 	})
-
 
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		mux.ServeHTTP(w, req)
@@ -152,10 +150,10 @@ func TestWebSocketPingPong(t *testing.T) {
 	require.NoError(t, err, "Error during Dial with response: %+v", resp)
 	defer conn.Close()
 
-	goodErr := fmt.Errorf("Signal: %s", "Good data")
-	badErr := fmt.Errorf("Signal: %s", "Bad data")
+	goodErr := fmt.Errorf("signal: %s", "Good data")
+	badErr := fmt.Errorf("signal: %s", "Bad data")
 	conn.SetPongHandler(func(data string) error {
-		if data == "PingPong"{
+		if data == "PingPong" {
 			return goodErr
 		}
 		return badErr
@@ -164,7 +162,7 @@ func TestWebSocketPingPong(t *testing.T) {
 	conn.WriteControl(gorillawebsocket.PingMessage, []byte("Ping"), time.Now().Add(time.Second))
 	_, _, err = conn.ReadMessage()
 
-	if err != goodErr{
+	if err != goodErr {
 		require.NoError(t, err)
 	}
 }
