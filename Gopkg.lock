@@ -3,121 +3,166 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:c46fd324e7902268373e1b337436a6377c196e2dbd7b35624c6256d29d494e78"
   name = "github.com/codahale/hdrhistogram"
   packages = ["."]
+  pruneopts = ""
   revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
 
 [[projects]]
   branch = "master"
+  digest = "1:a1167e4b0cb9b77e29d829c9ba69e84561ed750f96309512658c94ab207f5692"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
+  pruneopts = ""
   revision = "ecdeabc65495df2dec95d7c4a4c3e021903035e5"
 
 [[projects]]
+  digest = "1:64d212c703a2b94054be0ce470303286b177ad260b2f89a307e3d1bb6c073ef6"
   name = "github.com/gorilla/websocket"
   packages = ["."]
+  pruneopts = ""
   revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
   version = "v1.2.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:9c919b302612df60229301e3c6efdbb855e05efefe2e9322ee32fad2c52876c1"
   name = "github.com/gravitational/trace"
   packages = ["."]
-  revision = "792b9868cdf9d499e09b47f167c553e786a0e235"
-  version = "1.1.4"
+  pruneopts = ""
+  revision = "4a5e142f3251b3a98e8fd71c2a32eb225af06b6d"
 
 [[projects]]
   branch = "master"
+  digest = "1:ca8271a8ec3852eb612007f3acbbbd20aab4436de4790f9eb5ce6e1965f52908"
   name = "github.com/jonboulle/clockwork"
   packages = ["."]
+  pruneopts = ""
   revision = "bcac9884e7502bb2b474c0339d889cb981a2f27f"
 
 [[projects]]
   branch = "master"
+  digest = "1:5f378f34fb27ebf1f2aa0c6d0c7abeeb6a15e14a03c2ca7a02399fbb7784f75b"
   name = "github.com/mailgun/minheap"
   packages = ["."]
+  pruneopts = ""
   revision = "3dbe6c6bf55f94c5efcf460dc7f86830c21a90b2"
 
 [[projects]]
   branch = "master"
+  digest = "1:6297f62780a8b1a237f2064d21c630d0e7d0655ac5143a9b7158f839520d2ce9"
   name = "github.com/mailgun/multibuf"
   packages = ["."]
+  pruneopts = ""
   revision = "565402cd71fbd9c12aa7e295324ea357e970a61e"
 
 [[projects]]
   branch = "master"
+  digest = "1:ebca8e2bb727a385dc823fcc538b63e9448405794f7be70f928089d757cd3e43"
   name = "github.com/mailgun/timetools"
   packages = ["."]
+  pruneopts = ""
   revision = "f3a7b8ffff474320c4f5cc564c9abb2c52ded8bc"
 
 [[projects]]
   branch = "master"
+  digest = "1:2cb772d368a0d208cf8221ea6d674ab28e663522abea36b63de57b379079d94d"
   name = "github.com/mailgun/ttlmap"
   packages = ["."]
+  pruneopts = ""
   revision = "c1c17f74874f2a5ea48bfb06b5459d4ef2689749"
 
 [[projects]]
+  branch = "master"
+  digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
+  pruneopts = ""
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
-  version = "v1.0.0"
 
 [[projects]]
+  digest = "1:3ac248add5bb40a3c631c5334adcd09aa72d15af2768a5bc0274084ea7b2e5ba"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
+  pruneopts = ""
   revision = "f006c2ac4710855cf0f916dd6b77acf6b048dc6e"
   version = "v1.0.3"
 
 [[projects]]
+  digest = "1:c587772fb8ad29ad4db67575dad25ba17a51f072ff18a22b4f0257a4d9c24f75"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
-    "require"
+    "require",
   ]
+  pruneopts = ""
   revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
   version = "v1.2.2"
 
 [[projects]]
+  digest = "1:324fcdd450f9e98d18ff566762e9aa6490a2baa56d375551488c0f2b95084f0e"
   name = "github.com/vulcand/predicate"
   packages = ["."]
+  pruneopts = ""
   revision = "939c094524d124c55fa8afe0e077701db4a865e2"
   version = "v1.0.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:7ac6c89335cdca86063465acc67ff283d9517a8ceec0da2f893a7a7ff5245e95"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
+  pruneopts = ""
   revision = "6a293f2d4b14b8e6d3f0539e383f6d0d30fce3fd"
 
 [[projects]]
   branch = "master"
+  digest = "1:a143fd748b88512b9b7eb43e0ad5b92560d89dc596787438abe25d7e345b7362"
   name = "golang.org/x/net"
   packages = [
     "context",
-    "websocket"
+    "websocket",
   ]
+  pruneopts = ""
   revision = "a337091b0525af65de94df2eb7e98bd9962dcbe2"
 
 [[projects]]
   branch = "master"
+  digest = "1:532d3beb47e7ef17ab4f3240195ab4b526de27f472b3160010f6c06d458ccd1f"
   name = "golang.org/x/sys"
   packages = [
     "unix",
-    "windows"
+    "windows",
   ]
+  pruneopts = ""
   revision = "1e2299c37cc91a509f1b12369872d27be0ce98a6"
 
 [[projects]]
   branch = "v2"
+  digest = "1:c80894778314c7fb90d94a5ab925214900e1341afeddc953cda7398b8cdcd006"
   name = "gopkg.in/mgo.v2"
   packages = [
     "bson",
-    "internal/json"
+    "internal/json",
   ]
+  pruneopts = ""
   revision = "3f83fa5005286a7fe593b055f0d7771a7dce4655"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8365c0bc24ea7e144c8e47dcbfd8e88213516587c1c2b89ddc6fbae5e662ed52"
+  input-imports = [
+    "github.com/codahale/hdrhistogram",
+    "github.com/gorilla/websocket",
+    "github.com/mailgun/multibuf",
+    "github.com/mailgun/timetools",
+    "github.com/mailgun/ttlmap",
+    "github.com/sirupsen/logrus",
+    "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/require",
+    "github.com/vulcand/predicate",
+    "golang.org/x/net/websocket",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
