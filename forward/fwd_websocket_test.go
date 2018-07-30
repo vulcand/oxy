@@ -105,6 +105,68 @@ func TestWebsocketConnectionClosedHook(t *testing.T) {
 	}
 }
 
+func TestWebSocketPingPong(t *testing.T) {
+	f, err := New()
+	require.NoError(t, err)
+
+	var upgrader = gorillawebsocket.Upgrader{
+		HandshakeTimeout: 10 * time.Second,
+		CheckOrigin: func(*http.Request) bool {
+			return true
+		},
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", func(writer http.ResponseWriter, request *http.Request) {
+		ws, err := upgrader.Upgrade(writer, request, nil)
+		require.NoError(t, err)
+
+		ws.SetPingHandler(func(appData string) error {
+			ws.WriteMessage(gorillawebsocket.PongMessage, []byte(appData+"Pong"))
+			return nil
+		})
+
+		ws.ReadMessage()
+	})
+
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		mux.ServeHTTP(w, req)
+	})
+	defer srv.Close()
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	serverAddr := proxy.Listener.Addr().String()
+
+	headers := http.Header{}
+	webSocketURL := "ws://" + serverAddr + "/ws"
+	headers.Add("Origin", webSocketURL)
+
+	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
+	require.NoError(t, err, "Error during Dial with response: %+v", resp)
+	defer conn.Close()
+
+	goodErr := fmt.Errorf("signal: %s", "Good data")
+	badErr := fmt.Errorf("signal: %s", "Bad data")
+	conn.SetPongHandler(func(data string) error {
+		if data == "PingPong" {
+			return goodErr
+		}
+		return badErr
+	})
+
+	conn.WriteControl(gorillawebsocket.PingMessage, []byte("Ping"), time.Now().Add(time.Second))
+	_, _, err = conn.ReadMessage()
+
+	if err != goodErr {
+		require.NoError(t, err)
+	}
+}
+
 func TestWebSocketEcho(t *testing.T) {
 	f, err := New()
 	require.NoError(t, err)
