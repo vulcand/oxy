@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"net/url"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
@@ -108,6 +110,48 @@ func TestResponseModifier(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 	assert.Equal(t, "CUSTOM", re.Header.Get("X-Test"))
+}
+
+func TestXForwardedHostHeader(t *testing.T) {
+	tests := []struct {
+		Description            string
+		PassHostHeader         bool
+		TargetUrl              string
+		ProxyfiedUrl           string
+		ExpectedXForwardedHost string
+	}{
+		{
+			Description:            "XForwardedHost without PassHostHeader",
+			PassHostHeader:         false,
+			TargetUrl:              "http://xforwardedhost.com",
+			ProxyfiedUrl:           "http://backend.com",
+			ExpectedXForwardedHost: "xforwardedhost.com",
+		},
+		{
+			Description:            "XForwardedHost with PassHostHeader",
+			PassHostHeader:         true,
+			TargetUrl:              "http://xforwardedhost.com",
+			ProxyfiedUrl:           "http://backend.com",
+			ExpectedXForwardedHost: "xforwardedhost.com",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.Description, func(t *testing.T) {
+			t.Parallel()
+
+			f, err := New(PassHostHeader(test.PassHostHeader))
+			require.NoError(t, err)
+
+			r, err := http.NewRequest(http.MethodGet, test.TargetUrl, nil)
+			require.NoError(t, err)
+			backendUrl, err := url.Parse(test.ProxyfiedUrl)
+			require.NoError(t, err)
+			f.modifyRequest(r, backendUrl)
+			require.Equal(t, test.ExpectedXForwardedHost, r.Header.Get(XForwardedHost))
+		})
+	}
 }
 
 // Makes sure hop-by-hop headers are removed
