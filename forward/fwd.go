@@ -20,6 +20,8 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
+	"io"
+	"bytes"
 )
 
 // OxyLogger interface of the internal
@@ -396,16 +398,28 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	errBackend := make(chan error, 1)
 	replicateWebsocketConn := func(dst, src *websocket.Conn, errc chan error) {
 
+		forward := func(messageType int, reader io.Reader) error {
+			writer, err := dst.NextWriter(messageType)
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(writer, reader)
+			if err != nil {
+				return err
+			}
+			return writer.Close()
+		}
+
 		src.SetPingHandler(func(data string) error {
-			return dst.WriteMessage(websocket.PingMessage, []byte(data))
+			return forward(websocket.PingMessage, bytes.NewReader([]byte(data)))
 		})
 
 		src.SetPongHandler(func(data string) error {
-			return dst.WriteMessage(websocket.PongMessage, []byte(data))
+			return forward(websocket.PongMessage, bytes.NewReader([]byte(data)))
 		})
 
 		for {
-			msgType, msg, err := src.ReadMessage()
+			msgType, reader, err := src.NextReader()
 
 			if err != nil {
 				m := websocket.FormatCloseMessage(websocket.CloseNormalClosure, fmt.Sprintf("%v", err))
@@ -423,11 +437,11 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 				}
 				errc <- err
 				if m != nil {
-					dst.WriteMessage(websocket.CloseMessage, m)
+					forward(websocket.CloseMessage, bytes.NewReader([]byte(m)))
 				}
 				break
 			}
-			err = dst.WriteMessage(msgType, msg)
+			err = forward(msgType, reader)
 			if err != nil {
 				errc <- err
 				break
