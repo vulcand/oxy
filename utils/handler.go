@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -20,6 +21,11 @@ var DefaultHandler ErrorHandler = &StdHandler{}
 type StdHandler struct{}
 
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
+	if err == context.Canceled {
+		log.Debugf("'%v' probably client disconnection", err)
+		return
+	}
+
 	statusCode := http.StatusInternalServerError
 	if e, ok := err.(net.Error); ok {
 		if e.Timeout() {
