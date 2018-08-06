@@ -4,9 +4,11 @@
 package forward
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -20,8 +22,6 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
-	"io"
-	"bytes"
 )
 
 // OxyLogger interface of the internal
