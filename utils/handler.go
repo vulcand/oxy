@@ -9,6 +9,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// ClientClosedRequest non-standard HTTP status code for client disconnection
+const ClientClosedRequest = 499
+
 // ErrorHandler error handler
 type ErrorHandler interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request, err error)
@@ -21,11 +24,6 @@ var DefaultHandler ErrorHandler = &StdHandler{}
 type StdHandler struct{}
 
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	if err == context.Canceled {
-		log.Debugf("'%v' probably client disconnection", err)
-		return
-	}
-
 	statusCode := http.StatusInternalServerError
 	if e, ok := err.(net.Error); ok {
 		if e.Timeout() {
@@ -33,6 +31,8 @@ func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err err
 		} else {
 			statusCode = http.StatusBadGateway
 		}
+	} else if err == context.Canceled {
+		statusCode = ClientClosedRequest
 	} else if err == io.EOF {
 		statusCode = http.StatusBadGateway
 	}
