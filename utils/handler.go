@@ -9,11 +9,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// ClientClosedRequest non-standard HTTP status code for client disconnection
-const ClientClosedRequest = 499
+// StatusClientClosedRequest non-standard HTTP status code for client disconnection
+const StatusClientClosedRequest = 499
 
-// StatusClientClosedRequest non-standard HTTP status for client disconnection
-const StatusClientClosedRequest = "Client Closed Request"
+// StatusClientClosedRequestText non-standard HTTP status for client disconnection
+const StatusClientClosedRequestText = "Client Closed Request"
 
 // ErrorHandler error handler
 type ErrorHandler interface {
@@ -28,27 +28,29 @@ type StdHandler struct{}
 
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	statusCode := http.StatusInternalServerError
-	statusText := http.StatusText(statusCode)
 
 	if e, ok := err.(net.Error); ok {
 		if e.Timeout() {
 			statusCode = http.StatusGatewayTimeout
-			statusText = http.StatusText(statusCode)
 		} else {
 			statusCode = http.StatusBadGateway
-			statusText = http.StatusText(statusCode)
 		}
 	} else if err == io.EOF {
 		statusCode = http.StatusBadGateway
-		statusText = http.StatusText(statusCode)
 	} else if err == context.Canceled {
-		statusCode = ClientClosedRequest
-		statusText = StatusClientClosedRequest
+		statusCode = StatusClientClosedRequest
 	}
 
 	w.WriteHeader(statusCode)
-	w.Write([]byte(statusText))
-	log.Debugf("'%d %s' caused by: %v", statusCode, statusText, err)
+	w.Write([]byte(statusText(statusCode)))
+	log.Debugf("'%d %s' caused by: %v", statusCode, statusText(statusCode), err)
+}
+
+func statusText(statusCode int) string {
+	if statusCode == StatusClientClosedRequest {
+		return StatusClientClosedRequestText
+	}
+	return http.StatusText(statusCode)
 }
 
 // ErrorHandlerFunc error handler function type
