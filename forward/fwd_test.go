@@ -384,3 +384,28 @@ func TestContextWithValueInErrHandler(t *testing.T) {
 	assert.Equal(t, http.StatusBadGateway, re.StatusCode)
 	assert.True(t, *originalPBool)
 }
+
+func TestTeTrailer(t *testing.T) {
+	var teHeader string
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		teHeader = req.Header.Get(Te)
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	f, err := New()
+	require.NoError(t, err)
+
+	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	tproxy := httptest.NewUnstartedServer(proxy)
+	tproxy.StartTLS()
+	defer tproxy.Close()
+
+	re, _, err := testutils.Get(tproxy.URL, testutils.Header("Te", "trailers"))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+	assert.Equal(t, "trailers", teHeader)
+}
