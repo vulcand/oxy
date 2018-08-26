@@ -30,6 +30,10 @@
   branch = "master"
   name = "golang.org/x/net"
 
+[[constraint]]
+  branch = "master"
+  name = "github.com/gorilla/websocket"
+
 [[override]]
   branch = "master"
   name = "github.com/jonboulle/clockwork"
