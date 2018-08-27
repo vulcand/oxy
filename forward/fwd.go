@@ -259,6 +259,8 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		errorHandler: f.errHandler,
 	}
 
+	f.postConfig()
+
 	return f, nil
 }
 
