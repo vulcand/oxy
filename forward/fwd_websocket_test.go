@@ -19,7 +19,7 @@ import (
 )
 
 func TestWebSocketTCPClose(t *testing.T) {
-	f, err := New()
+	f, err := New(PassHostHeader(true))
 	require.NoError(t, err)
 
 	errChan := make(chan error, 1)
@@ -206,6 +206,76 @@ func TestWebSocketEcho(t *testing.T) {
 	conn.Close()
 }
 
+func TestWebSocketPassHost(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		passHost bool
+		expected string
+	}{
+		{
+			desc:     "PassHost false",
+			passHost: false,
+		},
+		{
+			desc:     "PassHost true",
+			passHost: true,
+			expected: "example.com",
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			f, err := New()
+			f.passHost = test.passHost
+
+			require.NoError(t, err)
+
+			mux := http.NewServeMux()
+			mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
+				req := conn.Request()
+
+				if test.passHost {
+					require.Equal(t, test.expected, req.Host)
+				} else {
+					require.NotEqual(t, test.expected, req.Host)
+				}
+
+				msg := make([]byte, 4)
+				conn.Read(msg)
+				fmt.Println(string(msg))
+				conn.Write(msg)
+				conn.Close()
+			}))
+
+			srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+				mux.ServeHTTP(w, req)
+			})
+			defer srv.Close()
+
+			proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+				req.URL = testutils.ParseURI(srv.URL)
+				f.ServeHTTP(w, req)
+			})
+			defer proxy.Close()
+
+			serverAddr := proxy.Listener.Addr().String()
+
+			headers := http.Header{}
+			webSocketURL := "ws://" + serverAddr + "/ws"
+			headers.Add("Origin", webSocketURL)
+			headers.Add("Host", "example.com")
+
+			conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
+			require.NoError(t, err, "Error during Dial with response: %+v", resp)
+
+			conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
+			fmt.Println(conn.ReadMessage())
+
+			conn.Close()
+		})
+	}
+}
+
 func TestWebSocketNumGoRoutine(t *testing.T) {
 	t.Skip("Flaky on goroutine")
 	f, err := New()
@@ -293,7 +363,7 @@ func TestWebSocketServerWithoutCheckOrigin(t *testing.T) {
 }
 
 func TestWebSocketRequestWithOrigin(t *testing.T) {
-	f, err := New()
+	f, err := New(PassHostHeader(true))
 	require.NoError(t, err)
 
 	upgrader := gorillawebsocket.Upgrader{}
@@ -339,7 +409,7 @@ func TestWebSocketRequestWithOrigin(t *testing.T) {
 }
 
 func TestWebSocketRequestWithQueryParams(t *testing.T) {
-	f, err := New()
+	f, err := New(PassHostHeader(true))
 	require.NoError(t, err)
 
 	upgrader := gorillawebsocket.Upgrader{}
@@ -411,7 +481,7 @@ func TestWebSocketRequestWithHeadersInResponseWriter(t *testing.T) {
 }
 
 func TestWebSocketRequestWithEncodedChar(t *testing.T) {
-	f, err := New()
+	f, err := New(PassHostHeader(true))
 	require.NoError(t, err)
 
 	upgrader := gorillawebsocket.Upgrader{}
@@ -591,7 +661,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 	srv := createTLSWebsocketServer()
 	defer srv.Close()
 
-	forwarderWithoutTLSConfig, err := New()
+	forwarderWithoutTLSConfig, err := New(PassHostHeader(true))
 	require.NoError(t, err)
 
 	proxyWithoutTLSConfig := createProxyWithForwarder(forwarderWithoutTLSConfig, srv.URL)
@@ -610,7 +680,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	forwarderWithTLSConfig, err := New(RoundTripper(transport))
+	forwarderWithTLSConfig, err := New(PassHostHeader(true), RoundTripper(transport))
 	require.NoError(t, err)
 
 	proxyWithTLSConfig := createProxyWithForwarder(forwarderWithTLSConfig, srv.URL)
@@ -629,7 +699,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	forwarderWithTLSConfigFromDefaultTransport, err := New()
+	forwarderWithTLSConfigFromDefaultTransport, err := New(PassHostHeader(true))
 	require.NoError(t, err)
 
 	proxyWithTLSConfigFromDefaultTransport := createProxyWithForwarder(forwarderWithTLSConfigFromDefaultTransport, srv.URL)
