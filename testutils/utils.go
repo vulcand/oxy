@@ -169,6 +169,12 @@ func Get(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 	return MakeRequest(url, opts...)
 }
 
+// Post do a POST request
+func Post(url string, opts ...ReqOption) (*http.Response, []byte, error) {
+	opts = append(opts, Method(http.MethodPost))
+	return MakeRequest(url, opts...)
+}
+
 // GetClock gets a FreezedTime
 func GetClock() *timetools.FreezedTime {
 	return &timetools.FreezedTime{
