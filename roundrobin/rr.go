@@ -144,6 +144,9 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.requestRewriteListener(req, &newReq)
 	}
 
+	// avoid discarding the userinfo in the URL
+	newReq.URL.User = req.URL.User
+
 	r.next.ServeHTTP(w, &newReq)
 }
 
