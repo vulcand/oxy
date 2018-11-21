@@ -2,6 +2,7 @@ package memmetrics
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/mailgun/timetools"
@@ -17,14 +18,20 @@ func CounterClock(c timetools.TimeProvider) rcOptSetter {
 	}
 }
 
+type bucket struct {
+	value  int64
+	bucket int64
+}
+
 // RollingCounter Calculates in memory failure rate of an endpoint using rolling window of a predefined size
 type RollingCounter struct {
-	clock          timetools.TimeProvider
-	resolution     time.Duration
-	values         []int
-	countedBuckets int // how many samples in different buckets have we collected so far
-	lastBucket     int // last recorded bucket
-	lastUpdated    time.Time
+	clock      timetools.TimeProvider
+	resolution int64
+
+	values     []bucket
+	pos        int
+	mu         sync.RWMutex
+	incCounter int
 }
 
 // NewCounter creates a counter with fixed amount of buckets that are rotated every resolution period.
@@ -39,10 +46,9 @@ func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (
 	}
 
 	rc := &RollingCounter{
-		lastBucket: -1,
-		resolution: resolution,
-
-		values: make([]int, buckets),
+		values:     make([]bucket, buckets),
+		pos:        buckets - 1,
+		resolution: int64(resolution),
 	}
 
 	for _, o := range options {
@@ -66,13 +72,12 @@ func (c *RollingCounter) Append(o *RollingCounter) error {
 
 // Clone clone a counter
 func (c *RollingCounter) Clone() *RollingCounter {
-	c.cleanup()
 	other := &RollingCounter{
-		resolution:  c.resolution,
-		values:      make([]int, len(c.values)),
-		clock:       c.clock,
-		lastBucket:  c.lastBucket,
-		lastUpdated: c.lastUpdated,
+		resolution: c.resolution,
+		values:     make([]bucket, len(c.values)),
+		clock:      c.clock,
+		pos:        c.pos,
+		incCounter: c.incCounter,
 	}
 	copy(other.values, c.values)
 	return other
@@ -80,28 +85,30 @@ func (c *RollingCounter) Clone() *RollingCounter {
 
 // Reset reset a counter
 func (c *RollingCounter) Reset() {
-	c.lastBucket = -1
-	c.countedBuckets = 0
-	c.lastUpdated = time.Time{}
+	c.pos = len(c.values) - 1
+	c.incCounter = 0
 	for i := range c.values {
-		c.values[i] = 0
+		c.values[i].value = 0
 	}
 }
 
 // CountedBuckets gets counted buckets
 func (c *RollingCounter) CountedBuckets() int {
-	return c.countedBuckets
+	if c.incCounter < len(c.values) {
+		return c.incCounter
+	}
+
+	return len(c.values)
 }
 
 // Count counts
 func (c *RollingCounter) Count() int64 {
-	c.cleanup()
 	return c.sum()
 }
 
 // Resolution gets resolution
 func (c *RollingCounter) Resolution() time.Duration {
-	return c.resolution
+	return time.Duration(c.resolution)
 }
 
 // Buckets gets buckets
@@ -111,53 +118,57 @@ func (c *RollingCounter) Buckets() int {
 
 // WindowSize gets windows size
 func (c *RollingCounter) WindowSize() time.Duration {
-	return time.Duration(len(c.values)) * c.resolution
+	return time.Duration(int64(len(c.values)) * c.resolution)
 }
 
 // Inc increment counter
 func (c *RollingCounter) Inc(v int) {
-	c.cleanup()
 	c.incBucketValue(v)
 }
 
 func (c *RollingCounter) incBucketValue(v int) {
 	now := c.clock.UtcNow()
 	bucket := c.getBucket(now)
-	c.values[bucket] += v
-	c.lastUpdated = now
-	// Update usage stats if we haven't collected enough data
-	if c.countedBuckets < len(c.values) {
-		// Only update if we have advanced to the next bucket and not incremented the value
-		// in the current bucket.
-		if c.lastBucket != bucket {
-			c.lastBucket = bucket
-			c.countedBuckets++
-		}
+
+	c.mu.Lock()
+
+	if c.values[c.pos].bucket != bucket {
+		c.pos = (c.pos + 1) % len(c.values)
 	}
+
+	c.values[c.pos].bucket = bucket
+	c.values[c.pos].value += int64(v)
+	c.incCounter++
+
+	c.mu.Unlock()
 }
 
 // Returns the number in the moving window bucket that this slot occupies
-func (c *RollingCounter) getBucket(t time.Time) int {
-	return int(t.Truncate(c.resolution).Unix() % int64(len(c.values)))
-}
-
-// Reset buckets that were not updated
-func (c *RollingCounter) cleanup() {
-	now := c.clock.UtcNow()
-	for i := 0; i < len(c.values); i++ {
-		now = now.Add(time.Duration(-1*i) * c.resolution)
-		if now.Truncate(c.resolution).After(c.lastUpdated.Truncate(c.resolution)) {
-			c.values[c.getBucket(now)] = 0
-		} else {
-			break
-		}
-	}
+func (c *RollingCounter) getBucket(t time.Time) int64 {
+	return t.UnixNano() / int64(c.resolution)
 }
 
 func (c *RollingCounter) sum() int64 {
-	out := int64(0)
-	for _, v := range c.values {
-		out += int64(v)
+	var (
+		out int64
+
+		vs        = len(c.values)
+		minBucket = c.getBucket(c.clock.UtcNow()) - int64(vs) + 1
+	)
+
+	c.mu.RLock()
+
+	for i := 0; i < len(c.values); i++ {
+		val := c.values[(vs+c.pos-i)%vs]
+
+		if val.bucket < minBucket {
+			break
+		}
+
+		out += val.value
 	}
+
+	c.mu.RUnlock()
+
 	return out
 }

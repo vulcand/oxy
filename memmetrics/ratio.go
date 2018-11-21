@@ -60,7 +60,7 @@ func (r *RatioCounter) Reset() {
 
 // IsReady returns true if the counter is ready
 func (r *RatioCounter) IsReady() bool {
-	return r.a.countedBuckets+r.b.countedBuckets >= len(r.a.values)
+	return r.a.CountedBuckets()+r.b.CountedBuckets() >= len(r.a.values)
 }
 
 // CountA gets count A
