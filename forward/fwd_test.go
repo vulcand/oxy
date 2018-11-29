@@ -3,6 +3,7 @@ package forward
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -408,4 +409,26 @@ func TestTeTrailer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 	assert.Equal(t, "trailers", teHeader)
+}
+
+func TestUnannouncedTrailer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(200)
+		rw.(http.Flusher).Flush()
+
+		rw.Header().Add(http.TrailerPrefix+"X-Trailer", "foo")
+	}))
+
+	proxy, err := New()
+	require.Nil(t, err)
+
+	proxySrv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		proxy.ServeHTTP(rw, req)
+	}))
+
+	resp, _ := http.Get(proxySrv.URL)
+	ioutil.ReadAll(resp.Body)
+
+	require.Equal(t, resp.Trailer.Get("X-Trailer"), "foo")
 }
