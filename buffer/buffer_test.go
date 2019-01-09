@@ -149,7 +149,7 @@ func TestChunkedResponse(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(len("testtest1test2")), re.Header.Get("Content-Length"))
 }
 
-func TestRequestLimitReached(t *testing.T) {
+func TestRequestBodyLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -175,6 +175,44 @@ func TestRequestLimitReached(t *testing.T) {
 	re, _, err := testutils.Get(proxy.URL, testutils.Body("this request is too long"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusRequestEntityTooLarge, re.StatusCode)
+}
+
+func TestRequestHeaderLimitReached(t *testing.T) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	// forwarder will proxy the request to whatever destination
+	fwd, err := forward.New()
+	require.NoError(t, err)
+
+	// this is our redirect to server
+	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		fwd.ServeHTTP(w, req)
+	})
+
+	// stream handler will forward requests to redirect
+	st, err := New(rdr, MaxRequestHeaderBytes(128))
+	require.NoError(t, err)
+
+	proxy := httptest.NewServer(st)
+	defer proxy.Close()
+
+	// ok
+	re, _, err := testutils.Get(proxy.URL, testutils.Header("h1", "small"))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+
+	// raise error
+	re, _, err = testutils.Get(proxy.URL,
+		testutils.Header("h1", "small"),
+		testutils.Header("h2",
+			"larrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrge"),
+	)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusRequestHeaderFieldsTooLarge, re.StatusCode)
 }
 
 func TestResponseLimitReached(t *testing.T) {

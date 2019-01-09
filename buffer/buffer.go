@@ -56,9 +56,21 @@ const (
 	DefaultMaxBodyBytes = -1
 	// DefaultMaxRetryAttempts Maximum retry attempts
 	DefaultMaxRetryAttempts = 10
+	// DefaultMaxHeaderBytes No limit by default
+	DefaultMaxHeaderBytes = -1
 )
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
+
+// RequestHeaderMaxSizeReachedError is returned when the maximum allowed buffer size is reached when reading
+type MaxSizeReachedError struct {
+	HttpStatus int
+	MaxSize    int64
+}
+
+func (e *MaxSizeReachedError) Error() string {
+	return fmt.Sprintf("Maximum size %d was reached, status code was %v", e.MaxSize, e.HttpStatus)
+}
 
 // Buffer is responsible for buffering requests and responses
 // It buffers large requests and responses to disk,
@@ -68,6 +80,8 @@ type Buffer struct {
 
 	maxResponseBodyBytes int64
 	memResponseBodyBytes int64
+
+	maxRequestHeaderBytes int64
 
 	retryPredicate hpredicate
 
@@ -87,6 +101,8 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
 		memResponseBodyBytes: DefaultMemBodyBytes,
+
+		maxRequestHeaderBytes: DefaultMaxHeaderBytes,
 
 		log: log.StandardLogger(),
 	}
@@ -198,6 +214,17 @@ func MemResponseBodyBytes(m int64) optSetter {
 			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
 		}
 		b.memResponseBodyBytes = m
+		return nil
+	}
+}
+
+// MaxRequestHeaderBytes sets the maximum request header size in bytes
+func MaxRequestHeaderBytes(m int64) optSetter {
+	return func(b *Buffer) error {
+		if m < 0 {
+			return fmt.Errorf("max bytes should be >= 0 got %d", m)
+		}
+		b.maxRequestHeaderBytes = m
 		return nil
 	}
 }
@@ -338,12 +365,49 @@ func (b *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int
 }
 
 func (b *Buffer) checkLimit(req *http.Request) error {
-	if b.maxRequestBodyBytes <= 0 {
+	if b.maxRequestBodyBytes > 0 {
+		if req.ContentLength > b.maxRequestBodyBytes {
+			return &MaxSizeReachedError{HttpStatus: http.StatusRequestEntityTooLarge, MaxSize: b.maxRequestBodyBytes}
+		}
+	}
+
+	if b.maxRequestHeaderBytes > 0 {
+		if req.Header != nil {
+			if err := b.checkHeaderLimit(req.Header); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (b *Buffer) checkHeaderLimit(header http.Header) error {
+	if header == nil {
 		return nil
 	}
-	if req.ContentLength > b.maxRequestBodyBytes {
-		return &multibuf.MaxSizeReachedError{MaxSize: b.maxRequestBodyBytes}
+
+	accumulateAndCompare := func(src *int64, next int64) error {
+		*src += next
+		if *src > b.maxRequestHeaderBytes {
+			return &MaxSizeReachedError{HttpStatus: http.StatusRequestHeaderFieldsTooLarge, MaxSize: b.maxRequestHeaderBytes}
+		}
+
+		return nil
 	}
+
+	var acc = int64(0)
+	for header, values := range header {
+		if err := accumulateAndCompare(&acc, int64(len(header))); err != nil {
+			return err
+		}
+		for i := range values {
+			if err := accumulateAndCompare(&acc, int64(len(values[i]))); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -393,7 +457,7 @@ func (b *bufferWriter) Write(buf []byte) (int, error) {
 	return length, nil
 }
 
-// WriteHeader sets rw.Code.
+// WriteHeader sets rw.HttpStatus.
 func (b *bufferWriter) WriteHeader(code int) {
 	b.code = code
 }
@@ -424,9 +488,18 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 type SizeErrHandler struct{}
 
 func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
+	// for compatibility with MaxSizeReachedError err
 	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
+
+		return
+	}
+	// handle
+	if err, ok := err.(*MaxSizeReachedError); ok {
+		w.WriteHeader(err.HttpStatus)
+		w.Write([]byte(http.StatusText(err.HttpStatus)))
+
 		return
 	}
 	utils.DefaultHandler.ServeHTTP(w, req, err)
