@@ -355,3 +355,40 @@ func TestPreservesTLS(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 	assert.NotNil(t, cs)
 }
+
+func TestNotNilBody(t *testing.T) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("hello"))
+	})
+	defer srv.Close()
+
+	// forwarder will proxy the request to whatever destination
+	fwd, err := forward.New()
+	require.NoError(t, err)
+
+	// this is our redirect to server
+	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		// During a request check if the request body is no nil before sending to the next middleware
+		// Because we can send a POST request without body
+		assert.NotNil(t, req.Body)
+		fwd.ServeHTTP(w, req)
+	})
+
+	// stream handler will forward requests to redirect
+	st, err := New(rdr, MaxRequestBodyBytes(10))
+	require.NoError(t, err)
+
+	proxy := httptest.NewServer(st)
+	defer proxy.Close()
+
+	re, body, err := testutils.Get(proxy.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+	assert.Equal(t, "hello", string(body))
+
+	re, body, err = testutils.Post(proxy.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+	assert.Equal(t, "hello", string(body))
+}

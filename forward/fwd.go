@@ -491,6 +491,9 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 	outReq.RequestURI = "" // Outgoing request should not have RequestURI
 
 	outReq.URL.Host = req.URL.Host
+	if !f.passHost {
+		outReq.Host = req.URL.Host
+	}
 
 	outReq.Header = make(http.Header)
 	// gorilla websocket use this header to set the request.Host tested in checkSameOrigin
@@ -545,6 +548,16 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ct
 	} else {
 		revproxy.ServeHTTP(w, outReq)
 	}
+
+	for key := range w.Header() {
+		if strings.HasPrefix(key, http.TrailerPrefix) {
+			if fl, ok := w.(http.Flusher); ok {
+				fl.Flush()
+			}
+			break
+		}
+	}
+
 }
 
 // IsWebsocketRequest determines if the specified HTTP request is a
