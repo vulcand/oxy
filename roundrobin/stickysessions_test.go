@@ -86,6 +86,41 @@ func TestStickCookie(t *testing.T) {
 	assert.Equal(t, a.URL, cookie.Value)
 }
 
+func TestStickCookieWithOptions(t *testing.T) {
+	a := testutils.NewResponder("a")
+	b := testutils.NewResponder("b")
+
+	defer a.Close()
+	defer b.Close()
+
+	fwd, err := forward.New()
+	require.NoError(t, err)
+
+	options := CookieOptions{httpOnly: true, secure: true}
+	sticky := NewStickySessionWithOptions("test", options)
+	require.NotNil(t, sticky)
+
+	lb, err := New(fwd, EnableStickySession(sticky))
+	require.NoError(t, err)
+
+	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	require.NoError(t, err)
+	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	require.NoError(t, err)
+
+	proxy := httptest.NewServer(lb)
+	defer proxy.Close()
+
+	resp, err := http.Get(proxy.URL)
+	require.NoError(t, err)
+
+	cookie := resp.Cookies()[0]
+	assert.Equal(t, "test", cookie.Name)
+	assert.Equal(t, a.URL, cookie.Value)
+	assert.True(t, cookie.Secure)
+	assert.True(t, cookie.HttpOnly)
+}
+
 func TestRemoveRespondingServer(t *testing.T) {
 	a := testutils.NewResponder("a")
 	b := testutils.NewResponder("b")
