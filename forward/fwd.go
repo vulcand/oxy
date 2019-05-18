@@ -327,7 +327,7 @@ func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 	}
 }
 
-// serveHTTP forwards websocket traffic
+// serveWebSocket forwards websocket traffic
 func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
 	if f.log.GetLevel() >= log.DebugLevel {
 		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
