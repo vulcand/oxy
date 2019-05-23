@@ -167,6 +167,7 @@ func (rt ErrorHandlingRoundTripper) RoundTrip(req *http.Request) (*http.Response
 		recorder := httptest.NewRecorder()
 		rt.errorHandler.ServeHTTP(recorder, req, err)
 		res = recorder.Result()
+		res.Request = req
 		err = nil
 	}
 	return res, err
