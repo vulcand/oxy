@@ -101,20 +101,6 @@
   version = "v1.2.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:6ce1a3e2f331fad14560af9d2a245208db1a33e93c935cfacfd226a4540b1749"
-  name = "github.com/vulcand/oxy"
-  packages = [
-    "forward",
-    "memmetrics",
-    "roundrobin",
-    "testutils",
-    "utils",
-  ]
-  pruneopts = ""
-  revision = "1bcd53a5921f3314dbfa4a12c0510a9271652f28"
-
-[[projects]]
   digest = "1:324fcdd450f9e98d18ff566762e9aa6490a2baa56d375551488c0f2b95084f0e"
   name = "github.com/vulcand/predicate"
   packages = ["."]
@@ -175,11 +161,6 @@
     "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
-    "github.com/vulcand/oxy/forward",
-    "github.com/vulcand/oxy/memmetrics",
-    "github.com/vulcand/oxy/roundrobin",
-    "github.com/vulcand/oxy/testutils",
-    "github.com/vulcand/oxy/utils",
     "github.com/vulcand/predicate",
     "golang.org/x/net/websocket",
   ]
