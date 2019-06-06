@@ -96,7 +96,7 @@ func TestStickCookieWithOptions(t *testing.T) {
 	fwd, err := forward.New()
 	require.NoError(t, err)
 
-	options := CookieOptions{httpOnly: true, secure: true}
+	options := CookieOptions{HttpOnly: true, Secure: true}
 	sticky := NewStickySessionWithOptions("test", options)
 	require.NotNil(t, sticky)
 

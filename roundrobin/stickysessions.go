@@ -13,8 +13,8 @@ type StickySession struct {
 
 // CookieOptions has all the options one would like to set on the affinity cookie
 type CookieOptions struct {
-	httpOnly bool
-	secure   bool
+	HTTPOnly bool
+	Secure   bool
 }
 
 // NewStickySession creates a new StickySession
