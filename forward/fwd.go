@@ -42,6 +42,9 @@ type ReqRewriter interface {
 	Rewrite(r *http.Request)
 }
 
+// WsHook websocket message hook called when message is received or sent
+type WsHook func(req *http.Request, messageType int, reader io.Reader) (io.Reader, error)
+
 type optSetter func(f *Forwarder) error
 
 // PassHostHeader specifies if a client's Host header field should be delegated.
@@ -136,6 +139,22 @@ func WebsocketConnectionClosedHook(hook func(req *http.Request, conn net.Conn)) 
 	}
 }
 
+// WebsocketMessageReceivedHook defines a hook called when websocket message is received
+func WebsocketMessageReceivedHook(hook WsHook) optSetter {
+	return func(f *Forwarder) error {
+		f.httpForwarder.websocketMessageReceivedHook = hook
+		return nil
+	}
+}
+
+// WebsocketMessageSentHook defines a hook called when websocket message is sent
+func WebsocketMessageSentHook(hook WsHook) optSetter {
+	return func(f *Forwarder) error {
+		f.httpForwarder.websocketMessageSentHook = hook
+		return nil
+	}
+}
+
 // ResponseModifier defines a response modifier for the HTTP forwarder.
 func ResponseModifier(responseModifier func(*http.Response) error) optSetter {
 	return func(f *Forwarder) error {
@@ -180,6 +199,8 @@ type httpForwarder struct {
 
 	bufferPool                    httputil.BufferPool
 	websocketConnectionClosedHook func(req *http.Request, conn net.Conn)
+	websocketMessageReceivedHook  WsHook
+	websocketMessageSentHook      WsHook
 }
 
 const defaultFlushInterval = 100 * clock.Millisecond
@@ -383,7 +404,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 
 	errClient := make(chan error, 1)
 	errBackend := make(chan error, 1)
-	replicateWebsocketConn := func(dst, src *websocket.Conn, errc chan error) {
+	replicateWebsocketConn := func(dst, src *websocket.Conn, websocketMessageHook WsHook, errc chan error) {
 		forward := func(messageType int, reader io.Reader) error {
 			writer, err := dst.NextWriter(messageType)
 			if err != nil {
@@ -424,6 +445,12 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 				}
 				break
 			}
+			if websocketMessageHook != nil {
+				if reader, err = websocketMessageHook(req, msgType, reader); err != nil {
+					errc <- err
+					break
+				}
+			}
 			err = forward(msgType, reader)
 			if err != nil {
 				errc <- err
@@ -432,8 +459,8 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	go replicateWebsocketConn(underlyingConn, targetConn, errClient)
-	go replicateWebsocketConn(targetConn, underlyingConn, errBackend)
+	go replicateWebsocketConn(underlyingConn, targetConn, f.websocketMessageSentHook, errClient)
+	go replicateWebsocketConn(targetConn, underlyingConn, f.websocketMessageReceivedHook, errBackend)
 
 	var message string
 	select {
