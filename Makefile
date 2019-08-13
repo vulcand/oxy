@@ -1,5 +1,7 @@
 .PHONY: all
 
+export GO111MODULE=on
+
 PKGS := $(shell go list ./... | grep -v '/vendor/')
 GOFILES := $(shell go list -f '{{range $$index, $$element := .GoFiles}}{{$$.Dir}}/{{$$element}}{{"\n"}}{{end}}' ./... | grep -v '/vendor/')
 TXT_FILES := $(shell find * -type f -not -path 'vendor/**')
@@ -11,9 +13,6 @@ test: clean
 
 test-verbose: clean
 	go test -v -race -cover $(PKGS)
-
-dependencies:
-	dep ensure -v
 
 clean:
 	find . -name flymake_* -delete
