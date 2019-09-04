@@ -13,8 +13,9 @@ type StickySession struct {
 
 // CookieOptions has all the options one would like to set on the affinity cookie
 type CookieOptions struct {
-	HTTPOnly bool
-	Secure   bool
+	HTTPOnly   bool
+	Secure     bool
+	Obfuscator Obfuscator
 }
 
 // NewStickySession creates a new StickySession
@@ -39,7 +40,13 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 		return nil, false, err
 	}
 
-	serverURL, err := url.Parse(cookie.Value)
+	cookieValue := cookie.Value
+	if s.options.Obfuscator != nil {
+		// We have an Obfuscator, let's use it
+		cookieValue = s.options.Obfuscator.Normalize(cookieValue)
+	}
+
+	serverURL, err := url.Parse(cookieValue)
 	if err != nil {
 		return nil, false, err
 	}
@@ -53,7 +60,14 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 // StickBackend creates and sets the cookie
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 	opt := s.options
-	cookie := &http.Cookie{Name: s.cookieName, Value: backend.String(), Path: "/", HttpOnly: opt.HTTPOnly, Secure: opt.Secure}
+
+	cookieValue := backend.String()
+	if opt.Obfuscator != nil {
+		// We have an Obfuscator, let's use it
+		cookieValue = opt.Obfuscator.Obfuscate(cookieValue)
+	}
+
+	cookie := &http.Cookie{Name: s.cookieName, Value: cookieValue, Path: "/", HttpOnly: opt.HTTPOnly, Secure: opt.Secure}
 	http.SetCookie(*w, cookie)
 }
 
