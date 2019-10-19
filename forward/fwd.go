@@ -468,7 +468,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 
 	}
 	if e, ok := err.(*websocket.CloseError); !ok || e.Code == websocket.CloseAbnormalClosure {
-		f.log.Errorf(message, err)
+		f.log.Debugf(message, err)
 	}
 }
 
