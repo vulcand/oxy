@@ -200,7 +200,15 @@ func (r *RoundRobin) RemoveServer(u *url.URL) error {
 	if e == nil {
 		return fmt.Errorf("server not found")
 	}
-	r.servers = append(r.servers[:index], r.servers[index+1:]...)
+
+	// Removing an item from a list of pointers.
+	// https://github.com/golang/go/wiki/SliceTricks
+	if index < len(r.servers)-1 {
+		copy(r.servers[index:], r.servers[index+1:])
+	}
+	r.servers[len(r.servers)-1] = nil
+	r.servers = r.servers[:len(r.servers)-1]
+
 	r.resetState()
 	return nil
 }

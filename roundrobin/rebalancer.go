@@ -278,7 +278,15 @@ func (rb *Rebalancer) removeServer(u *url.URL) error {
 	if err := rb.next.RemoveServer(u); err != nil {
 		return err
 	}
-	rb.servers = append(rb.servers[:i], rb.servers[i+1:]...)
+
+	// Removing an item from a list of pointers.
+	// https://github.com/golang/go/wiki/SliceTricks
+	if i < len(rb.servers)-1 {
+		copy(rb.servers[i:], rb.servers[i+1:])
+	}
+	rb.servers[len(rb.servers)-1] = nil
+	rb.servers = rb.servers[:len(rb.servers)-1]
+
 	rb.reset()
 	return nil
 }
