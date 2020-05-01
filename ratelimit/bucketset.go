@@ -6,18 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 )
 
 // TokenBucketSet represents a set of TokenBucket covering different time periods.
 type TokenBucketSet struct {
 	buckets   map[time.Duration]*tokenBucket
 	maxPeriod time.Duration
-	clock     timetools.TimeProvider
+	clock     holster.Clock
 }
 
 // NewTokenBucketSet creates a `TokenBucketSet` from the specified `rates`.
-func NewTokenBucketSet(rates *RateSet, clock timetools.TimeProvider) *TokenBucketSet {
+func NewTokenBucketSet(rates *RateSet, clock holster.Clock) *TokenBucketSet {
 	tbs := new(TokenBucketSet)
 	tbs.clock = clock
 	// In the majority of cases we will have only one bucket.

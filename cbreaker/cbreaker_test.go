@@ -52,27 +52,27 @@ func TestFullCycle(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 
 	cb.metrics = statsNetErrors(0.6)
-	clock.CurrentTime = clock.CurrentTime.Add(defaultCheckPeriod + time.Millisecond)
+	clock.Sleep(defaultCheckPeriod + time.Millisecond)
 	_, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, cbState(stateTripped), cb.state)
 
 	// Some time has passed, but we are still in trapped state.
-	clock.CurrentTime = clock.CurrentTime.Add(9 * time.Second)
+	clock.Sleep(9 * time.Second)
 	re, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
 	assert.Equal(t, cbState(stateTripped), cb.state)
 
 	// We should be in recovering state by now
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second*1 + time.Millisecond)
+	clock.Sleep(time.Second*1 + time.Millisecond)
 	re, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
 	assert.Equal(t, cbState(stateRecovering), cb.state)
 
 	// 5 seconds after we should be allowing some requests to pass
-	clock.CurrentTime = clock.CurrentTime.Add(5 * time.Second)
+	clock.Sleep(5 * time.Second)
 	allowed := 0
 	for i := 0; i < 100; i++ {
 		re, _, err = testutils.Get(srv.URL)
@@ -83,7 +83,7 @@ func TestFullCycle(t *testing.T) {
 	assert.NotEqual(t, 0, allowed)
 
 	// After some time, all is good and we should be in stand by mode again
-	clock.CurrentTime = clock.CurrentTime.Add(5*time.Second + time.Millisecond)
+	clock.Sleep(5*time.Second + time.Millisecond)
 	re, _, err = testutils.Get(srv.URL)
 	assert.Equal(t, cbState(stateStandby), cb.state)
 	require.NoError(t, err)
@@ -172,14 +172,14 @@ func TestTriggerDuringRecovery(t *testing.T) {
 	assert.Equal(t, cbState(stateTripped), cb.state)
 
 	// We should be in recovering state by now
-	clock.CurrentTime = clock.CurrentTime.Add(10*time.Second + time.Millisecond)
+	clock.Sleep(10*time.Second + time.Millisecond)
 	re, _, err := testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
 	assert.Equal(t, cbState(stateRecovering), cb.state)
 
 	// We have matched error condition during recovery state and are going back to tripped state
-	clock.CurrentTime = clock.CurrentTime.Add(5 * time.Second)
+	clock.Sleep(5 * time.Second)
 	cb.metrics = statsNetErrors(0.6)
 	allowed := 0
 	for i := 0; i < 100; i++ {
@@ -259,14 +259,14 @@ func TestSideEffects(t *testing.T) {
 	}
 
 	// Transition to recovering state
-	clock.CurrentTime = clock.CurrentTime.Add(10*time.Second + time.Millisecond)
+	clock.Sleep(10*time.Second + time.Millisecond)
 	cb.metrics = statsOK()
 	_, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, cbState(stateRecovering), cb.state)
 
 	// Going back to standby
-	clock.CurrentTime = clock.CurrentTime.Add(10*time.Second + time.Millisecond)
+	clock.Sleep(10*time.Second + time.Millisecond)
 	_, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, cbState(stateStandby), cb.state)

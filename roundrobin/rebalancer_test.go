@@ -119,7 +119,7 @@ func TestRebalancerRecovery(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Sleep(rb.backoffDuration + time.Second)
 	}
 
 	assert.Equal(t, 1, rb.servers[0].curWeight)
@@ -136,7 +136,7 @@ func TestRebalancerRecovery(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Sleep(rb.backoffDuration + time.Second)
 	}
 
 	assert.Equal(t, 1, rb.servers[0].curWeight)
@@ -186,7 +186,7 @@ func TestRebalancerCascading(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Sleep(rb.backoffDuration + time.Second)
 	}
 
 	// We have increased the load, and the situation became worse as the other servers started failing
@@ -204,7 +204,7 @@ func TestRebalancerCascading(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Sleep(rb.backoffDuration + time.Second)
 	}
 
 	// the algo reverted it back
@@ -254,7 +254,7 @@ func TestRebalancerAllBad(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Sleep(rb.backoffDuration + time.Second)
 	}
 
 	// load balancer does nothing
@@ -304,7 +304,7 @@ func TestRebalancerReset(t *testing.T) {
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		clock.Sleep(rb.backoffDuration + time.Second)
 	}
 
 	// load balancer changed weights
@@ -349,8 +349,8 @@ func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
-		if i%10 == 0 {
-			clock.CurrentTime = clock.CurrentTime.Add(rb.backoffDuration + time.Second)
+		if (i % 10) == 0 {
+			clock.Sleep(rb.backoffDuration + time.Second)
 		}
 	}
 

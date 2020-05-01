@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 )
 
 // UndefinedDelay  default delay
@@ -35,7 +35,7 @@ type tokenBucket struct {
 	// nether be larger then capacity.
 	availableTokens int64
 	// Interface that gives current time (so tests can override)
-	clock timetools.TimeProvider
+	clock holster.Clock
 	// Tells when tokensAvailable was updated the last time.
 	lastRefresh time.Time
 	// The number of tokens consumed the last time.
@@ -43,13 +43,13 @@ type tokenBucket struct {
 }
 
 // newTokenBucket crates a `tokenBucket` instance for the specified `Rate`.
-func newTokenBucket(rate *rate, clock timetools.TimeProvider) *tokenBucket {
+func newTokenBucket(rate *rate, clock holster.Clock) *tokenBucket {
 	return &tokenBucket{
 		period:          rate.period,
 		timePerToken:    time.Duration(int64(rate.period) / rate.average),
 		burst:           rate.burst,
 		clock:           clock,
-		lastRefresh:     clock.UtcNow(),
+		lastRefresh:     clock.Now(),
 		availableTokens: rate.burst,
 	}
 }
@@ -109,7 +109,7 @@ func (tb *tokenBucket) timeTillAvailable(tokens int64) time.Duration {
 // It is calculated based on the refill rate, the time passed since last refresh,
 // and is limited by the bucket capacity.
 func (tb *tokenBucket) updateAvailableTokens() {
-	now := tb.clock.UtcNow()
+	now := tb.clock.Now()
 	timePassed := now.Sub(tb.lastRefresh)
 
 	tokens := tb.availableTokens + int64(timePassed/tb.timePerToken)

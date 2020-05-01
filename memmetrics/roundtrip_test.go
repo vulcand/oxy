@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
@@ -92,7 +92,7 @@ func TestConcurrentRecords(t *testing.T) {
 
 func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	a := RTMetrics{
-		clock:           &timetools.RealTime{},
+		clock:           &holster.SystemClock{},
 		statusCodes:     map[int]*RollingCounter{},
 		statusCodesLock: sync.RWMutex{},
 		histogram:       &RollingHDRHistogram{},

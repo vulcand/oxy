@@ -61,10 +61,10 @@ func TestMultipleBuckets(t *testing.T) {
 	require.NoError(t, err)
 
 	fr.IncB(1)
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 
 	assert.Equal(t, true, fr.IsReady())
@@ -81,14 +81,14 @@ func TestOverwriteBuckets(t *testing.T) {
 
 	fr.IncB(1)
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 
 	// This time we should overwrite the old data points
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 	fr.IncB(2)
 
@@ -106,19 +106,19 @@ func TestInactiveBuckets(t *testing.T) {
 
 	fr.IncB(1)
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 
 	// This time we should overwrite the old data points with new data
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 	fr.IncB(2)
 
 	// Jump to the last bucket and change the data
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second * 2)
+	clock.Sleep(time.Second * 2)
 	fr.IncB(1)
 
 	assert.Equal(t, true, fr.IsReady())
@@ -133,14 +133,14 @@ func TestLongPeriodsOfInactivity(t *testing.T) {
 
 	fr.IncB(1)
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	fr.IncA(1)
 
 	assert.Equal(t, true, fr.IsReady())
 	assert.Equal(t, 0.5, fr.Ratio())
 
 	// This time we should overwrite all data points
-	clock.CurrentTime = clock.CurrentTime.Add(100 * time.Second)
+	clock.Sleep(100 * time.Second)
 	fr.IncA(1)
 	assert.Equal(t, 1.0, fr.Ratio())
 }

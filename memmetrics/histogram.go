@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/codahale/hdrhistogram"
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 )
 
 // HDRHistogram is a tiny wrapper around github.com/codahale/hdrhistogram that provides convenience functions for measuring http latencies
@@ -82,7 +82,7 @@ func (h *HDRHistogram) Merge(other *HDRHistogram) error {
 type rhOptSetter func(r *RollingHDRHistogram) error
 
 // RollingClock sets a clock
-func RollingClock(clock timetools.TimeProvider) rhOptSetter {
+func RollingClock(clock holster.Clock) rhOptSetter {
 	return func(r *RollingHDRHistogram) error {
 		r.clock = clock
 		return nil
@@ -100,7 +100,7 @@ type RollingHDRHistogram struct {
 	high        int64
 	sigfigs     int
 	buckets     []*HDRHistogram
-	clock       timetools.TimeProvider
+	clock       holster.Clock
 }
 
 // NewRollingHDRHistogram created a new RollingHDRHistogram
@@ -120,7 +120,7 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 	}
 
 	if rh.clock == nil {
-		rh.clock = &timetools.RealTime{}
+		rh.clock = &holster.SystemClock{}
 	}
 
 	buckets := make([]*HDRHistogram, rh.bucketCount)
@@ -173,7 +173,7 @@ func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 // Reset reset a RollingHDRHistogram
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
-	r.lastRoll = r.clock.UtcNow()
+	r.lastRoll = r.clock.Now()
 	for _, b := range r.buckets {
 		b.Reset()
 	}
@@ -199,9 +199,9 @@ func (r *RollingHDRHistogram) Merged() (*HDRHistogram, error) {
 }
 
 func (r *RollingHDRHistogram) getHist() *HDRHistogram {
-	if r.clock.UtcNow().Sub(r.lastRoll) >= r.period {
+	if r.clock.Now().Sub(r.lastRoll) >= r.period {
 		r.rotate()
-		r.lastRoll = r.clock.UtcNow()
+		r.lastRoll = r.clock.Now()
 	}
 	return r.buckets[r.idx]
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -176,8 +176,8 @@ func Post(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 }
 
 // GetClock gets a FreezedTime
-func GetClock() *timetools.FreezedTime {
-	return &timetools.FreezedTime{
+func GetClock() holster.Clock {
+	return &holster.FrozenClock{
 		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
 	}
 }

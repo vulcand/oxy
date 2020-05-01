@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
@@ -32,7 +32,7 @@ type Rebalancer struct {
 	// mutex
 	mtx *sync.Mutex
 	// As usual, control time in tests
-	clock timetools.TimeProvider
+	clock holster.Clock
 	// Time that freezes state machine to accumulate stats after updating the weights
 	backoffDuration time.Duration
 	// Timer is set to give probing some time to take place
@@ -58,7 +58,7 @@ type Rebalancer struct {
 }
 
 // RebalancerClock sets a clock
-func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
+func RebalancerClock(clock holster.Clock) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.clock = clock
 		return nil
@@ -120,7 +120,7 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 		}
 	}
 	if rb.clock == nil {
-		rb.clock = &timetools.RealTime{}
+		rb.clock = &holster.SystemClock{}
 	}
 	if rb.backoffDuration == 0 {
 		rb.backoffDuration = 10 * time.Second
@@ -170,7 +170,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	pw := utils.NewProxyWriter(w)
-	start := rb.clock.UtcNow()
+	start := rb.clock.Now()
 
 	// make shallow copy of request before changing anything to avoid side effects
 	newReq := *req
@@ -215,7 +215,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	rb.next.Next().ServeHTTP(pw, &newReq)
 
-	rb.recordMetrics(newReq.URL, pw.StatusCode(), rb.clock.UtcNow().Sub(start))
+	rb.recordMetrics(newReq.URL, pw.StatusCode(), rb.clock.Now().Sub(start))
 	rb.adjustWeights()
 }
 
@@ -232,7 +232,7 @@ func (rb *Rebalancer) reset() {
 		s.curWeight = s.origWeight
 		rb.next.UpsertServer(s.url, Weight(s.origWeight))
 	}
-	rb.timer = rb.clock.UtcNow().Add(-1 * time.Second)
+	rb.timer = rb.clock.Now().Add(-1 * time.Second)
 	rb.ratings = make([]float64, len(rb.servers))
 }
 
@@ -370,11 +370,11 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 }
 
 func (rb *Rebalancer) setTimer() {
-	rb.timer = rb.clock.UtcNow().Add(rb.backoffDuration)
+	rb.timer = rb.clock.Now().Add(rb.backoffDuration)
 }
 
 func (rb *Rebalancer) timerExpired() bool {
-	return rb.timer.Before(rb.clock.UtcNow())
+	return rb.timer.Before(rb.clock.Now())
 }
 
 func (rb *Rebalancer) metricsReady() bool {

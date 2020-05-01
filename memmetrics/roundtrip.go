@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 )
 
 // RTMetrics provides aggregated performance metrics for HTTP requests processing
@@ -24,7 +24,7 @@ type RTMetrics struct {
 
 	newCounter NewCounterFn
 	newHist    NewRollingHistogramFn
-	clock      timetools.TimeProvider
+	clock      holster.Clock
 }
 
 type rrOptSetter func(r *RTMetrics) error
@@ -55,7 +55,7 @@ func RTHistogram(fn NewRollingHistogramFn) rrOptSetter {
 }
 
 // RTClock sets a clock
-func RTClock(clock timetools.TimeProvider) rrOptSetter {
+func RTClock(clock holster.Clock) rrOptSetter {
 	return func(r *RTMetrics) error {
 		r.clock = clock
 		return nil
@@ -75,7 +75,7 @@ func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
 	}
 
 	if m.clock == nil {
-		m.clock = &timetools.RealTime{}
+		m.clock = &holster.SystemClock{}
 	}
 
 	if m.newCounter == nil {

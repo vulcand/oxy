@@ -60,7 +60,7 @@ func TestRotation(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	require.NoError(t, h.RecordValues(2, 1))
 	require.NoError(t, h.RecordValues(1, 1))
 
@@ -69,7 +69,7 @@ func TestRotation(t *testing.T) {
 	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
 	// rotate, this means that the old value would evaporate
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 
 	require.NoError(t, h.RecordValues(1, 1))
 
@@ -98,7 +98,7 @@ func TestReset(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	require.NoError(t, h.RecordValues(2, 1))
 	require.NoError(t, h.RecordValues(1, 1))
 
@@ -114,7 +114,7 @@ func TestReset(t *testing.T) {
 	require.NoError(t, err)
 	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 
-	clock.CurrentTime = clock.CurrentTime.Add(time.Second)
+	clock.Sleep(time.Second)
 	require.NoError(t, h.RecordValues(2, 1))
 	require.NoError(t, h.RecordValues(1, 1))
 

@@ -3,13 +3,13 @@ package memmetrics
 import (
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 )
 
 type ratioOptSetter func(r *RatioCounter) error
 
 // RatioClock sets a clock
-func RatioClock(clock timetools.TimeProvider) ratioOptSetter {
+func RatioClock(clock holster.Clock) ratioOptSetter {
 	return func(r *RatioCounter) error {
 		r.clock = clock
 		return nil
@@ -18,7 +18,7 @@ func RatioClock(clock timetools.TimeProvider) ratioOptSetter {
 
 // RatioCounter calculates a ratio of a/a+b over a rolling window of predefined buckets
 type RatioCounter struct {
-	clock timetools.TimeProvider
+	clock holster.Clock
 	a     *RollingCounter
 	b     *RollingCounter
 }
@@ -34,7 +34,7 @@ func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptS
 	}
 
 	if rc.clock == nil {
-		rc.clock = &timetools.RealTime{}
+		rc.clock = &holster.SystemClock{}
 	}
 
 	a, err := NewCounter(buckets, resolution, CounterClock(rc.clock))

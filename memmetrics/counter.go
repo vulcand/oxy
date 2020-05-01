@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster"
 )
 
 type rcOptSetter func(*RollingCounter) error
 
 // CounterClock defines a counter clock
-func CounterClock(c timetools.TimeProvider) rcOptSetter {
+func CounterClock(c holster.Clock) rcOptSetter {
 	return func(r *RollingCounter) error {
 		r.clock = c
 		return nil
@@ -19,7 +19,7 @@ func CounterClock(c timetools.TimeProvider) rcOptSetter {
 
 // RollingCounter Calculates in memory failure rate of an endpoint using rolling window of a predefined size
 type RollingCounter struct {
-	clock          timetools.TimeProvider
+	clock          holster.Clock
 	resolution     time.Duration
 	values         []int
 	countedBuckets int // how many samples in different buckets have we collected so far
@@ -52,7 +52,7 @@ func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (
 	}
 
 	if rc.clock == nil {
-		rc.clock = &timetools.RealTime{}
+		rc.clock = &holster.SystemClock{}
 	}
 
 	return rc, nil
@@ -121,7 +121,7 @@ func (c *RollingCounter) Inc(v int) {
 }
 
 func (c *RollingCounter) incBucketValue(v int) {
-	now := c.clock.UtcNow()
+	now := c.clock.Now()
 	bucket := c.getBucket(now)
 	c.values[bucket] += v
 	c.lastUpdated = now
@@ -143,7 +143,7 @@ func (c *RollingCounter) getBucket(t time.Time) int {
 
 // Reset buckets that were not updated
 func (c *RollingCounter) cleanup() {
-	now := c.clock.UtcNow()
+	now := c.clock.Now()
 	for i := 0; i < len(c.values); i++ {
 		now = now.Add(time.Duration(-1*i) * c.resolution)
 		if now.Truncate(c.resolution).After(c.lastUpdated.Truncate(c.resolution)) {

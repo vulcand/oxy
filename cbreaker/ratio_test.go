@@ -21,7 +21,7 @@ func TestRampUp(t *testing.T) {
 		expected := rc.targetRatio()
 		diff := math.Abs(expected - ratio)
 		assert.EqualValues(t, 0, round(diff, 0.5, 1))
-		clock.CurrentTime = clock.CurrentTime.Add(time.Millisecond)
+		clock.Sleep(time.Millisecond)
 	}
 }
 

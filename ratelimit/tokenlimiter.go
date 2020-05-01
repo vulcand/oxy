@@ -7,8 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
-	"github.com/mailgun/ttlmap"
+	"github.com/mailgun/holster"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
@@ -66,9 +65,9 @@ type TokenLimiter struct {
 	defaultRates *RateSet
 	extract      utils.SourceExtractor
 	extractRates RateExtractor
-	clock        timetools.TimeProvider
+	clock        holster.Clock
 	mutex        sync.Mutex
-	bucketSets   *ttlmap.TtlMap
+	bucketSets   *holster.TTLMap
 	errHandler   utils.ErrorHandler
 	capacity     int
 	next         http.Handler
@@ -98,11 +97,8 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		}
 	}
 	setDefaults(tl)
-	bucketSets, err := ttlmap.NewMapWithProvider(tl.capacity, tl.clock)
-	if err != nil {
-		return nil, err
-	}
-	tl.bucketSets = bucketSets
+
+	tl.bucketSets = holster.NewTTLMapWithClock(tl.capacity, tl.clock)
 	return tl, nil
 }
 
@@ -229,7 +225,7 @@ func ExtractRates(e RateExtractor) TokenLimiterOption {
 }
 
 // Clock sets the clock
-func Clock(clock timetools.TimeProvider) TokenLimiterOption {
+func Clock(clock holster.Clock) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.clock = clock
 		return nil
@@ -254,7 +250,7 @@ func setDefaults(tl *TokenLimiter) {
 		tl.capacity = DefaultCapacity
 	}
 	if tl.clock == nil {
-		tl.clock = &timetools.RealTime{}
+		tl.clock = &holster.SystemClock{}
 	}
 	if tl.errHandler == nil {
 		tl.errHandler = defaultErrHandler
