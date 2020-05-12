@@ -26,11 +26,14 @@ Examples of a buffering middleware:
   // Will do the same as above, but with responses
   buffer.New(handler,
     buffer.MemResponseBodyBytes(2 * 1024 * 1024),
-    buffer.MaxResponseBodyBytes(10 * 1024 * 1024))
+	buffer.MaxResponseBodyBytes(10 * 1024 * 1024))
+
 
   // Buffer will replay the request if the handler returns error at least 3 times
-  // before returning the response
-  buffer.New(handler, buffer.Retry(`IsNetworkError() && Attempts() <= 2`))
+  // before returning the response, sleeping for 1 second in between attempts
+  buffer.New(handler,
+	buffer.Retry(`IsNetworkError() && Attempts() <= 2`),
+	buffer.RetrySleep(time.Second))
 
 */
 package buffer
@@ -43,6 +46,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/mailgun/multibuf"
 	log "github.com/sirupsen/logrus"
@@ -56,6 +60,8 @@ const (
 	DefaultMaxBodyBytes = -1
 	// DefaultMaxRetryAttempts Maximum retry attempts
 	DefaultMaxRetryAttempts = 10
+	// DefaultRetrySleep specifies the default sleep between retries
+	DefaultRetrySleep = time.Second * 0
 )
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
@@ -68,6 +74,8 @@ type Buffer struct {
 
 	maxResponseBodyBytes int64
 	memResponseBodyBytes int64
+
+	retrySleep time.Duration
 
 	retryPredicate hpredicate
 
@@ -87,6 +95,8 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
 		memResponseBodyBytes: DefaultMemBodyBytes,
+
+		retrySleep: DefaultRetrySleep,
 
 		log: log.StandardLogger(),
 	}
@@ -198,6 +208,17 @@ func MemResponseBodyBytes(m int64) optSetter {
 			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
 		}
 		b.memResponseBodyBytes = m
+		return nil
+	}
+}
+
+// RetrySleep sets sleep duration between retries
+func RetrySleep(t time.Duration) optSetter {
+	return func(b *Buffer) error {
+		if t < 0 {
+			return fmt.Errorf("sleep duration should be >= 0 got %s", t)
+		}
+		b.retrySleep = t
 		return nil
 	}
 }
@@ -317,6 +338,8 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		outreq = b.copyRequest(req, body, totalSize)
 		b.log.Debugf("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
+
+		time.Sleep(b.retrySleep)
 	}
 }
 

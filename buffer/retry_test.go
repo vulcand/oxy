@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestRetryOnError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
+	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`, RetrySleep(time.Second))
 
 	proxy := httptest.NewServer(rt)
 	defer proxy.Close()
@@ -72,7 +73,7 @@ func TestRetryExceedAttempts(t *testing.T) {
 	assert.Equal(t, http.StatusBadGateway, re.StatusCode)
 }
 
-func newBufferMiddleware(t *testing.T, p string) (*roundrobin.RoundRobin, *Buffer) {
+func newBufferMiddleware(t *testing.T, p string, setters ...optSetter) (*roundrobin.RoundRobin, *Buffer) {
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New()
 	require.NoError(t, err)
@@ -81,8 +82,10 @@ func newBufferMiddleware(t *testing.T, p string) (*roundrobin.RoundRobin, *Buffe
 	lb, err := roundrobin.New(fwd)
 	require.NoError(t, err)
 
+	setters = append(setters, Retry(p), MemRequestBodyBytes(1))
+
 	// stream handler will forward requests to redirect, make sure it uses files
-	st, err := New(lb, Retry(p), MemRequestBodyBytes(1))
+	st, err := New(lb, setters...)
 	require.NoError(t, err)
 
 	return lb, st
