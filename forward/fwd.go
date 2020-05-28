@@ -5,6 +5,7 @@ package forward
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"io"
@@ -72,10 +73,21 @@ func Rewriter(r ReqRewriter) optSetter {
 	}
 }
 
-// WebsocketTLSClientConfig define the websocker client TLS configuration.
+// WebsocketTLSClientConfig define the websocket client TLS configuration.
 func WebsocketTLSClientConfig(tcc *tls.Config) optSetter {
 	return func(f *Forwarder) error {
-		f.httpForwarder.tlsClientConfig = tcc
+		f.websocketDialer.TLSClientConfig = tcc.Clone()
+		// WebSocket is only in http/1.1
+		f.websocketDialer.TLSClientConfig.NextProtos = []string{"http/1.1"}
+
+		return nil
+	}
+}
+
+// WebsocketNetDialContext define the websocket client DialContext function
+func WebsocketNetDialContext(dialContext func(ctx context.Context, network string, addr string) (net.Conn, error)) optSetter {
+	return func(f *Forwarder) error {
+		f.websocketDialer.NetDialContext = dialContext
 		return nil
 	}
 }
@@ -201,6 +213,7 @@ type httpForwarder struct {
 	websocketConnectionClosedHook func(req *http.Request, conn net.Conn)
 	websocketMessageReceivedHook  WsHook
 	websocketMessageSentHook      WsHook
+	websocketDialer               *websocket.Dialer
 }
 
 const defaultFlushInterval = 100 * clock.Millisecond
@@ -224,6 +237,12 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		httpForwarder:  &httpForwarder{log: &internalLogger{Logger: log.StandardLogger()}},
 		handlerContext: &handlerContext{},
 	}
+
+	f.websocketDialer = &websocket.Dialer{
+		Proxy:            http.ProxyFromEnvironment,
+		HandshakeTimeout: 45 * time.Second,
+	}
+
 	for _, s := range setters {
 		if err := s(f); err != nil {
 			return nil, err
@@ -255,6 +274,9 @@ func New(setters ...optSetter) (*Forwarder, error) {
 	if f.tlsClientConfig == nil {
 		if ht, ok := f.httpForwarder.roundTripper.(*http.Transport); ok {
 			f.tlsClientConfig = ht.TLSClientConfig
+			if f.websocketDialer.TLSClientConfig == nil && ht.TLSClientConfig != nil {
+				_ = WebsocketTLSClientConfig(ht.TLSClientConfig)(f)
+			}
 		}
 	}
 
@@ -336,14 +358,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 
 	outReq := f.copyWebSocketRequest(req)
 
-	dialer := websocket.DefaultDialer
-	if outReq.URL.Scheme == "wss" && f.tlsClientConfig != nil {
-		dialer.TLSClientConfig = f.tlsClientConfig.Clone()
-		// WebSocket is only in http/1.1
-		dialer.TLSClientConfig.NextProtos = []string{"http/1.1"}
-	}
-
-	targetConn, resp, err := dialer.DialContext(outReq.Context(), outReq.URL.String(), outReq.Header)
+	targetConn, resp, err := f.websocketDialer.DialContext(outReq.Context(), outReq.URL.String(), outReq.Header)
 	if err != nil {
 		if resp == nil {
 			ctx.errHandler.ServeHTTP(w, req, err)
