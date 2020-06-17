@@ -410,7 +410,7 @@ func TestRebalancerStickySession(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
 
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)

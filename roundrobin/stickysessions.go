@@ -1,9 +1,12 @@
 package roundrobin
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/segmentio/fasthash/fnv1a"
 )
 
 // CookieOptions has all the options one would like to set on the affinity cookie
@@ -47,12 +50,7 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 		return nil, false, err
 	}
 
-	serverURL, err := url.Parse(cookie.Value)
-	if err != nil {
-		return nil, false, err
-	}
-
-	if s.isBackendAlive(serverURL, servers) {
+	if found, serverURL := s.isBackendAlive(cookie.Value, servers); found {
 		return serverURL, true, nil
 	}
 	return nil, false, nil
@@ -69,7 +67,7 @@ func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 
 	cookie := &http.Cookie{
 		Name:     s.cookieName,
-		Value:    backend.String(),
+		Value:    hash(backend.String()),
 		Path:     cp,
 		Domain:   opt.Domain,
 		Expires:  opt.Expires,
@@ -81,15 +79,20 @@ func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 	http.SetCookie(*w, cookie)
 }
 
-func (s *StickySession) isBackendAlive(needle *url.URL, haystack []*url.URL) bool {
+func (s *StickySession) isBackendAlive(needle string, haystack []*url.URL) (bool, *url.URL) {
 	if len(haystack) == 0 {
-		return false
+		return false, nil
 	}
 
 	for _, serverURL := range haystack {
-		if sameURL(needle, serverURL) {
-			return true
+		if needle == hash(serverURL.String()) {
+			return true, serverURL
 		}
 	}
-	return false
+
+	return false, nil
+}
+
+func hash(input string) string {
+	return fmt.Sprintf("%x", fnv1a.HashString64(input))
 }

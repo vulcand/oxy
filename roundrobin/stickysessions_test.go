@@ -43,7 +43,7 @@ func TestBasic(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
 
 		resp, err := client.Do(req)
 		require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestStickyCookie(t *testing.T) {
 
 	cookie := resp.Cookies()[0]
 	assert.Equal(t, "test", cookie.Name)
-	assert.Equal(t, a.URL, cookie.Value)
+	assert.Equal(t, hash(a.URL), cookie.Value)
 }
 
 func TestStickyCookieWithOptions(t *testing.T) {
@@ -107,9 +107,9 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			options: CookieOptions{},
 			expected: &http.Cookie{
 				Name:  "test",
-				Value: a.URL,
+				Value: hash(a.URL),
 				Path:  "/",
-				Raw:   fmt.Sprintf("test=%s; Path=/", a.URL),
+				Raw:   fmt.Sprintf("test=%s; Path=/", hash(a.URL)),
 			},
 		},
 		{
@@ -120,10 +120,10 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			},
 			expected: &http.Cookie{
 				Name:     "test",
-				Value:    a.URL,
+				Value:    hash(a.URL),
 				Path:     "/",
 				HttpOnly: true,
-				Raw:      fmt.Sprintf("test=%s; Path=/; HttpOnly", a.URL),
+				Raw:      fmt.Sprintf("test=%s; Path=/; HttpOnly", hash(a.URL)),
 				Unparsed: nil,
 			},
 		},
@@ -135,10 +135,10 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			},
 			expected: &http.Cookie{
 				Name:   "test",
-				Value:  a.URL,
+				Value:  hash(a.URL),
 				Path:   "/",
 				Secure: true,
-				Raw:    fmt.Sprintf("test=%s; Path=/; Secure", a.URL),
+				Raw:    fmt.Sprintf("test=%s; Path=/; Secure", hash(a.URL)),
 			},
 		},
 		{
@@ -149,9 +149,9 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			},
 			expected: &http.Cookie{
 				Name:  "test",
-				Value: a.URL,
+				Value: hash(a.URL),
 				Path:  "/foo",
-				Raw:   fmt.Sprintf("test=%s; Path=/foo", a.URL),
+				Raw:   fmt.Sprintf("test=%s; Path=/foo", hash(a.URL)),
 			},
 		},
 		{
@@ -162,10 +162,10 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			},
 			expected: &http.Cookie{
 				Name:   "test",
-				Value:  a.URL,
+				Value:  hash(a.URL),
 				Path:   "/",
 				Domain: "example.org",
-				Raw:    fmt.Sprintf("test=%s; Path=/; Domain=example.org", a.URL),
+				Raw:    fmt.Sprintf("test=%s; Path=/; Domain=example.org", hash(a.URL)),
 			},
 		},
 		{
@@ -176,11 +176,11 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			},
 			expected: &http.Cookie{
 				Name:       "test",
-				Value:      a.URL,
+				Value:      hash(a.URL),
 				Path:       "/",
 				Expires:    time.Date(1955, 11, 12, 1, 22, 0, 0, time.UTC),
 				RawExpires: "Sat, 12 Nov 1955 01:22:00 GMT",
-				Raw:        fmt.Sprintf("test=%s; Path=/; Expires=Sat, 12 Nov 1955 01:22:00 GMT", a.URL),
+				Raw:        fmt.Sprintf("test=%s; Path=/; Expires=Sat, 12 Nov 1955 01:22:00 GMT", hash(a.URL)),
 			},
 		},
 		{
@@ -191,10 +191,10 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			},
 			expected: &http.Cookie{
 				Name:   "test",
-				Value:  a.URL,
+				Value:  hash(a.URL),
 				Path:   "/",
 				MaxAge: -1,
-				Raw:    fmt.Sprintf("test=%s; Path=/; Max-Age=0", a.URL),
+				Raw:    fmt.Sprintf("test=%s; Path=/; Max-Age=0", hash(a.URL)),
 			},
 		},
 		{
@@ -205,10 +205,10 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			},
 			expected: &http.Cookie{
 				Name:     "test",
-				Value:    a.URL,
+				Value:    hash(a.URL),
 				Path:     "/",
 				SameSite: http.SameSiteNoneMode,
-				Raw:      fmt.Sprintf("test=%s; Path=/; SameSite=None", a.URL),
+				Raw:      fmt.Sprintf("test=%s; Path=/; SameSite=None", hash(a.URL)),
 			},
 		},
 	}
@@ -272,7 +272,7 @@ func TestRemoveRespondingServer(t *testing.T) {
 		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, errReq)
 
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
 
 		resp, errReq := client.Do(req)
 		require.NoError(t, errReq)
@@ -290,12 +290,12 @@ func TestRemoveRespondingServer(t *testing.T) {
 	// Now, use the organic cookie response in our next requests.
 	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 	require.NoError(t, err)
-	req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+	req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 
 	assert.Equal(t, "test", resp.Cookies()[0].Name)
-	assert.Equal(t, b.URL, resp.Cookies()[0].Value)
+	assert.Equal(t, hash(b.URL), resp.Cookies()[0].Value)
 
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
@@ -341,7 +341,7 @@ func TestRemoveAllServers(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, errReq)
-		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
 
 		resp, errReq := client.Do(req)
 		require.NoError(t, errReq)
@@ -361,7 +361,7 @@ func TestRemoveAllServers(t *testing.T) {
 	// Now, use the organic cookie response in our next requests.
 	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 	require.NoError(t, err)
-	req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+	req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
