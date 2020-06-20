@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/mailgun/timetools"
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
 )
@@ -54,7 +53,8 @@ type Rebalancer struct {
 
 	requestRewriteListener RequestRewriteListener
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 // RebalancerClock sets a clock
@@ -112,7 +112,8 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 		next:          handler,
 		stickySession: nil,
 
-		log: log.StandardLogger(),
+		log:   &utils.DefaultLogger{},
+		debug: utils.DefaultLoggerDebugFunc,
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -145,11 +146,18 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 }
 
 // RebalancerLogger defines the logger the rebalancer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func RebalancerLogger(l *log.Logger) RebalancerOption {
+func RebalancerLogger(l utils.Logger) RebalancerOption {
 	return func(rb *Rebalancer) error {
 		rb.log = l
+		return nil
+	}
+}
+
+// RebalancerDebug defines if we should generate debug logs. It will still depends on the
+// logger to print them or not.
+func RebalancerDebug(d utils.LoggerDebugFunc) RebalancerOption {
+	return func(rb *Rebalancer) error {
+		rb.debug = d
 		return nil
 	}
 }
@@ -163,10 +171,12 @@ func (rb *Rebalancer) Servers() []*url.URL {
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if rb.log.Level >= log.DebugLevel {
-		logEntry := rb.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request")
+	var dumb string
+
+	if rb.debug() {
+		dumb = utils.DumpHttpRequest(req)
+		rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dumb)
+		defer rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dumb)
 	}
 
 	pw := utils.NewProxyWriter(w)
@@ -180,7 +190,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		cookieUrl, present, err := rb.stickySession.GetBackend(&newReq, rb.Servers())
 
 		if err != nil {
-			log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
+			rb.log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
 		}
 
 		if present {
@@ -196,9 +206,9 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if log.GetLevel() >= log.DebugLevel {
+		if rb.debug() {
 			// log which backend URL we're sending this request to
-			log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": fwdURL}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
+			rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request %s to %s", dumb, fwdURL)
 		}
 
 		if rb.stickySession != nil {
@@ -416,7 +426,7 @@ func (rb *Rebalancer) convergeWeights() bool {
 		}
 		changed = true
 		newWeight := decrease(s.origWeight, s.curWeight)
-		log.Debugf("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
+		rb.log.Debugf("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
 		s.curWeight = newWeight
 	}
 	if !changed {

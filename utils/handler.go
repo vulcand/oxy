@@ -5,8 +5,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // StatusClientClosedRequest non-standard HTTP status code for client disconnection
@@ -43,7 +41,6 @@ func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err err
 
 	w.WriteHeader(statusCode)
 	w.Write([]byte(statusText(statusCode)))
-	log.Debugf("'%d %s' caused by: %v", statusCode, statusText(statusCode), err)
 }
 
 func statusText(statusCode int) string {

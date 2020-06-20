@@ -34,7 +34,6 @@ package stream
 import (
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -55,19 +54,18 @@ type Stream struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments
 func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 	strm := &Stream{
-		next: next,
-
-		maxRequestBodyBytes: DefaultMaxBodyBytes,
-
+		next:                 next,
+		maxRequestBodyBytes:  DefaultMaxBodyBytes,
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
-
-		log: log.StandardLogger(),
+		log:                  &utils.DefaultLogger{},
+		debug:                utils.DefaultLoggerDebugFunc,
 	}
 	for _, s := range setters {
 		if err := s(strm); err != nil {
@@ -78,11 +76,18 @@ func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 }
 
 // Logger defines the logger the streamer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) optSetter {
+func Logger(l utils.Logger) optSetter {
 	return func(s *Stream) error {
 		s.log = l
+		return nil
+	}
+}
+
+// Debug defines if we should generate debug logs. It will still depends on the
+// logger to print them or not.
+func Debug(d utils.LoggerDebugFunc) optSetter {
+	return func(s *Stream) error {
+		s.debug = d
 		return nil
 	}
 }
@@ -96,10 +101,10 @@ func (s *Stream) Wrap(next http.Handler) error {
 }
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if s.log.Level >= log.DebugLevel {
-		logEntry := s.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/stream: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/stream: completed ServeHttp on request")
+	if s.debug() {
+		dumb := utils.DumpHttpRequest(req)
+		s.log.Debugf("vulcand/oxy/stream: begin ServeHttp on request: %s", dumb)
+		defer s.log.Debugf("vulcand/oxy/stream: completed ServeHttp on request: %s", dumb)
 	}
 
 	s.next.ServeHTTP(w, req)

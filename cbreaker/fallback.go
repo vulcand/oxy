@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -21,27 +20,28 @@ type Response struct {
 type ResponseFallback struct {
 	r Response
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 // NewResponseFallbackWithLogger creates a new ResponseFallback
-func NewResponseFallbackWithLogger(r Response, l *log.Logger) (*ResponseFallback, error) {
+func NewResponseFallbackWithLogger(r Response, l utils.Logger, debug utils.LoggerDebugFunc) (*ResponseFallback, error) {
 	if r.StatusCode == 0 {
 		return nil, fmt.Errorf("response code should not be 0")
 	}
-	return &ResponseFallback{r: r, log: l}, nil
+	return &ResponseFallback{r: r, log: l, debug: debug}, nil
 }
 
 // NewResponseFallback creates a new ResponseFallback
 func NewResponseFallback(r Response) (*ResponseFallback, error) {
-	return NewResponseFallbackWithLogger(r, log.StandardLogger())
+	return NewResponseFallbackWithLogger(r, &utils.DefaultLogger{}, utils.DefaultLoggerDebugFunc)
 }
 
 func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if f.log.Level >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/fallback/response: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/fallback/response: completed ServeHttp on request")
+	if f.debug() {
+		dumb := utils.DumpHttpRequest(req)
+		f.log.Debugf("fallback/response: begin ServeHttp on request: %s", dumb)
+		defer f.log.Debugf("fallback/response: completed ServeHttp on request: %s", dumb)
 	}
 
 	if f.r.ContentType != "" {
@@ -51,7 +51,7 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(f.r.StatusCode)
 	_, err := w.Write(f.r.Body)
 	if err != nil {
-		f.log.Errorf("vulcand/oxy/fallback/response: failed to write response, err: %v", err)
+		f.log.Errorf("fallback/response: failed to write response, err: %v", err)
 	}
 }
 
@@ -67,28 +67,29 @@ type RedirectFallback struct {
 
 	u *url.URL
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 // NewRedirectFallbackWithLogger creates a new RedirectFallback
-func NewRedirectFallbackWithLogger(r Redirect, l *log.Logger) (*RedirectFallback, error) {
+func NewRedirectFallbackWithLogger(r Redirect, l utils.Logger, debug utils.LoggerDebugFunc) (*RedirectFallback, error) {
 	u, err := url.ParseRequestURI(r.URL)
 	if err != nil {
 		return nil, err
 	}
-	return &RedirectFallback{r: r, u: u, log: l}, nil
+	return &RedirectFallback{r: r, u: u, log: l, debug: debug}, nil
 }
 
 // NewRedirectFallback creates a new RedirectFallback
 func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
-	return NewRedirectFallbackWithLogger(r, log.StandardLogger())
+	return NewRedirectFallbackWithLogger(r, &utils.DefaultLogger{}, utils.DefaultLoggerDebugFunc)
 }
 
 func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if f.log.Level >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/fallback/redirect: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/fallback/redirect: completed ServeHttp on request")
+	if f.debug() {
+		dumb := utils.DumpHttpRequest(req)
+		f.log.Debugf("fallback/redirect: begin ServeHttp on request: %s", dumb)
+		defer f.log.Debugf("fallback/redirect: completed ServeHttp on request: %s", dumb)
 	}
 
 	location := f.u.String()
@@ -100,6 +101,6 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusFound)
 	_, err := w.Write([]byte(http.StatusText(http.StatusFound)))
 	if err != nil {
-		f.log.Errorf("vulcand/oxy/fallback/redirect: failed to write response, err: %v", err)
+		f.log.Errorf("fallback/redirect: failed to write response, err: %v", err)
 	}
 }

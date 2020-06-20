@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/utils"
 )
 
 func TestRampUp(t *testing.T) {
 	clock := testutils.GetClock()
 	duration := 10 * time.Second
-	rc := newRatioController(clock, duration, log.StandardLogger())
+	rc := newRatioController(clock, duration, &utils.DefaultLogger{}, utils.DefaultLoggerDebugFunc)
 
 	allowed, denied := 0, 0
 	for i := 0; i < int(duration/time.Millisecond); i++ {

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/mailgun/timetools"
-	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/utils"
 )
 
 // ratioController allows passing portions traffic back to the endpoints,
@@ -20,16 +20,18 @@ type ratioController struct {
 	allowed  int
 	denied   int
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
-func newRatioController(tm timetools.TimeProvider, rampUp time.Duration, log *log.Logger) *ratioController {
+func newRatioController(tm timetools.TimeProvider, rampUp time.Duration, log utils.Logger, debug utils.LoggerDebugFunc) *ratioController {
 	return &ratioController{
 		duration: rampUp,
 		tm:       tm,
 		start:    tm.UtcNow(),
 
-		log: log,
+		log:   log,
+		debug: debug,
 	}
 }
 

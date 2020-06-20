@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"github.com/mailgun/timetools"
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
 )
@@ -63,7 +62,8 @@ type CircuitBreaker struct {
 
 	clock timetools.TimeProvider
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 // New creates a new CircuitBreaker middleware
@@ -77,7 +77,8 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 		fallbackDuration: defaultFallbackDuration,
 		recoveryDuration: defaultRecoveryDuration,
 		fallback:         defaultFallback,
-		log:              log.StandardLogger(),
+		log:              &utils.DefaultLogger{},
+		debug:            utils.DefaultLoggerDebugFunc,
 	}
 
 	for _, s := range options {
@@ -102,21 +103,29 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 }
 
 // Logger defines the logger the circuit breaker will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) CircuitBreakerOption {
+func Logger(l utils.Logger) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.log = l
 		return nil
 	}
 }
 
-func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if c.log.Level >= log.DebugLevel {
-		logEntry := c.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/circuitbreaker: completed ServeHttp on request")
+// Debug defines if we should generate debug logs. It will still depends on the
+// logger to print them or not.
+func Debug(d utils.LoggerDebugFunc) CircuitBreakerOption {
+	return func(c *CircuitBreaker) error {
+		c.debug = d
+		return nil
 	}
+}
+
+func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if c.debug() {
+		dumb := utils.DumpHttpRequest(req)
+		c.log.Debugf("circuitbreaker: begin ServeHttp on request: %s", dumb)
+		defer c.log.Debugf("circuitbreaker: completed ServeHttp on request: %s", dumb)
+	}
+
 	if c.activateFallback(w, req) {
 		c.fallback.ServeHTTP(w, req)
 		return
@@ -169,7 +178,7 @@ func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Reque
 
 func (c *CircuitBreaker) serve(w http.ResponseWriter, req *http.Request) {
 	start := c.clock.UtcNow()
-	p := utils.NewProxyWriterWithLogger(w, c.log)
+	p := utils.NewProxyWriterWithLogger(w, c.log, c.debug)
 
 	c.next.ServeHTTP(p, req)
 
@@ -257,7 +266,7 @@ func (c *CircuitBreaker) checkAndSet() {
 
 func (c *CircuitBreaker) setRecovering() {
 	c.setState(stateRecovering, c.clock.UtcNow().Add(c.recoveryDuration))
-	c.rc = newRatioController(c.clock, c.recoveryDuration, c.log)
+	c.rc = newRatioController(c.clock, c.recoveryDuration, c.log, c.debug)
 }
 
 // CircuitBreakerOption represents an option you can pass to New.

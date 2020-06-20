@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -21,7 +20,8 @@ type ConnLimiter struct {
 	next             http.Handler
 
 	errHandler utils.ErrorHandler
-	log        *log.Logger
+	log        utils.Logger
+	debug      utils.LoggerDebugFunc
 }
 
 // New creates a new ConnLimiter
@@ -35,7 +35,8 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 		maxConnections: maxConnections,
 		connections:    make(map[string]int64),
 		next:           next,
-		log:            log.StandardLogger(),
+		log:            &utils.DefaultLogger{},
+		debug:          utils.DefaultLoggerDebugFunc,
 	}
 
 	for _, o := range options {
@@ -45,18 +46,26 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 	}
 	if cl.errHandler == nil {
 		cl.errHandler = &ConnErrHandler{
-			log: cl.log,
+			log:   cl.log,
+			debug: cl.debug,
 		}
 	}
 	return cl, nil
 }
 
 // Logger defines the logger the connection limiter will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) ConnLimitOption {
+func Logger(l utils.Logger) ConnLimitOption {
 	return func(cl *ConnLimiter) error {
 		cl.log = l
+		return nil
+	}
+}
+
+// Debug defines if we should generate debug logs. It will still depends on the
+// logger to print them or not.
+func Debug(d utils.LoggerDebugFunc) ConnLimitOption {
+	return func(cl *ConnLimiter) error {
+		cl.debug = d
 		return nil
 	}
 }
@@ -122,14 +131,15 @@ func (m *MaxConnError) Error() string {
 
 // ConnErrHandler connection limiter error handler
 type ConnErrHandler struct {
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	if e.log.Level >= log.DebugLevel {
-		logEntry := e.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/connlimit: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/connlimit: completed ServeHttp on request")
+	if e.debug() {
+		dumb := utils.DumpHttpRequest(req)
+		e.log.Debugf("connlimit: begin ServeHttp on request: %s", dumb)
+		defer e.log.Debugf("connlimit: completed ServeHttp on request: %s", dumb)
 	}
 
 	if _, ok := err.(*MaxConnError); ok {

@@ -6,7 +6,6 @@ package forward
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -20,23 +19,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
-
-// OxyLogger interface of the internal
-type OxyLogger interface {
-	log.FieldLogger
-	GetLevel() log.Level
-}
-
-type internalLogger struct {
-	*log.Logger
-}
-
-func (i *internalLogger) GetLevel() log.Level {
-	return i.Level
-}
 
 // ReqRewriter can alter request headers and body
 type ReqRewriter interface {
@@ -103,21 +87,19 @@ func Stream(stream bool) optSetter {
 }
 
 // Logger defines the logger the forwarder will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l log.FieldLogger) optSetter {
+func Logger(l utils.Logger) optSetter {
 	return func(f *Forwarder) error {
-		if logger, ok := l.(OxyLogger); ok {
-			f.log = logger
-			return nil
-		}
+		f.log = l
+		return nil
+	}
+}
 
-		if logger, ok := l.(*log.Logger); ok {
-			f.log = &internalLogger{Logger: logger}
-			return nil
-		}
-
-		return errors.New("the type of the logger must be OxyLogger or logrus.Logger")
+// Debug defines if we should generate debug logs. It will still depends on the
+// logger to print them or not.
+func Debug(d utils.LoggerDebugFunc) optSetter {
+	return func(f *Forwarder) error {
+		f.debug = d
+		return nil
 	}
 }
 
@@ -197,7 +179,8 @@ type httpForwarder struct {
 
 	tlsClientConfig *tls.Config
 
-	log OxyLogger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 
 	bufferPool                    httputil.BufferPool
 	websocketConnectionClosedHook func(req *http.Request, conn net.Conn)
@@ -217,7 +200,10 @@ type UrlForwardingStateListener func(*url.URL, int)
 // New creates an instance of Forwarder based on the provided list of configuration options
 func New(setters ...optSetter) (*Forwarder, error) {
 	f := &Forwarder{
-		httpForwarder:  &httpForwarder{log: &internalLogger{Logger: log.StandardLogger()}},
+		httpForwarder: &httpForwarder{
+			log:   &utils.DefaultLogger{},
+			debug: utils.DefaultLoggerDebugFunc,
+		},
 		handlerContext: &handlerContext{},
 	}
 	for _, s := range setters {
@@ -267,12 +253,6 @@ func New(setters ...optSetter) (*Forwarder, error) {
 // ServeHTTP decides which forwarder to use based on the specified
 // request and delegates to the proper implementation
 func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if f.log.GetLevel() >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/forward: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/forward: completed ServeHttp on request")
-	}
-
 	if f.stateListener != nil {
 		f.stateListener(req.URL, StateConnected)
 		defer f.stateListener(req.URL, StateDisconnected)
@@ -294,7 +274,7 @@ func (f *httpForwarder) getUrlFromRequest(req *http.Request) *url.URL {
 		if err == nil {
 			u = parsedURL
 		} else {
-			f.log.Warnf("vulcand/oxy/forward: error when parsing RequestURI: %s", err)
+			f.log.Warnf("forward: error when parsing RequestURI: %s", err)
 		}
 	}
 	return u
@@ -329,10 +309,10 @@ func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 
 // serveHTTP forwards websocket traffic
 func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
-	if f.log.GetLevel() >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/forward/websocket: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/forward/websocket: completed ServeHttp on request")
+	if f.debug() {
+		dump := utils.DumpHttpRequest(req)
+		f.log.Debugf("vulcand/oxy/forward/websocket: begin ServeHttp on request: %s", dump)
+		defer f.log.Debugf("vulcand/oxy/forward/websocket: completed ServeHttp on request: %s", dump)
 	}
 
 	outReq := f.copyWebSocketRequest(req)
@@ -349,17 +329,17 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 		if resp == nil {
 			ctx.errHandler.ServeHTTP(w, req, err)
 		} else {
-			f.log.Errorf("vulcand/oxy/forward/websocket: Error dialing %q: %v with resp: %d %s", outReq.Host, err, resp.StatusCode, resp.Status)
+			f.log.Errorf("forward/websocket: Error dialing %q: %v with resp: %d %s", outReq.Host, err, resp.StatusCode, resp.Status)
 			hijacker, ok := w.(http.Hijacker)
 			if !ok {
-				f.log.Errorf("vulcand/oxy/forward/websocket: %s can not be hijack", reflect.TypeOf(w))
+				f.log.Errorf("forward/websocket: %s can not be hijack", reflect.TypeOf(w))
 				ctx.errHandler.ServeHTTP(w, req, err)
 				return
 			}
 
 			conn, _, errHijack := hijacker.Hijack()
 			if errHijack != nil {
-				f.log.Errorf("vulcand/oxy/forward/websocket: Failed to hijack responseWriter")
+				f.log.Errorf("forward/websocket: Failed to hijack responseWriter")
 				ctx.errHandler.ServeHTTP(w, req, errHijack)
 				return
 			}
@@ -372,7 +352,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 
 			errWrite := resp.Write(conn)
 			if errWrite != nil {
-				f.log.Errorf("vulcand/oxy/forward/websocket: Failed to forward response")
+				f.log.Errorf("forward/websocket: Failed to forward response")
 				ctx.errHandler.ServeHTTP(w, req, errWrite)
 				return
 			}
@@ -390,7 +370,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 
 	underlyingConn, err := upgrader.Upgrade(w, req, resp.Header)
 	if err != nil {
-		f.log.Errorf("vulcand/oxy/forward/websocket: Error while upgrading connection : %v", err)
+		f.log.Errorf("forward/websocket: Error while upgrading connection : %v", err)
 		return
 	}
 	defer func() {
@@ -462,9 +442,9 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 	var message string
 	select {
 	case err = <-errClient:
-		message = "vulcand/oxy/forward/websocket: Error when copying from backend to client: %v"
+		message = "forward/websocket: Error when copying from backend to client: %v"
 	case err = <-errBackend:
-		message = "vulcand/oxy/forward/websocket: Error when copying from client to backend: %v"
+		message = "forward/websocket: Error when copying from client to backend: %v"
 
 	}
 	if e, ok := err.(*websocket.CloseError); !ok || e.Code == websocket.CloseAbnormalClosure {
@@ -514,10 +494,10 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 
 // serveHTTP forwards HTTP traffic using the configured transport
 func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ctx *handlerContext) {
-	if f.log.GetLevel() >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(inReq))
-		logEntry.Debug("vulcand/oxy/forward/http: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/forward/http: completed ServeHttp on request")
+	if f.debug() {
+		dump := utils.DumpHttpRequest(inReq)
+		f.log.Debugf("forward/http: begin ServeHttp on request: %s", dump)
+		defer f.log.Debugf("forward/http: completed ServeHttp on request: %s", dump)
 	}
 
 	start := time.Now().UTC()
@@ -535,20 +515,21 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ct
 		BufferPool:     f.bufferPool,
 	}
 
-	if f.log.GetLevel() >= log.DebugLevel {
+	if f.debug() {
 		pw := utils.NewProxyWriter(w)
 		revproxy.ServeHTTP(pw, outReq)
 
 		if inReq.TLS != nil {
-			f.log.Debugf("vulcand/oxy/forward/http: Round trip: %v, code: %v, Length: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
+			f.log.Debugf(
+				"forward/http: Round trip: %v, code: %v, Length: %v, duration: %v, tls:version:%x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
 				inReq.URL, pw.StatusCode(), pw.GetLength(), time.Now().UTC().Sub(start),
-				inReq.TLS.Version,
-				inReq.TLS.DidResume,
-				inReq.TLS.CipherSuite,
-				inReq.TLS.ServerName)
+				inReq.TLS.Version, inReq.TLS.DidResume, inReq.TLS.CipherSuite, inReq.TLS.ServerName,
+			)
 		} else {
-			f.log.Debugf("vulcand/oxy/forward/http: Round trip: %v, code: %v, Length: %v, duration: %v",
-				inReq.URL, pw.StatusCode(), pw.GetLength(), time.Now().UTC().Sub(start))
+			f.log.Debugf(
+				"forward/http: Round trip: %v, code: %v, Length: %v, duration: %v",
+				inReq.URL, pw.StatusCode(), pw.GetLength(), time.Now().UTC().Sub(start),
+			)
 		}
 	} else {
 		revproxy.ServeHTTP(w, outReq)
@@ -562,7 +543,6 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ct
 			break
 		}
 	}
-
 }
 
 // IsWebsocketRequest determines if the specified HTTP request is a

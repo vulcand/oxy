@@ -9,7 +9,6 @@ import (
 
 	"github.com/mailgun/timetools"
 	"github.com/mailgun/ttlmap"
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -73,7 +72,8 @@ type TokenLimiter struct {
 	capacity     int
 	next         http.Handler
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 // New constructs a `TokenLimiter` middleware instance.
@@ -89,7 +89,8 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		defaultRates: defaultRates,
 		extract:      extract,
 
-		log: log.StandardLogger(),
+		log:   &utils.DefaultLogger{},
+		debug: utils.DefaultLoggerDebugFunc,
 	}
 
 	for _, o := range opts {
@@ -107,11 +108,18 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 }
 
 // Logger defines the logger the token limiter will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) TokenLimiterOption {
+func Logger(l utils.Logger) TokenLimiterOption {
 	return func(tl *TokenLimiter) error {
 		tl.log = l
+		return nil
+	}
+}
+
+// Debug defines if we should generate debug logs. It will still depends on the
+// logger to print them or not.
+func Debug(d utils.LoggerDebugFunc) TokenLimiterOption {
+	return func(t *TokenLimiter) error {
+		t.debug = d
 		return nil
 	}
 }

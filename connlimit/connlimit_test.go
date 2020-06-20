@@ -6,10 +6,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
+)
+
+var (
+	logrusLogger = logrus.StandardLogger()
+	logrusDebug  = func() bool {
+		return logrusLogger.Level >= logrus.DebugLevel
+	}
 )
 
 // We've hit the limit and were able to proceed once the request has completed
@@ -27,7 +35,7 @@ func TestHitLimitAndRelease(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	cl, err := New(handler, headerLimit, 1)
+	cl, err := New(handler, headerLimit, 1, Logger(logrusLogger), Debug(logrusDebug))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cl)
@@ -71,7 +79,7 @@ func TestCustomHandlers(t *testing.T) {
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler))
+	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler), Logger(logrusLogger), Debug(logrusDebug))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -88,7 +96,7 @@ func TestFaultyExtract(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	l, err := New(handler, faultyExtract, 1)
+	l, err := New(handler, faultyExtract, 1, Logger(logrusLogger), Debug(logrusDebug))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)

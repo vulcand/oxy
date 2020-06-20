@@ -74,7 +74,7 @@ func TestRetryExceedAttempts(t *testing.T) {
 
 func newBufferMiddleware(t *testing.T, p string) (*roundrobin.RoundRobin, *Buffer) {
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
+	fwd, err := forward.New(forward.Logger(logrusLogger), forward.Debug(logrusDebug))
 	require.NoError(t, err)
 
 	// load balancer will round robin request

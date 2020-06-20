@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // ProxyWriter calls recorder, used to debug logs
@@ -18,19 +16,21 @@ type ProxyWriter struct {
 	code   int
 	length int64
 
-	log *log.Logger
+	log   Logger
+	debug LoggerDebugFunc
 }
 
 // NewProxyWriter creates a new ProxyWriter
 func NewProxyWriter(w http.ResponseWriter) *ProxyWriter {
-	return NewProxyWriterWithLogger(w, log.StandardLogger())
+	return NewProxyWriterWithLogger(w, &DefaultLogger{}, DefaultLoggerDebugFunc)
 }
 
 // NewProxyWriterWithLogger creates a new ProxyWriter
-func NewProxyWriterWithLogger(w http.ResponseWriter, l *log.Logger) *ProxyWriter {
+func NewProxyWriterWithLogger(w http.ResponseWriter, logger Logger, debug LoggerDebugFunc) *ProxyWriter {
 	return &ProxyWriter{
-		w:   w,
-		log: l,
+		w:     w,
+		log:   logger,
+		debug: debug,
 	}
 }
 
@@ -93,9 +93,16 @@ func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 // NewBufferWriter creates a new BufferWriter
 func NewBufferWriter(w io.WriteCloser) *BufferWriter {
+	return NewBufferWriterWithLogger(w, &DefaultLogger{}, DefaultLoggerDebugFunc)
+}
+
+// NewBufferWriterWithLogger creates a new BufferWriter with a custom logger
+func NewBufferWriterWithLogger(w io.WriteCloser, log Logger, debug LoggerDebugFunc) *BufferWriter {
 	return &BufferWriter{
-		W: w,
-		H: make(http.Header),
+		W:     w,
+		H:     make(http.Header),
+		log:   log,
+		debug: debug,
 	}
 }
 
@@ -104,6 +111,9 @@ type BufferWriter struct {
 	H    http.Header
 	Code int
 	W    io.WriteCloser
+
+	log   Logger
+	debug LoggerDebugFunc
 }
 
 // Close close the writer
@@ -131,7 +141,7 @@ func (b *BufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.W.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
-	log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.W))
+	b.log.Warnf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.W))
 	return make(<-chan bool)
 }
 
@@ -140,7 +150,7 @@ func (b *BufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := b.W.(http.Hijacker); ok {
 		return hi.Hijack()
 	}
-	log.Debugf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.W))
+	b.log.Debugf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.W))
 	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.W))
 }
 

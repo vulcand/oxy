@@ -15,7 +15,9 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.5.1
 	github.com/vulcand/predicate v1.1.0
-	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
+	go.uber.org/zap v1.15.0
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550 // indirect
+	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

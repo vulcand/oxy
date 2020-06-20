@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -58,7 +57,8 @@ type RoundRobin struct {
 	stickySession          *StickySession
 	requestRewriteListener RequestRewriteListener
 
-	log *log.Logger
+	log   utils.Logger
+	debug utils.LoggerDebugFunc
 }
 
 // New created a new RoundRobin
@@ -70,7 +70,8 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 		servers:       []*server{},
 		stickySession: nil,
 
-		log: log.StandardLogger(),
+		log:   &utils.DefaultLogger{},
+		debug: utils.DefaultLoggerDebugFunc,
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -84,11 +85,18 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 }
 
 // RoundRobinLogger defines the logger the round robin load balancer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func RoundRobinLogger(l *log.Logger) LBOption {
+func RoundRobinLogger(l utils.Logger) LBOption {
 	return func(r *RoundRobin) error {
 		r.log = l
+		return nil
+	}
+}
+
+// RoundRobinDebug defines if we should generate debug logs. It will still depends on the
+// logger to print them or not.
+func RoundRobinDebug(d utils.LoggerDebugFunc) LBOption {
+	return func(r *RoundRobin) error {
+		r.debug = d
 		return nil
 	}
 }
@@ -99,10 +107,12 @@ func (r *RoundRobin) Next() http.Handler {
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if r.log.Level >= log.DebugLevel {
-		logEntry := r.log.WithField("Request", utils.DumpHttpRequest(req))
-		logEntry.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request")
+	var dumb string
+
+	if r.debug() {
+		dumb = utils.DumpHttpRequest(req)
+		r.log.Debugf("roundrobin/rr: begin ServeHttp on request: %s", dumb)
+		defer r.log.Debugf("roundrobin/rr: completed ServeHttp on request: %s", dumb)
 	}
 
 	// make shallow copy of request before chaning anything to avoid side effects
@@ -112,7 +122,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
 
 		if err != nil {
-			log.Warnf("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
+			r.log.Warnf("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
 		}
 
 		if present {
@@ -134,9 +144,8 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		newReq.URL = url
 	}
 
-	if r.log.Level >= log.DebugLevel {
-		// log which backend URL we're sending this request to
-		r.log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
+	if r.debug() {
+		r.log.Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request %s to URL %s", dumb, newReq.URL)
 	}
 
 	// Emit event to a listener if one exists
