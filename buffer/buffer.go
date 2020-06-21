@@ -45,7 +45,7 @@ import (
 	"reflect"
 
 	"github.com/mailgun/multibuf"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 const (

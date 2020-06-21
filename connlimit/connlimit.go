@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // ConnLimiter tracks concurrent connection per token

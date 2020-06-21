@@ -34,7 +34,7 @@ package stream
 import (
 	"net/http"
 
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 const (

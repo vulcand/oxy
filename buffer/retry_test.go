@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/roundrobin"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/forward"
+	"github.com/vulcand/oxy/v2/roundrobin"
+	"github.com/vulcand/oxy/v2/testutils"
 )
 
 func TestSuccess(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"github.com/codahale/hdrhistogram"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/testutils"
 )
 
 func TestMerge(t *testing.T) {

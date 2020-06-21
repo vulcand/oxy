@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // ReqRewriter can alter request headers and body

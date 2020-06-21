@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vulcand/oxy/testutils"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/testutils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 func TestRampUp(t *testing.T) {
