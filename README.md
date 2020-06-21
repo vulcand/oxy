@@ -32,25 +32,26 @@ Simple reverse proxy
 ```go
 
 import (
-  "net/http"
-  "github.com/vulcand/oxy/forward"
-  "github.com/vulcand/oxy/testutils"
-  )
+	"net/http"
+	"github.com/vulcand/oxy/v2/forward"
+	"github.com/vulcand/oxy/v2/testutils"
+)
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
 fwd, _ := forward.New()
 
 redirect := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-    // let us forward this request to another server
-		req.URL = testutils.ParseURI("http://localhost:63450")
-		fwd.ServeHTTP(w, req)
+	// let us forward this request to another server
+	req.URL = testutils.ParseURI("http://localhost:63450")
+	fwd.ServeHTTP(w, req)
 })
-	
+
 // that's it! our reverse proxy is ready!
 s := &http.Server{
-	Addr:           ":8080",
-	Handler:        redirect,
+	Addr:    ":8080",
+	Handler: redirect,
 }
+
 s.ListenAndServe()
 ```
 
@@ -60,10 +61,10 @@ As a next step, let us add a round robin load-balancer:
 ```go
 
 import (
-  "net/http"
-  "github.com/vulcand/oxy/forward"
-  "github.com/vulcand/oxy/roundrobin"
-  )
+	"net/http"
+	"github.com/vulcand/oxy/v2/forward"
+	"github.com/vulcand/oxy/v2/roundrobin"
+)
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
 fwd, _ := forward.New()
@@ -73,9 +74,10 @@ lb.UpsertServer(url1)
 lb.UpsertServer(url2)
 
 s := &http.Server{
-	Addr:           ":8080",
-	Handler:        lb,
+	Addr:    ":8080",
+	Handler: lb,
 }
+
 s.ListenAndServe()
 ```
 
@@ -85,11 +87,11 @@ What if we want to handle retries and replay the request in case of errors? `buf
 ```go
 
 import (
-  "net/http"
-  "github.com/vulcand/oxy/forward"
-  "github.com/vulcand/oxy/buffer"
-  "github.com/vulcand/oxy/roundrobin"
-  )
+	"net/http"
+	"github.com/vulcand/oxy/v2/forward"
+	"github.com/vulcand/oxy/v2/buffer"
+	"github.com/vulcand/oxy/v2/roundrobin"
+)
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
 
@@ -105,8 +107,67 @@ lb.UpsertServer(url2)
 
 // that's it! our reverse proxy is ready!
 s := &http.Server{
-	Addr:           ":8080",
-	Handler:        buffer,
+	Addr:    ":8080",
+	Handler: buffer,
 }
 s.ListenAndServe()
+```
+
+Logging
+=======
+
+As of v2, oxy let's you provide your own logger instead of forcing the use of logrus.
+To do so you have to provide a struct that comply with the minimal interface `utils.Logger`.
+
+github.com/sirupsen/logrus
+--------------------------
+
+```go
+import (
+	"github.com/vulcand/oxy/v2/cbreaker"
+	"github.com/sirupsen/logrus"
+)
+
+stdLogger := logrus.StandardLogger()
+stdLogger.SetLevel(logrus.DebugLevel)
+
+logrusLogger := stdLogger.WithField("lib", "vulcand/oxy")
+logrusDebug := func() bool {
+	return logrusLogger.Logger.Level >= logrus.DebugLevel
+}
+
+cbLogger := cbreaker.Logger(logrusLogger)
+cbDebug := cbreaker.Debug(logrusDebug)
+
+cb, err := cbreaker.New(next, "NetworkErrorRatio() > 0.3", cbLogger, cbDebug)
+```
+
+go.uber.org/zap
+---------------
+
+```go
+import (
+	"github.com/vulcand/oxy/v2/cbreaker"
+	"go.uber.org/zap/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+zapAtomLevel := zap.NewAtomicLevel()
+zapAtomLevel.SetLevel(zapcore.DebugLevel)
+
+zapEncoderCfg := zap.NewProductionEncoderConfig()
+zapEncoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+
+zapCore := zapcore.NewCore(zapcore.NewConsoleEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+zapLogger := zap.New(zapCore).With(zap.String("lib", "vulcand/oxy"))
+
+zapSugaredLogger := zapLogger.Sugar()
+zapDebug := func() bool {
+	return zapAtomLevel.Enabled(zapcore.DebugLevel)
+}
+
+cbLogger := cbreaker.Logger(zapSugaredLogger)
+cbDebug := cbreaker.Debug(zapDebug)
+
+cb, err := cbreaker.New(next, "NetworkErrorRatio() > 0.3", cbLogger, cbDebug)
 ```
