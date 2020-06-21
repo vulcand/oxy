@@ -23,8 +23,8 @@ const triggerNetRatio = `NetworkErrorRatio() > 0.5`
 
 var (
 	// logrus
-	logrusLogger = logrus.StandardLogger()
-	logrusDebug  = func() bool {
+	logrusLogger    = logrus.StandardLogger()
+	logrusDebugFunc = func() bool {
 		return logrusLogger.Level >= logrus.DebugLevel
 	}
 
@@ -44,7 +44,7 @@ func TestStandbyCycle(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	cb, err := New(handler, triggerNetRatio, Logger(logrusLogger), Debug(logrusDebug))
+	cb, err := New(handler, triggerNetRatio, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -123,7 +123,7 @@ func TestRedirectWithPath(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirectPath), Logger(logrusLogger), Debug(logrusDebug))
+	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirectPath), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -153,7 +153,7 @@ func TestRedirect(t *testing.T) {
 	fallbackRedirect, err := NewRedirectFallback(Redirect{URL: "http://localhost:5000"})
 	require.NoError(t, err)
 
-	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirect), Logger(logrusLogger), Debug(logrusDebug))
+	cb, err := New(handler, triggerNetRatio, Clock(testutils.GetClock()), Fallback(fallbackRedirect), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -182,7 +182,7 @@ func TestTriggerDuringRecovery(t *testing.T) {
 
 	clock := testutils.GetClock()
 
-	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond), Logger(logrusLogger), Debug(logrusDebug))
+	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
@@ -258,7 +258,7 @@ func TestSideEffects(t *testing.T) {
 
 	clock := testutils.GetClock()
 
-	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond), OnTripped(onTripped), OnStandby(onStandby), Logger(logrusLogger), Debug(logrusDebug))
+	cb, err := New(handler, triggerNetRatio, Clock(clock), CheckPeriod(time.Microsecond), OnTripped(onTripped), OnStandby(onStandby), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)

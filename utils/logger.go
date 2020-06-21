@@ -31,12 +31,12 @@ func (*DefaultLogger) Fatalf(string, ...interface{}) {}
 // 		stdLogger.SetLevel(logrus.DebugLevel)
 //
 // 		logrusLogger := stdLogger.WithField("lib", "vulcand/oxy")
-// 		logrusDebug := func() bool {
+// 		logrusDebugFunc := func() bool {
 // 			return logrusLogger.Logger.Level >= logrus.DebugLevel
 // 		}
 //
 // 		cbLogger := cbreaker.Logger(logrusLogger)
-// 		cbDebug := cbreaker.Debug(logrusDebug)
+// 		cbDebug := cbreaker.Debug(logrusDebugFunc)
 //
 // 		cb, err := cbreaker.New(next, "NetworkErrorRatio() > 0.3", cbLogger, cbDebug)
 //

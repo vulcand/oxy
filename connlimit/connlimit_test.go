@@ -18,8 +18,8 @@ import (
 
 var (
 	// logrus
-	logrusLogger = logrus.StandardLogger()
-	logrusDebug  = func() bool {
+	logrusLogger    = logrus.StandardLogger()
+	logrusDebugFunc = func() bool {
 		return logrusLogger.Level >= logrus.DebugLevel
 	}
 
@@ -93,7 +93,7 @@ func TestCustomHandlers(t *testing.T) {
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler), Logger(logrusLogger), Debug(logrusDebug))
+	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler), Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -110,7 +110,7 @@ func TestFaultyExtract(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	l, err := New(handler, faultyExtract, 1, Logger(logrusLogger), Debug(logrusDebug))
+	l, err := New(handler, faultyExtract, 1, Logger(logrusLogger), Debug(logrusDebugFunc))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
