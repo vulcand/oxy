@@ -28,12 +28,12 @@ var (
 	}
 
 	// zap
-	zapAtomLevel  = zap.NewAtomicLevel()
-	zapEncoderCfg = zap.NewProductionEncoderConfig()
-	zapCore       = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
-	zapDev        = zap.New(zapCore)
-	zapLogger     = zapDev.Sugar()
-	zapDebug      = func() bool {
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
+	zapDebug         = func() bool {
 		return zapAtomLevel.Enabled(zapcore.DebugLevel)
 	}
 )
@@ -51,7 +51,7 @@ func TestForwardHopHeaders(t *testing.T) {
 	})
 	defer srv.Close()
 
-	f, err := New(Logger(zapLogger), Debug(zapDebug))
+	f, err := New(Logger(zapSugaredLogger), Debug(zapDebug))
 	require.NoError(t, err)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {

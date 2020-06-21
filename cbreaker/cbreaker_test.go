@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -14,14 +15,27 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/testutils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const triggerNetRatio = `NetworkErrorRatio() > 0.5`
 
 var (
+	// logrus
 	logrusLogger = logrus.StandardLogger()
 	logrusDebug  = func() bool {
 		return logrusLogger.Level >= logrus.DebugLevel
+	}
+
+	// zap
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
+	zapDebug         = func() bool {
+		return zapAtomLevel.Enabled(zapcore.DebugLevel)
 	}
 )
 
@@ -49,7 +63,7 @@ func TestFullCycle(t *testing.T) {
 
 	clock := testutils.GetClock()
 
-	cb, err := New(handler, triggerNetRatio, Clock(clock), Logger(logrusLogger), Debug(logrusDebug))
+	cb, err := New(handler, triggerNetRatio, Clock(clock), Logger(zapSugaredLogger), Debug(zapDebug))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)

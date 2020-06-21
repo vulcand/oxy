@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"testing"
 
@@ -17,12 +18,25 @@ import (
 	"github.com/vulcand/oxy/forward"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
+	// logrus
 	logrusLogger = logrus.StandardLogger()
 	logrusDebug  = func() bool {
 		return logrusLogger.Level >= logrus.DebugLevel
+	}
+
+	// zap
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
+	zapDebug         = func() bool {
+		return zapAtomLevel.Enabled(zapcore.DebugLevel)
 	}
 )
 
@@ -33,7 +47,7 @@ func TestSimple(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New(forward.Logger(logrusLogger), forward.Debug(logrusDebug))
+	fwd, err := forward.New(forward.Logger(zapSugaredLogger), forward.Debug(zapDebug))
 	require.NoError(t, err)
 
 	// this is our redirect to server

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -11,12 +12,25 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
+	// logrus
 	logrusLogger = logrus.StandardLogger()
 	logrusDebug  = func() bool {
 		return logrusLogger.Level >= logrus.DebugLevel
+	}
+
+	// zap
+	zapAtomLevel     = zap.NewAtomicLevel()
+	zapEncoderCfg    = zap.NewProductionEncoderConfig()
+	zapCore          = zapcore.NewCore(zapcore.NewJSONEncoder(zapEncoderCfg), zapcore.Lock(os.Stdout), zapAtomLevel)
+	zapLogger        = zap.New(zapCore)
+	zapSugaredLogger = zapLogger.Sugar()
+	zapDebug         = func() bool {
+		return zapAtomLevel.Enabled(zapcore.DebugLevel)
 	}
 )
 
@@ -35,7 +49,7 @@ func TestHitLimitAndRelease(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	cl, err := New(handler, headerLimit, 1, Logger(logrusLogger), Debug(logrusDebug))
+	cl, err := New(handler, headerLimit, 1, Logger(zapSugaredLogger), Debug(zapDebug))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cl)

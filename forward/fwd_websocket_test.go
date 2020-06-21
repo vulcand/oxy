@@ -19,7 +19,7 @@ import (
 )
 
 func TestWebSocketTCPClose(t *testing.T) {
-	f, err := New(PassHostHeader(true), Logger(logrusLogger), Debug(logrusDebug))
+	f, err := New(PassHostHeader(true), Logger(zapSugaredLogger), Debug(zapDebug))
 	require.NoError(t, err)
 
 	errChan := make(chan error, 1)
