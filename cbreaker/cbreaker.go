@@ -124,6 +124,11 @@ func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.serve(w, req)
 }
 
+// Fallback sets the fallback handler to be called by circuit breaker handler.
+func (c *CircuitBreaker) Fallback(f http.Handler) {
+	c.fallback = f
+}
+
 // Wrap sets the next handler to be called by circuit breaker handler.
 func (c *CircuitBreaker) Wrap(next http.Handler) {
 	c.next = next
