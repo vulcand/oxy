@@ -40,10 +40,14 @@ func TestBasic(t *testing.T) {
 
 	client := http.DefaultClient
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 30; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
-		req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
+		if i%3 == 0 {
+			req.AddCookie(&http.Cookie{Name: "test", Value: hash(a.URL)})
+		} else {
+			req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
+		}
 
 		resp, err := client.Do(req)
 		require.NoError(t, err)

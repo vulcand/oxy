@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/segmentio/fasthash/fnv1a"
@@ -84,9 +85,18 @@ func (s *StickySession) isBackendAlive(needle string, haystack []*url.URL) (bool
 		return false, nil
 	}
 
-	for _, serverURL := range haystack {
-		if needle == hash(serverURL.String()) {
-			return true, serverURL
+	switch {
+	case strings.HasPrefix(needle, "http"):
+		for _, serverURL := range haystack {
+			if needle == serverURL.String() {
+				return true, serverURL
+			}
+		}
+	default:
+		for _, serverURL := range haystack {
+			if needle == hash(serverURL.String()) {
+				return true, serverURL
+			}
 		}
 	}
 
