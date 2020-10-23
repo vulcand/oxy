@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/segmentio/fasthash/fnv1a"
@@ -27,11 +28,14 @@ type CookieOptions struct {
 type StickySession struct {
 	cookieName string
 	options    CookieOptions
+	hashCache  map[string]string
+	hashRWMu   sync.RWMutex
+	hashMu     sync.Mutex
 }
 
 // NewStickySession creates a new StickySession
 func NewStickySession(cookieName string) *StickySession {
-	return &StickySession{cookieName: cookieName}
+	return &StickySession{cookieName: cookieName, hashCache: make(map[string]string)}
 }
 
 // NewStickySessionWithOptions creates a new StickySession whilst allowing for options to
@@ -98,6 +102,151 @@ func (s *StickySession) isBackendAlive(needle string, haystack []*url.URL) (bool
 				return true, serverURL
 			}
 		}
+	}
+
+	return false, nil
+}
+
+func (s *StickySession) isBackendAliveRWMutexRlock(needle string, haystack []*url.URL) (bool, *url.URL) {
+	if len(haystack) == 0 {
+		return false, nil
+	}
+
+	switch {
+	case strings.HasPrefix(needle, "http"):
+		for _, serverURL := range haystack {
+			if needle == serverURL.String() {
+				return true, serverURL
+			}
+		}
+	default:
+		var h string
+		var str string
+		var found bool
+
+		for _, serverURL := range haystack {
+			str = serverURL.String()
+
+			s.hashRWMu.RLock()
+			if h, found = s.hashCache[str]; !found {
+				s.hashRWMu.RUnlock()
+
+				h = hash(str)
+
+				s.hashRWMu.Lock()
+				s.hashCache[str] = h
+				s.hashRWMu.Unlock()
+			} else {
+				s.hashRWMu.RUnlock()
+			}
+
+			if needle == h {
+				return true, serverURL
+			}
+		}
+
+		// hash cache clean up to remove old entries which do not exist anymore
+		s.hashRWMu.Lock()
+		for str, h = range s.hashCache {
+			if h == needle {
+				delete(s.hashCache, str)
+				break
+			}
+		}
+		s.hashRWMu.Unlock()
+	}
+
+	return false, nil
+}
+
+func (s *StickySession) isBackendAliveRWMutexLock(needle string, haystack []*url.URL) (bool, *url.URL) {
+	if len(haystack) == 0 {
+		return false, nil
+	}
+
+	switch {
+	case strings.HasPrefix(needle, "http"):
+		for _, serverURL := range haystack {
+			if needle == serverURL.String() {
+				return true, serverURL
+			}
+		}
+	default:
+		var h string
+		var str string
+		var found bool
+
+		for _, serverURL := range haystack {
+			str = serverURL.String()
+
+			s.hashRWMu.Lock()
+			if h, found = s.hashCache[str]; !found {
+				h = hash(str)
+				s.hashCache[str] = h
+			}
+
+			s.hashRWMu.Unlock()
+
+			if needle == h {
+				return true, serverURL
+			}
+		}
+
+		// hash cache clean up to remove old entries which do not exist anymore
+		s.hashRWMu.Lock()
+		for str, h = range s.hashCache {
+			if h == needle {
+				delete(s.hashCache, str)
+				break
+			}
+		}
+		s.hashRWMu.Unlock()
+	}
+
+	return false, nil
+}
+
+func (s *StickySession) isBackendAliveMutexLock(needle string, haystack []*url.URL) (bool, *url.URL) {
+	if len(haystack) == 0 {
+		return false, nil
+	}
+
+	switch {
+	case strings.HasPrefix(needle, "http"):
+		for _, serverURL := range haystack {
+			if needle == serverURL.String() {
+				return true, serverURL
+			}
+		}
+	default:
+		var h string
+		var str string
+		var found bool
+
+		for _, serverURL := range haystack {
+			str = serverURL.String()
+
+			s.hashMu.Lock()
+			if h, found = s.hashCache[str]; !found {
+				h = hash(str)
+				s.hashCache[str] = h
+			}
+			s.hashMu.Unlock()
+
+			if needle == h {
+				return true, serverURL
+			}
+		}
+
+		// hash cache clean up to remove old entries which do not exist anymore
+		s.hashMu.Lock()
+		for str, h = range s.hashCache {
+			if h == needle {
+				delete(s.hashCache, str)
+				break
+			}
+		}
+		s.hashMu.Unlock()
 	}
 
 	return false, nil
