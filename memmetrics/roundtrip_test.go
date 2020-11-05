@@ -2,7 +2,6 @@ package memmetrics
 
 import (
 	"runtime"
-	"sync"
 	"testing"
 	"time"
 
@@ -75,8 +74,11 @@ func TestAppend(t *testing.T) {
 }
 
 func TestConcurrentRecords(t *testing.T) {
-	// This test asserts a race condition which requires parallelism
+	// This test asserts a race condition which requires concurrency. Set
+	// GOMAXPROCS high for this test, then restore after test completes.
+	n := runtime.GOMAXPROCS(0)
 	runtime.GOMAXPROCS(100)
+	defer runtime.GOMAXPROCS(n)
 
 	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
 	require.NoError(t, err)
@@ -84,7 +86,7 @@ func TestConcurrentRecords(t *testing.T) {
 	for code := 0; code < 100; code++ {
 		for numRecords := 0; numRecords < 10; numRecords++ {
 			go func(statusCode int) {
-				_ = rr.recordStatusCode(statusCode)
+				rr.Record(statusCode, time.Second)
 			}(code)
 		}
 	}
@@ -92,11 +94,9 @@ func TestConcurrentRecords(t *testing.T) {
 
 func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	a := RTMetrics{
-		clock:           &timetools.RealTime{},
-		statusCodes:     map[int]*RollingCounter{},
-		statusCodesLock: sync.RWMutex{},
-		histogram:       &RollingHDRHistogram{},
-		histogramLock:   sync.RWMutex{},
+		clock:       &timetools.RealTime{},
+		statusCodes: map[int]*RollingCounter{},
+		histogram:   &RollingHDRHistogram{},
 	}
 
 	var err error
@@ -129,23 +129,4 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	assert.NotNil(t, b.newCounter)
 	assert.NotNil(t, b.newHist)
 	assert.NotNil(t, b.clock)
-
-	// a and b should have different locks
-	locksSucceed := make(chan bool)
-	go func() {
-		a.statusCodesLock.Lock()
-		b.statusCodesLock.Lock()
-		a.histogramLock.Lock()
-		b.histogramLock.Lock()
-		locksSucceed <- true
-	}()
-
-	for {
-		select {
-		case <-locksSucceed:
-			return
-		case <-time.After(10 * time.Second):
-			t.FailNow()
-		}
-	}
 }
