@@ -11,6 +11,25 @@ import (
 	"github.com/vulcand/oxy/testutils"
 )
 
+func BenchmarkRecord(b *testing.B) {
+	b.ReportAllocs()
+
+	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	require.NoError(b, err)
+
+	// warm up metrics. Adding a new code can do allocations, but in the steady
+	// state recording a code is cheap. We want to measure the steady state.
+	const codes = 100
+	for code := 0; code < codes; code++ {
+		rr.Record(code, time.Second)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		rr.Record(i%codes, time.Second)
+	}
+}
+
 func TestDefaults(t *testing.T) {
 	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
 	require.NoError(t, err)
