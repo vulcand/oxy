@@ -137,9 +137,9 @@ type ConnErrHandler struct {
 
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if e.debug() {
-		dumb := utils.DumpHttpRequest(req)
-		e.log.Debugf("connlimit: begin ServeHttp on request: %s", dumb)
-		defer e.log.Debugf("connlimit: completed ServeHttp on request: %s", dumb)
+		dump := utils.DumpHttpRequest(req)
+		e.log.Debugf("connlimit: begin ServeHttp on request: %s", dump)
+		defer e.log.Debugf("connlimit: completed ServeHttp on request: %s", dump)
 	}
 
 	if _, ok := err.(*MaxConnError); ok {

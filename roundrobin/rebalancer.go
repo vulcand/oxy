@@ -171,12 +171,12 @@ func (rb *Rebalancer) Servers() []*url.URL {
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	var dumb string
+	var dump string
 
 	if rb.debug() {
-		dumb = utils.DumpHttpRequest(req)
-		rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dumb)
-		defer rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dumb)
+		dump = utils.DumpHttpRequest(req)
+		rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dump)
+		defer rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dump)
 	}
 
 	pw := utils.NewProxyWriter(w)
@@ -208,7 +208,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		if rb.debug() {
 			// log which backend URL we're sending this request to
-			rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request %s to %s", dumb, fwdURL)
+			rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request %s to %s", dump, fwdURL)
 		}
 
 		if rb.stickySession != nil {

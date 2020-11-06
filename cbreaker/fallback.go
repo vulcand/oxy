@@ -39,9 +39,9 @@ func NewResponseFallback(r Response) (*ResponseFallback, error) {
 
 func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.debug() {
-		dumb := utils.DumpHttpRequest(req)
-		f.log.Debugf("fallback/response: begin ServeHttp on request: %s", dumb)
-		defer f.log.Debugf("fallback/response: completed ServeHttp on request: %s", dumb)
+		dump := utils.DumpHttpRequest(req)
+		f.log.Debugf("fallback/response: begin ServeHttp on request: %s", dump)
+		defer f.log.Debugf("fallback/response: completed ServeHttp on request: %s", dump)
 	}
 
 	if f.r.ContentType != "" {
@@ -87,9 +87,9 @@ func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
 
 func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.debug() {
-		dumb := utils.DumpHttpRequest(req)
-		f.log.Debugf("fallback/redirect: begin ServeHttp on request: %s", dumb)
-		defer f.log.Debugf("fallback/redirect: completed ServeHttp on request: %s", dumb)
+		dump := utils.DumpHttpRequest(req)
+		f.log.Debugf("fallback/redirect: begin ServeHttp on request: %s", dump)
+		defer f.log.Debugf("fallback/redirect: completed ServeHttp on request: %s", dump)
 	}
 
 	location := f.u.String()

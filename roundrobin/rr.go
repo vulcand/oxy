@@ -107,12 +107,12 @@ func (r *RoundRobin) Next() http.Handler {
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	var dumb string
+	var dump string
 
 	if r.debug() {
-		dumb = utils.DumpHttpRequest(req)
-		r.log.Debugf("roundrobin/rr: begin ServeHttp on request: %s", dumb)
-		defer r.log.Debugf("roundrobin/rr: completed ServeHttp on request: %s", dumb)
+		dump = utils.DumpHttpRequest(req)
+		r.log.Debugf("roundrobin/rr: begin ServeHttp on request: %s", dump)
+		defer r.log.Debugf("roundrobin/rr: completed ServeHttp on request: %s", dump)
 	}
 
 	// make shallow copy of request before chaning anything to avoid side effects
@@ -145,7 +145,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if r.debug() {
-		r.log.Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request %s to URL %s", dumb, newReq.URL)
+		r.log.Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request %s to URL %s", dump, newReq.URL)
 	}
 
 	// Emit event to a listener if one exists

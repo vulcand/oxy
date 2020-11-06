@@ -218,9 +218,9 @@ func (b *Buffer) Wrap(next http.Handler) error {
 
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if b.debug() {
-		dumb := utils.DumpHttpRequest(req)
-		b.log.Debugf("buffer: begin ServeHttp on request: %s", dumb)
-		defer b.log.Debugf("buffer: completed ServeHttp on request: %s", dumb)
+		dump := utils.DumpHttpRequest(req)
+		b.log.Debugf("buffer: begin ServeHttp on request: %s", dump)
+		defer b.log.Debugf("buffer: completed ServeHttp on request: %s", dump)
 	}
 
 	if err := b.checkLimit(req); err != nil {

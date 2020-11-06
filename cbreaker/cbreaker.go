@@ -121,9 +121,9 @@ func Debug(d utils.LoggerDebugFunc) CircuitBreakerOption {
 
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.debug() {
-		dumb := utils.DumpHttpRequest(req)
-		c.log.Debugf("circuitbreaker: begin ServeHttp on request: %s", dumb)
-		defer c.log.Debugf("circuitbreaker: completed ServeHttp on request: %s", dumb)
+		dump := utils.DumpHttpRequest(req)
+		c.log.Debugf("circuitbreaker: begin ServeHttp on request: %s", dump)
+		defer c.log.Debugf("circuitbreaker: completed ServeHttp on request: %s", dump)
 	}
 
 	if c.activateFallback(w, req) {
