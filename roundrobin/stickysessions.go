@@ -3,18 +3,26 @@ package roundrobin
 import (
 	"net/http"
 	"net/url"
+	"time"
 )
-
-// StickySession is a mixin for load balancers that implements layer 7 (http cookie) session affinity
-type StickySession struct {
-	cookieName string
-	options    CookieOptions
-}
 
 // CookieOptions has all the options one would like to set on the affinity cookie
 type CookieOptions struct {
 	HTTPOnly bool
 	Secure   bool
+
+	Path    string
+	Domain  string
+	Expires time.Time
+
+	MaxAge   int
+	SameSite http.SameSite
+}
+
+// StickySession is a mixin for load balancers that implements layer 7 (http cookie) session affinity
+type StickySession struct {
+	cookieName string
+	options    CookieOptions
 }
 
 // NewStickySession creates a new StickySession
@@ -53,7 +61,23 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 // StickBackend creates and sets the cookie
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 	opt := s.options
-	cookie := &http.Cookie{Name: s.cookieName, Value: backend.String(), Path: "/", HttpOnly: opt.HTTPOnly, Secure: opt.Secure}
+
+	cp := "/"
+	if opt.Path != "" {
+		cp = opt.Path
+	}
+
+	cookie := &http.Cookie{
+		Name:     s.cookieName,
+		Value:    backend.String(),
+		Path:     cp,
+		Domain:   opt.Domain,
+		Expires:  opt.Expires,
+		MaxAge:   opt.MaxAge,
+		Secure:   opt.Secure,
+		HttpOnly: opt.HTTPOnly,
+		SameSite: opt.SameSite,
+	}
 	http.SetCookie(*w, cookie)
 }
 
