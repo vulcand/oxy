@@ -2,6 +2,7 @@ package memmetrics
 
 import (
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,6 +29,42 @@ func BenchmarkRecord(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		rr.Record(i%codes, time.Second)
 	}
+}
+
+func BenchmarkRecordConcurrently(b *testing.B) {
+	b.ReportAllocs()
+
+	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	require.NoError(b, err)
+
+	// warm up metrics. Adding a new code can do allocations, but in the steady
+	// state recording a code is cheap. We want to measure the steady state.
+	const codes = 100
+	for code := 0; code < codes; code++ {
+		rr.Record(code, time.Second)
+	}
+
+	concurrency := runtime.NumCPU()
+	b.Logf("NumCPU: %d, Concurrency: %d, GOMAXPROCS: %d",
+		runtime.NumCPU(), concurrency, runtime.GOMAXPROCS(0))
+	wg := sync.WaitGroup{}
+	wg.Add(concurrency)
+	perG := b.N/concurrency
+	if perG == 0 {
+		perG = 1
+	}
+
+	b.ResetTimer()
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			for j := 0; j < perG; j++ {
+				rr.Record(j%codes, time.Second)
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
 
 func TestDefaults(t *testing.T) {
