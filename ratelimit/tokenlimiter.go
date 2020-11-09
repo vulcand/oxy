@@ -159,7 +159,7 @@ func (tl *TokenLimiter) consumeRates(req *http.Request, source string, amount in
 		return err
 	}
 	if delay > 0 {
-		return &MaxRateError{delay: delay}
+		return &MaxRateError{Delay: delay}
 	}
 	return nil
 }
@@ -188,11 +188,11 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 
 // MaxRateError max rate error
 type MaxRateError struct {
-	delay time.Duration
+	Delay time.Duration
 }
 
 func (m *MaxRateError) Error() string {
-	return fmt.Sprintf("max rate reached: retry-in %v", m.delay)
+	return fmt.Sprintf("max rate reached: retry-in %v", m.Delay)
 }
 
 // RateErrHandler error handler
@@ -200,8 +200,8 @@ type RateErrHandler struct{}
 
 func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if rerr, ok := err.(*MaxRateError); ok {
-		w.Header().Set("Retry-After", fmt.Sprintf("%.0f", rerr.delay.Seconds()))
-		w.Header().Set("X-Retry-In", rerr.delay.String())
+		w.Header().Set("Retry-After", fmt.Sprintf("%.0f", rerr.Delay.Seconds()))
+		w.Header().Set("X-Retry-In", rerr.Delay.String())
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte(err.Error()))
 		return
