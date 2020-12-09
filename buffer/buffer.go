@@ -179,7 +179,7 @@ func MemRequestBodyBytes(m int64) optSetter {
 	}
 }
 
-// MaxResponseBodyBytes sets the maximum request body size in bytes
+// MaxResponseBodyBytes sets the maximum response body size in bytes
 func MaxResponseBodyBytes(m int64) optSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
@@ -190,7 +190,7 @@ func MaxResponseBodyBytes(m int64) optSetter {
 	}
 }
 
-// MemResponseBodyBytes sets the maximum request body to be stored in memory
+// MemResponseBodyBytes sets the maximum response body to be stored in memory
 // buffer middleware will serialize the excess to disk.
 func MemResponseBodyBytes(m int64) optSetter {
 	return func(b *Buffer) error {
