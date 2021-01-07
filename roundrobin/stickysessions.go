@@ -90,7 +90,7 @@ func (s *StickySession) isBackendAlive(needle string, haystack []*url.URL) (bool
 	}
 
 	switch {
-	case strings.HasPrefix(needle, "http"):
+	case strings.Contains(needle, "://"):
 		for _, serverURL := range haystack {
 			if needle == serverURL.String() {
 				return true, serverURL
