@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/codahale/hdrhistogram"
+	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/mailgun/timetools"
 )
 
@@ -22,11 +22,6 @@ type HDRHistogram struct {
 
 // NewHDRHistogram creates a new HDRHistogram
 func NewHDRHistogram(low, high int64, sigfigs int) (h *HDRHistogram, err error) {
-	defer func() {
-		if msg := recover(); msg != nil {
-			err = fmt.Errorf("%s", msg)
-		}
-	}()
 	return &HDRHistogram{
 		low:     low,
 		high:    high,
