@@ -46,7 +46,7 @@ import (
 
 	"github.com/mailgun/multibuf"
 	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 const (

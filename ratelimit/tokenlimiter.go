@@ -9,7 +9,7 @@ import (
 
 	"github.com/mailgun/holster/v3/collections"
 	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // DefaultCapacity default capacity

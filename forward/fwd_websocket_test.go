@@ -14,7 +14,7 @@ import (
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/testutils"
 	"golang.org/x/net/websocket"
 )
 

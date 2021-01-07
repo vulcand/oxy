@@ -12,8 +12,8 @@ import (
 	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/memmetrics"
+	"github.com/vulcand/oxy/v2/testutils"
 )
 
 const triggerNetRatio = `NetworkErrorRatio() > 0.5`

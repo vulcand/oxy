@@ -33,8 +33,8 @@ import (
 
 	"github.com/mailgun/holster/v3/clock"
 	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/memmetrics"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/memmetrics"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // CircuitBreaker is http.Handler that implements circuit breaker pattern
