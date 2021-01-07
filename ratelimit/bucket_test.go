@@ -4,15 +4,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/testutils"
 )
 
 func TestConsumeSingleToken(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
-	tb := newTokenBucket(&rate{period: time.Second, average: 1, burst: 1}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 1, burst: 1})
 
 	// First request passes
 	delay, err := tb.consume(1)
@@ -25,7 +25,7 @@ func TestConsumeSingleToken(t *testing.T) {
 	assert.Equal(t, time.Second, delay)
 
 	// Second later, the request passes
-	clock.Sleep(time.Second)
+	clock.Advance(time.Second)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
@@ -33,7 +33,7 @@ func TestConsumeSingleToken(t *testing.T) {
 
 	// Five seconds later, still only one request is allowed
 	// because maxBurst is 1
-	clock.Sleep(5 * time.Second)
+	clock.Advance(5 * time.Second)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
@@ -46,9 +46,9 @@ func TestConsumeSingleToken(t *testing.T) {
 }
 
 func TestFastConsumption(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
-	tb := newTokenBucket(&rate{period: time.Second, average: 1, burst: 1}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 1, burst: 1})
 
 	// First request passes
 	delay, err := tb.consume(1)
@@ -56,21 +56,21 @@ func TestFastConsumption(t *testing.T) {
 	assert.Equal(t, time.Duration(0), delay)
 
 	// Try 200 ms later
-	clock.Sleep(time.Millisecond * 200)
+	clock.Advance(time.Millisecond * 200)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
 	assert.Equal(t, time.Second, delay)
 
 	// Try 700 ms later
-	clock.Sleep(time.Millisecond * 700)
+	clock.Advance(time.Millisecond * 700)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
 	assert.Equal(t, time.Second, delay)
 
 	// Try 100 ms later, success!
-	clock.Sleep(time.Millisecond * 100)
+	clock.Advance(time.Millisecond * 100)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
@@ -78,7 +78,9 @@ func TestFastConsumption(t *testing.T) {
 }
 
 func TestConsumeMultipleTokens(t *testing.T) {
-	tb := newTokenBucket(&rate{period: time.Second, average: 3, burst: 5}, testutils.GetClock())
+	defer clock.Freeze(time.Now()).Unfreeze()
+
+	tb := newTokenBucket(&rate{period: time.Second, average: 3, burst: 5})
 
 	delay, err := tb.consume(3)
 	require.NoError(t, err)
@@ -94,9 +96,9 @@ func TestConsumeMultipleTokens(t *testing.T) {
 }
 
 func TestDelayIsCorrect(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
-	tb := newTokenBucket(&rate{period: time.Second, average: 3, burst: 5}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 3, burst: 5})
 
 	// Exhaust initial capacity
 	delay, err := tb.consume(5)
@@ -108,7 +110,7 @@ func TestDelayIsCorrect(t *testing.T) {
 	assert.NotEqual(t, time.Duration(0), delay)
 
 	// Now wait provided delay and make sure we can consume now
-	clock.Sleep(delay)
+	clock.Advance(delay)
 
 	delay, err = tb.consume(3)
 	require.NoError(t, err)
@@ -117,17 +119,19 @@ func TestDelayIsCorrect(t *testing.T) {
 
 // Make sure requests that exceed burst size are not allowed
 func TestExceedsBurst(t *testing.T) {
-	tb := newTokenBucket(&rate{period: time.Second, average: 1, burst: 10}, testutils.GetClock())
+	tb := newTokenBucket(&rate{period: time.Second, average: 1, burst: 10})
 
 	_, err := tb.consume(11)
 	require.Error(t, err)
 }
 
 func TestConsumeBurst(t *testing.T) {
-	tb := newTokenBucket(&rate{period: time.Second, average: 2, burst: 5}, testutils.GetClock())
+	defer clock.Freeze(time.Now()).Unfreeze()
+
+	tb := newTokenBucket(&rate{period: time.Second, average: 2, burst: 5})
 
 	// In two seconds we would have 5 tokens
-	testutils.GetClock().Sleep(2 * time.Second)
+	clock.Advance(2 * time.Second)
 
 	// Lets consume 5 at once
 	delay, err := tb.consume(5)
@@ -136,7 +140,7 @@ func TestConsumeBurst(t *testing.T) {
 }
 
 func TestConsumeEstimate(t *testing.T) {
-	tb := newTokenBucket(&rate{period: time.Second, average: 2, burst: 4}, testutils.GetClock())
+	tb := newTokenBucket(&rate{period: time.Second, average: 2, burst: 4})
 
 	// Consume all burst at once
 	delay, err := tb.consume(4)
@@ -152,10 +156,10 @@ func TestConsumeEstimate(t *testing.T) {
 // If a rate with different period is passed to the `update` method, then an
 // error is returned but the state of the bucket remains valid and unchanged.
 func TestUpdateInvalidPeriod(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20})
 	_, err := tb.consume(15) // 5 tokens available
 	require.NoError(t, err)
 
@@ -166,7 +170,7 @@ func TestUpdateInvalidPeriod(t *testing.T) {
 	// Then
 
 	// ...check that rate did not change
-	clock.Sleep(500 * time.Millisecond)
+	clock.Advance(500 * time.Millisecond)
 
 	delay, err := tb.consume(11)
 	require.NoError(t, err)
@@ -178,7 +182,7 @@ func TestUpdateInvalidPeriod(t *testing.T) {
 	assert.Equal(t, time.Duration(0), delay)
 
 	// ...check that burst did not change
-	clock.Sleep(40 * time.Second)
+	clock.Advance(40 * time.Second)
 	_, err = tb.consume(21)
 	require.Error(t, err)
 
@@ -191,10 +195,10 @@ func TestUpdateInvalidPeriod(t *testing.T) {
 // If the capacity of the bucket is increased by the update then it takes some
 // time to fill the bucket with tokens up to the new capacity.
 func TestUpdateBurstIncreased(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20})
 	_, err := tb.consume(15) // 5 tokens available
 	require.NoError(t, err)
 
@@ -211,10 +215,10 @@ func TestUpdateBurstIncreased(t *testing.T) {
 // If the capacity of the bucket is increased by the update then it takes some
 // time to fill the bucket with tokens up to the new capacity.
 func TestUpdateBurstDecreased(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 50}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 50})
 	_, err := tb.consume(15) // 35 tokens available
 	require.NoError(t, err)
 
@@ -230,10 +234,10 @@ func TestUpdateBurstDecreased(t *testing.T) {
 
 // If rate is updated then it affects the bucket refill speed.
 func TestUpdateRateChanged(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20})
 	_, err := tb.consume(15) // 5 tokens available
 	require.NoError(t, err)
 
@@ -249,10 +253,10 @@ func TestUpdateRateChanged(t *testing.T) {
 
 // Only the most recent consumption is reverted by `Rollback`.
 func TestRollback(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20})
 	_, err := tb.consume(8) // 12 tokens available
 	require.NoError(t, err)
 	_, err = tb.consume(7) // 5 tokens available
@@ -275,7 +279,7 @@ func TestRollback(t *testing.T) {
 // calls just do nothing.
 func TestRollbackSeveralTimes(t *testing.T) {
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20}, testutils.GetClock())
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20})
 	_, err := tb.consume(8) // 12 tokens available
 	require.NoError(t, err)
 	tb.rollback() // 20 tokens available
@@ -299,7 +303,7 @@ func TestRollbackSeveralTimes(t *testing.T) {
 // tokens then there are available, then `Rollback` has no effect.
 func TestRollbackAfterAvailableExceeded(t *testing.T) {
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20}, testutils.GetClock())
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20})
 	_, err := tb.consume(8) // 12 tokens available
 	require.NoError(t, err)
 	delay, err := tb.consume(15) // still 12 tokens available
@@ -322,10 +326,10 @@ func TestRollbackAfterAvailableExceeded(t *testing.T) {
 // If previous consumption returned a error due to an attempt to consume more
 // tokens then the bucket's burst size, then `Rollback` has no effect.
 func TestRollbackAfterError(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
 	// Given
-	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20}, clock)
+	tb := newTokenBucket(&rate{period: time.Second, average: 10, burst: 20})
 	_, err := tb.consume(8) // 12 tokens available
 	require.NoError(t, err)
 	delay, err := tb.consume(21) // still 12 tokens available

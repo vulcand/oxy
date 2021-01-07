@@ -2,25 +2,14 @@ package memmetrics
 
 import (
 	"time"
-
-	"github.com/mailgun/timetools"
 )
 
 type ratioOptSetter func(r *RatioCounter) error
 
-// RatioClock sets a clock
-func RatioClock(clock timetools.TimeProvider) ratioOptSetter {
-	return func(r *RatioCounter) error {
-		r.clock = clock
-		return nil
-	}
-}
-
 // RatioCounter calculates a ratio of a/a+b over a rolling window of predefined buckets
 type RatioCounter struct {
-	clock timetools.TimeProvider
-	a     *RollingCounter
-	b     *RollingCounter
+	a *RollingCounter
+	b *RollingCounter
 }
 
 // NewRatioCounter creates a new RatioCounter
@@ -33,16 +22,12 @@ func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptS
 		}
 	}
 
-	if rc.clock == nil {
-		rc.clock = &timetools.RealTime{}
-	}
-
-	a, err := NewCounter(buckets, resolution, CounterClock(rc.clock))
+	a, err := NewCounter(buckets, resolution)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := NewCounter(buckets, resolution, CounterClock(rc.clock))
+	b, err := NewCounter(buckets, resolution)
 	if err != nil {
 		return nil, err
 	}

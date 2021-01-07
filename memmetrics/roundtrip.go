@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/mailgun/timetools"
 )
 
 // RTMetrics provides aggregated performance metrics for HTTP requests processing
@@ -24,7 +22,6 @@ type RTMetrics struct {
 
 	newCounter NewCounterFn
 	newHist    NewRollingHistogramFn
-	clock      timetools.TimeProvider
 }
 
 type rrOptSetter func(r *RTMetrics) error
@@ -54,14 +51,6 @@ func RTHistogram(fn NewRollingHistogramFn) rrOptSetter {
 	}
 }
 
-// RTClock sets a clock
-func RTClock(clock timetools.TimeProvider) rrOptSetter {
-	return func(r *RTMetrics) error {
-		r.clock = clock
-		return nil
-	}
-}
-
 // NewRTMetrics returns new instance of metrics collector.
 func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
 	m := &RTMetrics{
@@ -74,19 +63,15 @@ func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
 		}
 	}
 
-	if m.clock == nil {
-		m.clock = &timetools.RealTime{}
-	}
-
 	if m.newCounter == nil {
 		m.newCounter = func() (*RollingCounter, error) {
-			return NewCounter(counterBuckets, counterResolution, CounterClock(m.clock))
+			return NewCounter(counterBuckets, counterResolution)
 		}
 	}
 
 	if m.newHist == nil {
 		m.newHist = func() (*RollingHDRHistogram, error) {
-			return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets, RollingClock(m.clock))
+			return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets)
 		}
 	}
 
@@ -133,7 +118,6 @@ func (m *RTMetrics) Export() *RTMetrics {
 	}
 	export.newCounter = m.newCounter
 	export.newHist = m.newHist
-	export.clock = m.clock
 
 	return export
 }

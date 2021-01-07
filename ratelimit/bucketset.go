@@ -5,25 +5,21 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/mailgun/timetools"
 )
 
 // TokenBucketSet represents a set of TokenBucket covering different time periods.
 type TokenBucketSet struct {
 	buckets   map[time.Duration]*tokenBucket
 	maxPeriod time.Duration
-	clock     timetools.TimeProvider
 }
 
 // NewTokenBucketSet creates a `TokenBucketSet` from the specified `rates`.
-func NewTokenBucketSet(rates *RateSet, clock timetools.TimeProvider) *TokenBucketSet {
+func NewTokenBucketSet(rates *RateSet) *TokenBucketSet {
 	tbs := new(TokenBucketSet)
-	tbs.clock = clock
 	// In the majority of cases we will have only one bucket.
 	tbs.buckets = make(map[time.Duration]*tokenBucket, len(rates.m))
 	for _, rate := range rates.m {
-		newBucket := newTokenBucket(rate, clock)
+		newBucket := newTokenBucket(rate)
 		tbs.buckets[rate.period] = newBucket
 		tbs.maxPeriod = maxDuration(tbs.maxPeriod, rate.period)
 	}
@@ -43,7 +39,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 	// Add missing buckets.
 	for _, rate := range rates.m {
 		if _, ok := tbs.buckets[rate.period]; !ok {
-			newBucket := newTokenBucket(rate, tbs.clock)
+			newBucket := newTokenBucket(rate)
 			tbs.buckets[rate.period] = newBucket
 		}
 	}

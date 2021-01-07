@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/testutils"
 )
 
 func TestDefaults(t *testing.T) {
-	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	rr, err := NewRTMetrics()
 	require.NoError(t, err)
 	require.NotNil(t, rr)
 
@@ -45,9 +44,9 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestAppend(t *testing.T) {
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
-	rr, err := NewRTMetrics(RTClock(clock))
+	rr, err := NewRTMetrics()
 	require.NoError(t, err)
 	require.NotNil(t, rr)
 
@@ -56,7 +55,7 @@ func TestAppend(t *testing.T) {
 	rr.Record(200, time.Second)
 	rr.Record(200, time.Second)
 
-	rr2, err := NewRTMetrics(RTClock(clock))
+	rr2, err := NewRTMetrics()
 	require.NoError(t, err)
 	require.NotNil(t, rr2)
 
@@ -78,7 +77,7 @@ func TestConcurrentRecords(t *testing.T) {
 	// This test asserts a race condition which requires parallelism
 	runtime.GOMAXPROCS(100)
 
-	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	rr, err := NewRTMetrics()
 	require.NoError(t, err)
 
 	for code := 0; code < 100; code++ {
@@ -92,7 +91,6 @@ func TestConcurrentRecords(t *testing.T) {
 
 func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	a := RTMetrics{
-		clock:           &timetools.RealTime{},
 		statusCodes:     map[int]*RollingCounter{},
 		statusCodesLock: sync.RWMutex{},
 		histogram:       &RollingHDRHistogram{},
@@ -100,17 +98,17 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	}
 
 	var err error
-	a.total, err = NewCounter(1, time.Second, CounterClock(a.clock))
+	a.total, err = NewCounter(1, time.Second)
 	require.NoError(t, err)
 
-	a.netErrors, err = NewCounter(1, time.Second, CounterClock(a.clock))
+	a.netErrors, err = NewCounter(1, time.Second)
 	require.NoError(t, err)
 
 	a.newCounter = func() (*RollingCounter, error) {
-		return NewCounter(counterBuckets, counterResolution, CounterClock(a.clock))
+		return NewCounter(counterBuckets, counterResolution)
 	}
 	a.newHist = func() (*RollingHDRHistogram, error) {
-		return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets, RollingClock(a.clock))
+		return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets)
 	}
 
 	b := a.Export()
@@ -120,7 +118,6 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	a.histogram = nil
 	a.newCounter = nil
 	a.newHist = nil
-	a.clock = nil
 
 	assert.NotNil(t, b.total)
 	assert.NotNil(t, b.netErrors)
@@ -128,7 +125,6 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	assert.NotNil(t, b.histogram)
 	assert.NotNil(t, b.newCounter)
 	assert.NotNil(t, b.newHist)
-	assert.NotNil(t, b.clock)
 
 	// a and b should have different locks
 	locksSucceed := make(chan bool)

@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v3/clock"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
@@ -61,8 +61,6 @@ type CircuitBreaker struct {
 	fallback http.Handler
 	next     http.Handler
 
-	clock timetools.TimeProvider
-
 	log *log.Logger
 }
 
@@ -72,7 +70,6 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 		m:    &sync.RWMutex{},
 		next: next,
 		// Default values. Might be overwritten by options below.
-		clock:            &timetools.RealTime{},
 		checkPeriod:      defaultCheckPeriod,
 		fallbackDuration: defaultFallbackDuration,
 		recoveryDuration: defaultRecoveryDuration,
@@ -151,7 +148,7 @@ func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Reque
 		// someone else has set it to standby just now
 		return false
 	case stateTripped:
-		if c.clock.UtcNow().Before(c.until) {
+		if clock.Now().UTC().Before(c.until) {
 			return true
 		}
 		// We have been in active state enough, enter recovering state
@@ -159,8 +156,8 @@ func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Reque
 		fallthrough
 	case stateRecovering:
 		// We have been in recovering state enough, enter standby and allow request
-		if c.clock.UtcNow().After(c.until) {
-			c.setState(stateStandby, c.clock.UtcNow())
+		if clock.Now().UTC().After(c.until) {
+			c.setState(stateStandby, clock.Now().UTC())
 			return false
 		}
 		// ratio controller allows this request
@@ -173,12 +170,12 @@ func (c *CircuitBreaker) activateFallback(w http.ResponseWriter, req *http.Reque
 }
 
 func (c *CircuitBreaker) serve(w http.ResponseWriter, req *http.Request) {
-	start := c.clock.UtcNow()
+	start := clock.Now().UTC()
 	p := utils.NewProxyWriterWithLogger(w, c.log)
 
 	c.next.ServeHTTP(p, req)
 
-	latency := c.clock.UtcNow().Sub(start)
+	latency := clock.Now().UTC().Sub(start)
 	c.metrics.Record(p.StatusCode(), latency)
 
 	// Note that this call is less expensive than it looks -- checkCondition only performs the real check
@@ -229,7 +226,7 @@ func (c *CircuitBreaker) setState(new cbState, until time.Time) {
 func (c *CircuitBreaker) timeToCheck() bool {
 	c.m.RLock()
 	defer c.m.RUnlock()
-	return c.clock.UtcNow().After(c.lastCheck)
+	return clock.Now().UTC().After(c.lastCheck)
 }
 
 // Checks if tripping condition matches and sets circuit breaker to the tripped state
@@ -242,10 +239,10 @@ func (c *CircuitBreaker) checkAndSet() {
 	defer c.m.Unlock()
 
 	// Other goroutine could have updated the lastCheck variable before we grabbed mutex
-	if !c.clock.UtcNow().After(c.lastCheck) {
+	if !clock.Now().UTC().After(c.lastCheck) {
 		return
 	}
-	c.lastCheck = c.clock.UtcNow().Add(c.checkPeriod)
+	c.lastCheck = clock.Now().UTC().Add(c.checkPeriod)
 
 	if c.state == stateTripped {
 		c.log.Debugf("%v skip set tripped", c)
@@ -256,27 +253,18 @@ func (c *CircuitBreaker) checkAndSet() {
 		return
 	}
 
-	c.setState(stateTripped, c.clock.UtcNow().Add(c.fallbackDuration))
+	c.setState(stateTripped, clock.Now().UTC().Add(c.fallbackDuration))
 	c.metrics.Reset()
 }
 
 func (c *CircuitBreaker) setRecovering() {
-	c.setState(stateRecovering, c.clock.UtcNow().Add(c.recoveryDuration))
-	c.rc = newRatioController(c.clock, c.recoveryDuration, c.log)
+	c.setState(stateRecovering, clock.Now().UTC().Add(c.recoveryDuration))
+	c.rc = newRatioController(c.recoveryDuration, c.log)
 }
 
 // CircuitBreakerOption represents an option you can pass to New.
 // See the documentation for the individual options below.
 type CircuitBreakerOption func(*CircuitBreaker) error
-
-// Clock allows you to fake che CircuitBreaker's view of the current time.
-// Intended for unit tests.
-func Clock(clock timetools.TimeProvider) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.clock = clock
-		return nil
-	}
-}
 
 // FallbackDuration is how long the CircuitBreaker will remain in the Tripped
 // state before trying to recover.

@@ -4,28 +4,26 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCloneExpired(t *testing.T) {
-	clockTest := &timetools.FreezedTime{
-		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
-	}
+	defer clock.Freeze(time.Now()).Unfreeze()
 
-	cnt, err := NewCounter(3, time.Second, CounterClock(clockTest))
+	cnt, err := NewCounter(3, time.Second)
 	require.NoError(t, err)
 
 	cnt.Inc(1)
 
-	clockTest.Sleep(time.Second)
+	clock.Advance(time.Second)
 	cnt.Inc(1)
 
-	clockTest.Sleep(time.Second)
+	clock.Advance(time.Second)
 	cnt.Inc(1)
 
-	clockTest.Sleep(time.Second)
+	clock.Advance(time.Second)
 	out := cnt.Clone()
 
 	assert.EqualValues(t, 2, out.Count())

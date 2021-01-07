@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
@@ -35,6 +36,8 @@ func TestRateSetAdd(t *testing.T) {
 
 // We've hit the limit and were able to proceed on the next time run
 func TestHitLimit(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -43,9 +46,7 @@ func TestHitLimit(t *testing.T) {
 	err := rates.Add(time.Second, 1, 1)
 	require.NoError(t, err)
 
-	clock := testutils.GetClock()
-
-	l, err := New(handler, headerLimit, rates, Clock(clock))
+	l, err := New(handler, headerLimit, rates)
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -61,7 +62,7 @@ func TestHitLimit(t *testing.T) {
 	assert.Equal(t, 429, re.StatusCode)
 
 	// Second later, the request from this ip will succeed
-	clock.Sleep(time.Second)
+	clock.Advance(time.Second)
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
@@ -77,9 +78,7 @@ func TestFailure(t *testing.T) {
 	err := rates.Add(time.Second, 1, 1)
 	require.NoError(t, err)
 
-	clock := testutils.GetClock()
-
-	l, err := New(handler, faultyExtract, rates, Clock(clock))
+	l, err := New(handler, faultyExtract, rates)
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -100,9 +99,7 @@ func TestIsolation(t *testing.T) {
 	err := rates.Add(time.Second, 1, 1)
 	require.NoError(t, err)
 
-	clock := testutils.GetClock()
-
-	l, err := New(handler, headerLimit, rates, Clock(clock))
+	l, err := New(handler, headerLimit, rates)
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -125,6 +122,8 @@ func TestIsolation(t *testing.T) {
 
 // Make sure that expiration works (Expiration is triggered after significant amount of time passes)
 func TestExpiration(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Write([]byte("hello"))
 	})
@@ -133,9 +132,7 @@ func TestExpiration(t *testing.T) {
 	err := rates.Add(time.Second, 1, 1)
 	require.NoError(t, err)
 
-	clock := testutils.GetClock()
-
-	l, err := New(handler, headerLimit, rates, Clock(clock))
+	l, err := New(handler, headerLimit, rates)
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -151,7 +148,7 @@ func TestExpiration(t *testing.T) {
 	assert.Equal(t, 429, re.StatusCode)
 
 	// 24 hours later, the request from this ip will succeed
-	clock.Sleep(24 * time.Hour)
+	clock.Advance(24 * time.Hour)
 
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
@@ -160,6 +157,8 @@ func TestExpiration(t *testing.T) {
 
 // If rate limiting configuration is valid, then it is applied.
 func TestExtractRates(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	// Given
 	extractRates := func(*http.Request) (*RateSet, error) {
 		rates := NewRateSet()
@@ -182,9 +181,7 @@ func TestExtractRates(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	clock := testutils.GetClock()
-
-	tl, err := New(handler, headerLimit, rates, Clock(clock), ExtractRates(RateExtractorFunc(extractRates)))
+	tl, err := New(handler, headerLimit, rates, ExtractRates(RateExtractorFunc(extractRates)))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(tl)
@@ -203,7 +200,7 @@ func TestExtractRates(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 429, re.StatusCode)
 
-	clock.Sleep(time.Second)
+	clock.Advance(time.Second)
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
@@ -211,6 +208,8 @@ func TestExtractRates(t *testing.T) {
 
 // If configMapper returns error, then the default rate is applied.
 func TestBadRateExtractor(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	// Given
 	extractor := func(*http.Request) (*RateSet, error) {
 		return nil, fmt.Errorf("boom")
@@ -224,9 +223,7 @@ func TestBadRateExtractor(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	clock := testutils.GetClock()
-
-	l, err := New(handler, headerLimit, rates, Clock(clock), ExtractRates(RateExtractorFunc(extractor)))
+	l, err := New(handler, headerLimit, rates, ExtractRates(RateExtractorFunc(extractor)))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -241,7 +238,7 @@ func TestBadRateExtractor(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 429, re.StatusCode)
 
-	clock.Sleep(time.Second)
+	clock.Advance(time.Second)
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
@@ -249,6 +246,8 @@ func TestBadRateExtractor(t *testing.T) {
 
 // If configMapper returns empty rates, then the default rate is applied.
 func TestExtractorEmpty(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	// Given
 	extractor := func(*http.Request) (*RateSet, error) {
 		return NewRateSet(), nil
@@ -262,9 +261,7 @@ func TestExtractorEmpty(t *testing.T) {
 		w.Write([]byte("hello"))
 	})
 
-	clock := testutils.GetClock()
-
-	l, err := New(handler, headerLimit, rates, Clock(clock), ExtractRates(RateExtractorFunc(extractor)))
+	l, err := New(handler, headerLimit, rates, ExtractRates(RateExtractorFunc(extractor)))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
@@ -279,7 +276,7 @@ func TestExtractorEmpty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 429, re.StatusCode)
 
-	clock.Sleep(time.Second)
+	clock.Advance(time.Second)
 
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
@@ -320,9 +317,7 @@ func TestOptions(t *testing.T) {
 		w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	clock := testutils.GetClock()
-
-	l, err := New(handler, headerLimit, rates, ErrorHandler(errHandler), Clock(clock))
+	l, err := New(handler, headerLimit, rates, ErrorHandler(errHandler))
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)

@@ -8,9 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"time"
 
-	"github.com/mailgun/timetools"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -173,11 +171,4 @@ func Get(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 func Post(url string, opts ...ReqOption) (*http.Response, []byte, error) {
 	opts = append(opts, Method(http.MethodPost))
 	return MakeRequest(url, opts...)
-}
-
-// GetClock gets a FreezedTime
-func GetClock() *timetools.FreezedTime {
-	return &timetools.FreezedTime{
-		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
-	}
 }

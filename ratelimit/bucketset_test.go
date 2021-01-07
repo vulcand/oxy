@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mailgun/holster/v3/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/testutils"
 )
 
 // A value returned by `MaxPeriod` corresponds to the longest bucket time period.
@@ -17,10 +17,10 @@ func TestLongestPeriod(t *testing.T) {
 	require.NoError(t, rates.Add(7*time.Second, 10, 20))
 	require.NoError(t, rates.Add(5*time.Second, 11, 21))
 
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
 	// When
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	// Then
 	assert.Equal(t, 7*time.Second, tbs.maxPeriod)
@@ -33,9 +33,9 @@ func TestConsume(t *testing.T) {
 	require.NoError(t, rates.Add(1*time.Second, 10, 20))
 	require.NoError(t, rates.Add(10*time.Second, 20, 50))
 
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	// When
 	delay, err := tbs.Consume(15)
@@ -48,21 +48,21 @@ func TestConsume(t *testing.T) {
 
 // As time goes by all set buckets are refilled with appropriate rates.
 func TestConsumeRefill(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	// Given
 	rates := NewRateSet()
 	require.NoError(t, rates.Add(10*time.Second, 10, 20))
 	require.NoError(t, rates.Add(100*time.Second, 20, 50))
 
-	clock := testutils.GetClock()
-
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	_, err := tbs.Consume(15)
 	require.NoError(t, err)
 	assert.Equal(t, "{10s: 5}, {1m40s: 35}", tbs.debugState())
 
 	// When
-	clock.Sleep(10 * time.Second)
+	clock.Advance(10 * time.Second)
 
 	delay, err := tbs.Consume(0) // Consumes nothing but forces an internal state update.
 	require.NoError(t, err)
@@ -75,14 +75,14 @@ func TestConsumeRefill(t *testing.T) {
 // If the first bucket in the set has no enough tokens to allow desired
 // consumption then an appropriate delay is returned.
 func TestConsumeLimitedBy1st(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	// Given
 	rates := NewRateSet()
 	require.NoError(t, rates.Add(10*time.Second, 10, 10))
 	require.NoError(t, rates.Add(100*time.Second, 20, 20))
 
-	clock := testutils.GetClock()
-
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	_, err := tbs.Consume(5)
 	require.NoError(t, err)
@@ -100,24 +100,24 @@ func TestConsumeLimitedBy1st(t *testing.T) {
 // If the second bucket in the set has no enough tokens to allow desired
 // consumption then an appropriate delay is returned.
 func TestConsumeLimitedBy2st(t *testing.T) {
+	defer clock.Freeze(time.Now()).Unfreeze()
+
 	// Given
 	rates := NewRateSet()
 	require.NoError(t, rates.Add(10*time.Second, 10, 10))
 	require.NoError(t, rates.Add(100*time.Second, 20, 20))
 
-	clock := testutils.GetClock()
-
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	_, err := tbs.Consume(10)
 	require.NoError(t, err)
 
-	clock.Sleep(10 * time.Second)
+	clock.Advance(10 * time.Second)
 
 	_, err = tbs.Consume(10)
 	require.NoError(t, err)
 
-	clock.Sleep(5 * time.Second)
+	clock.Advance(5 * time.Second)
 
 	_, err = tbs.Consume(0)
 	require.NoError(t, err)
@@ -140,9 +140,7 @@ func TestConsumeMoreThenBurst(t *testing.T) {
 	require.NoError(t, rates.Add(1*time.Second, 10, 20))
 	require.NoError(t, rates.Add(10*time.Second, 50, 100))
 
-	clock := testutils.GetClock()
-
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	_, err := tbs.Consume(5)
 	require.NoError(t, err)
@@ -164,9 +162,7 @@ func TestUpdateMore(t *testing.T) {
 	require.NoError(t, rates.Add(10*time.Second, 20, 50))
 	require.NoError(t, rates.Add(20*time.Second, 45, 90))
 
-	clock := testutils.GetClock()
-
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	_, err := tbs.Consume(5)
 	require.NoError(t, err)
@@ -195,9 +191,7 @@ func TestUpdateLess(t *testing.T) {
 	require.NoError(t, rates.Add(20*time.Second, 45, 90))
 	require.NoError(t, rates.Add(30*time.Second, 50, 100))
 
-	clock := testutils.GetClock()
-
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	_, err := tbs.Consume(5)
 	require.NoError(t, err)
@@ -222,9 +216,9 @@ func TestUpdateAllDifferent(t *testing.T) {
 	require.NoError(t, rates.Add(10*time.Second, 20, 50))
 	require.NoError(t, rates.Add(30*time.Second, 50, 100))
 
-	clock := testutils.GetClock()
+	defer clock.Freeze(time.Now()).Unfreeze()
 
-	tbs := NewTokenBucketSet(rates, clock)
+	tbs := NewTokenBucketSet(rates)
 
 	_, err := tbs.Consume(5)
 	require.NoError(t, err)

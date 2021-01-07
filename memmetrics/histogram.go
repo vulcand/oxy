@@ -5,7 +5,7 @@ import (
 	"time"
 
 	hdrhistogram "github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v3/clock"
 )
 
 // HDRHistogram is a tiny wrapper around github.com/codahale/hdrhistogram that provides convenience functions for measuring http latencies
@@ -76,14 +76,6 @@ func (h *HDRHistogram) Merge(other *HDRHistogram) error {
 
 type rhOptSetter func(r *RollingHDRHistogram) error
 
-// RollingClock sets a clock
-func RollingClock(clock timetools.TimeProvider) rhOptSetter {
-	return func(r *RollingHDRHistogram) error {
-		r.clock = clock
-		return nil
-	}
-}
-
 // RollingHDRHistogram holds multiple histograms and rotates every period.
 // It provides resulting histogram as a result of a call of 'Merged' function.
 type RollingHDRHistogram struct {
@@ -95,7 +87,6 @@ type RollingHDRHistogram struct {
 	high        int64
 	sigfigs     int
 	buckets     []*HDRHistogram
-	clock       timetools.TimeProvider
 }
 
 // NewRollingHDRHistogram created a new RollingHDRHistogram
@@ -112,10 +103,6 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 		if err := o(rh); err != nil {
 			return nil, err
 		}
-	}
-
-	if rh.clock == nil {
-		rh.clock = &timetools.RealTime{}
 	}
 
 	buckets := make([]*HDRHistogram, rh.bucketCount)
@@ -140,7 +127,6 @@ func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
 	export.low = r.low
 	export.high = r.high
 	export.sigfigs = r.sigfigs
-	export.clock = r.clock
 
 	exportBuckets := make([]*HDRHistogram, len(r.buckets))
 	for i, hist := range r.buckets {
@@ -168,7 +154,7 @@ func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 // Reset reset a RollingHDRHistogram
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
-	r.lastRoll = r.clock.UtcNow()
+	r.lastRoll = clock.Now().UTC()
 	for _, b := range r.buckets {
 		b.Reset()
 	}
@@ -194,9 +180,9 @@ func (r *RollingHDRHistogram) Merged() (*HDRHistogram, error) {
 }
 
 func (r *RollingHDRHistogram) getHist() *HDRHistogram {
-	if r.clock.UtcNow().Sub(r.lastRoll) >= r.period {
+	if clock.Now().UTC().Sub(r.lastRoll) >= r.period {
 		r.rotate()
-		r.lastRoll = r.clock.UtcNow()
+		r.lastRoll = clock.Now().UTC()
 	}
 	return r.buckets[r.idx]
 }
