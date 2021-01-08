@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/segmentio/fasthash/fnv1a"
+	"github.com/vulcand/oxy/utils"
 )
 
 // CookieOptions has all the options one would like to set on the affinity cookie
@@ -29,13 +30,17 @@ type StickySession struct {
 	cookieName string
 	options    CookieOptions
 	hashCache  map[string]string
-	hashRWMu   sync.RWMutex
-	hashMu     sync.Mutex
+	urlCache   map[*url.URL]string
+	mu         sync.RWMutex
 }
 
 // NewStickySession creates a new StickySession
 func NewStickySession(cookieName string) *StickySession {
-	return &StickySession{cookieName: cookieName, hashCache: make(map[string]string)}
+	return &StickySession{
+		cookieName: cookieName,
+		hashCache:  make(map[string]string),
+		urlCache:   make(map[*url.URL]string),
+	}
 }
 
 // NewStickySessionWithOptions creates a new StickySession whilst allowing for options to
@@ -70,9 +75,12 @@ func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 		cp = opt.Path
 	}
 
+	serverURLNoUser := utils.CopyURL(backend)
+	serverURLNoUser.User = nil
+
 	cookie := &http.Cookie{
 		Name:     s.cookieName,
-		Value:    hash(backend.String()),
+		Value:    hash(serverURLNoUser.String()),
 		Path:     cp,
 		Domain:   opt.Domain,
 		Expires:  opt.Expires,
@@ -91,162 +99,85 @@ func (s *StickySession) isBackendAlive(needle string, haystack []*url.URL) (bool
 
 	switch {
 	case strings.Contains(needle, "://"):
-		for _, serverURL := range haystack {
-			if needle == serverURL.String() {
-				return true, serverURL
-			}
+		// Honour old cookies which have URLs instead of hash
+		needleURL, err := url.Parse(needle)
+		if err != nil {
+			return false, nil
 		}
-	default:
 		for _, serverURL := range haystack {
-			if needle == hash(serverURL.String()) {
-				return true, serverURL
-			}
-		}
-	}
-
-	return false, nil
-}
-
-func (s *StickySession) isBackendAliveRWMutexRlock(needle string, haystack []*url.URL) (bool, *url.URL) {
-	if len(haystack) == 0 {
-		return false, nil
-	}
-
-	switch {
-	case strings.HasPrefix(needle, "http"):
-		for _, serverURL := range haystack {
-			if needle == serverURL.String() {
+			if sameURL(needleURL, serverURL) {
 				return true, serverURL
 			}
 		}
 	default:
 		var h string
-		var str string
+		var urlStr string
 		var found bool
 
 		for _, serverURL := range haystack {
-			str = serverURL.String()
+			s.mu.RLock() // Lock in read mode
 
-			s.hashRWMu.RLock()
-			if h, found = s.hashCache[str]; !found {
-				s.hashRWMu.RUnlock()
+			if urlStr, found = s.urlCache[serverURL]; !found {
+				// If we get here the url cache is not populated for this serverURL
 
-				h = hash(str)
+				// We are going to modify url cache so we release the read lock
+				s.mu.RUnlock()
 
-				s.hashRWMu.Lock()
-				s.hashCache[str] = h
-				s.hashRWMu.Unlock()
+				// Copy serverURL and remove user info that we don't want in the
+				// needle/haystack comparison
+				serverURLNoUser := utils.CopyURL(serverURL)
+				serverURLNoUser.User = nil
+
+				// Lock in write mode
+				s.mu.Lock()
+
+				// Truncate the url cache if the number of entries is larger than the haystack
+				if len(s.urlCache) > len(haystack) {
+					s.urlCache = make(map[*url.URL]string)
+				}
+
+				// Add the url string to the cache
+				s.urlCache[serverURL] = serverURLNoUser.String()
+
+				// Release the write lock
+				s.mu.Unlock()
+
+				urlStr = s.urlCache[serverURL]
+
+				// Re-acquire read lock
+				s.mu.RLock()
+			}
+
+			if h, found = s.hashCache[urlStr]; !found {
+				// If we get here the hash cache is not populated for this serverURL
+
+				// We are going to modify hash cache so we release the read lock
+				s.mu.RUnlock()
+
+				h = hash(urlStr)
+
+				// Lock in write mode
+				s.mu.Lock()
+
+				// Truncate the hash cache if the number of entries is larger than the haystack
+				if len(s.hashCache) > len(haystack) {
+					s.hashCache = make(map[string]string)
+				}
+
+				// Add the hash string to the cache
+				s.hashCache[urlStr] = h
+
+				// Relase the write lock
+				s.mu.Unlock()
 			} else {
-				s.hashRWMu.RUnlock()
+				// Release the read lock
+				s.mu.RUnlock()
 			}
 
 			if needle == h {
 				return true, serverURL
 			}
 		}
-
-		// hash cache clean up to remove old entries which do not exist anymore
-		s.hashRWMu.Lock()
-		for str, h = range s.hashCache {
-			if h == needle {
-				delete(s.hashCache, str)
-				break
-			}
-		}
-		s.hashRWMu.Unlock()
-	}
-
-	return false, nil
-}
-
-func (s *StickySession) isBackendAliveRWMutexLock(needle string, haystack []*url.URL) (bool, *url.URL) {
-	if len(haystack) == 0 {
-		return false, nil
-	}
-
-	switch {
-	case strings.HasPrefix(needle, "http"):
-		for _, serverURL := range haystack {
-			if needle == serverURL.String() {
-				return true, serverURL
-			}
-		}
-	default:
-		var h string
-		var str string
-		var found bool
-
-		for _, serverURL := range haystack {
-			str = serverURL.String()
-
-			s.hashRWMu.Lock()
-			if h, found = s.hashCache[str]; !found {
-				h = hash(str)
-				s.hashCache[str] = h
-			}
-
-			s.hashRWMu.Unlock()
-
-			if needle == h {
-				return true, serverURL
-			}
-		}
-
-		// hash cache clean up to remove old entries which do not exist anymore
-		s.hashRWMu.Lock()
-		for str, h = range s.hashCache {
-			if h == needle {
-				delete(s.hashCache, str)
-				break
-			}
-		}
-		s.hashRWMu.Unlock()
-	}
-
-	return false, nil
-}
-
-func (s *StickySession) isBackendAliveMutexLock(needle string, haystack []*url.URL) (bool, *url.URL) {
-	if len(haystack) == 0 {
-		return false, nil
-	}
-
-	switch {
-	case strings.HasPrefix(needle, "http"):
-		for _, serverURL := range haystack {
-			if needle == serverURL.String() {
-				return true, serverURL
-			}
-		}
-	default:
-		var h string
-		var str string
-		var found bool
-
-		for _, serverURL := range haystack {
-			str = serverURL.String()
-
-			s.hashMu.Lock()
-			if h, found = s.hashCache[str]; !found {
-				h = hash(str)
-				s.hashCache[str] = h
-			}
-			s.hashMu.Unlock()
-
-			if needle == h {
-				return true, serverURL
-			}
-		}
-
-		// hash cache clean up to remove old entries which do not exist anymore
-		s.hashMu.Lock()
-		for str, h = range s.hashCache {
-			if h == needle {
-				delete(s.hashCache, str)
-				break
-			}
-		}
-		s.hashMu.Unlock()
 	}
 
 	return false, nil
