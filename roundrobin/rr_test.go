@@ -228,6 +228,23 @@ func TestRequestRewriteListener(t *testing.T) {
 	assert.NotNil(t, lb.requestRewriteListener)
 }
 
+func TestPreRequestRewriteListener(t *testing.T) {
+	a := testutils.NewResponder("a")
+	defer a.Close()
+
+	b := testutils.NewResponder("b")
+	defer b.Close()
+
+	fwd, err := forward.New()
+	require.NoError(t, err)
+
+	lb, err := New(fwd,
+		RoundRobinPreRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {}))
+	require.NoError(t, err)
+
+	assert.NotNil(t, lb.requestPreRewriteListener)
+}
+
 func seq(t *testing.T, url string, repeat int) []string {
 	var out []string
 	for i := 0; i < repeat; i++ {
