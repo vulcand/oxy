@@ -46,7 +46,7 @@ func RoundRobinRequestRewriteListener(rrl RequestRewriteListener) LBOption {
 	}
 }
 
-// RoundRobinRequestRewriteListener is a functional argument that sets error handler of the server
+// RoundRobinPreRequestRewriteListener is a functional argument that sets error handler of the server
 func RoundRobinPreRequestRewriteListener(rrl RequestRewriteListener) LBOption {
 	return func(s *RoundRobin) error {
 		s.requestPreRewriteListener = rrl
