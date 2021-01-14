@@ -130,6 +130,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if present {
+			r.stickySession.StickBackend(cookieURL, &w)
 			newReq.URL = cookieURL
 			stuck = true
 		}
