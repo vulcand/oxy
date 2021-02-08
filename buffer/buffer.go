@@ -234,7 +234,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Set request body to buffered reader that can replay the read and execute Seek
 	// Note that we don't change the original request body as it's handled by the http server
-	// and we don'w want to mess with standard library
+	// and we don't want to mess with standard library
 	defer func() {
 		if body != nil {
 			errClose := body.Close()
