@@ -344,3 +344,16 @@ func TestRollbackAfterError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 100*time.Millisecond, delay)
 }
+
+func TestDivisionByZeroOnPeriod(t *testing.T) {
+	clock := testutils.GetClock()
+
+	var emptyPeriod int64
+	tb := newTokenBucket(&rate{period: time.Duration(emptyPeriod), average: 2, burst: 2}, clock)
+
+	_, err := tb.consume(1)
+	assert.NoError(t, err)
+
+	err = tb.update(&rate{period: time.Nanosecond, average: 1, burst: 1})
+	assert.NoError(t, err)
+}
