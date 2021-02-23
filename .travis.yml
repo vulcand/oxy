@@ -1,8 +1,8 @@
 language: go
 
 go:
-  - 1.13.x
-  - 1.x
+  - 1.14.x
+  - 1.15.x
 
 go_import_path: github.com/vulcand/oxy
 
@@ -19,5 +19,5 @@ before_install:
   - GO111MODULE=off go get -u github.com/client9/misspell/cmd/misspell
 
 install:
-  - go mod download
+  - go mod tidy
   - git diff --exit-code go.mod go.sum
