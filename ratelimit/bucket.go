@@ -48,6 +48,7 @@ func newTokenBucket(rate *rate, clock timetools.TimeProvider) *tokenBucket {
 	if period == 0 {
 		period = time.Nanosecond
 	}
+
 	return &tokenBucket{
 		period:          period,
 		timePerToken:    time.Duration(int64(period) / rate.average),
