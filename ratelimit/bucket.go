@@ -116,7 +116,7 @@ func (tb *tokenBucket) updateAvailableTokens() {
 	now := tb.clock.UtcNow()
 	timePassed := now.Sub(tb.lastRefresh)
 
-	if timePassed == 0 {
+	if tb.timePerToken == 0 {
 		return
 	}
 

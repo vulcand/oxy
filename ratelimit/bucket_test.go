@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mailgun/timetools"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
@@ -346,7 +347,7 @@ func TestRollbackAfterError(t *testing.T) {
 }
 
 func TestDivisionByZeroOnPeriod(t *testing.T) {
-	clock := testutils.GetClock()
+	clock := &timetools.RealTime{}
 
 	var emptyPeriod int64
 	tb := newTokenBucket(&rate{period: time.Duration(emptyPeriod), average: 2, burst: 2}, clock)
