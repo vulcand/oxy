@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/segmentio/fasthash/fnv1a"
@@ -29,17 +28,12 @@ type CookieOptions struct {
 type StickySession struct {
 	cookieName string
 	options    CookieOptions
-	hashCache  map[string]string
-	urlCache   map[*url.URL]string
-	mu         sync.RWMutex
 }
 
 // NewStickySession creates a new StickySession
 func NewStickySession(cookieName string) *StickySession {
 	return &StickySession{
 		cookieName: cookieName,
-		hashCache:  make(map[string]string),
-		urlCache:   make(map[*url.URL]string),
 	}
 }
 
@@ -112,67 +106,14 @@ func (s *StickySession) isBackendAlive(needle string, haystack []*url.URL) (bool
 	default:
 		var h string
 		var urlStr string
-		var found bool
 
 		for _, serverURL := range haystack {
-			s.mu.RLock() // Lock in read mode
-
-			if urlStr, found = s.urlCache[serverURL]; !found {
-				// If we get here the url cache is not populated for this serverURL
-
-				// We are going to modify url cache so we release the read lock
-				s.mu.RUnlock()
-
-				// Copy serverURL and remove user info that we don't want in the
-				// needle/haystack comparison
-				serverURLNoUser := utils.CopyURL(serverURL)
-				serverURLNoUser.User = nil
-
-				// Lock in write mode
-				s.mu.Lock()
-
-				// Truncate the url cache if the number of entries is larger than the haystack
-				if len(s.urlCache) > len(haystack) {
-					s.urlCache = make(map[*url.URL]string)
-				}
-
-				// Add the url string to the cache
-				s.urlCache[serverURL] = serverURLNoUser.String()
-
-				// Release the write lock
-				s.mu.Unlock()
-
-				urlStr = s.urlCache[serverURL]
-
-				// Re-acquire read lock
-				s.mu.RLock()
-			}
-
-			if h, found = s.hashCache[urlStr]; !found {
-				// If we get here the hash cache is not populated for this serverURL
-
-				// We are going to modify hash cache so we release the read lock
-				s.mu.RUnlock()
-
-				h = hash(urlStr)
-
-				// Lock in write mode
-				s.mu.Lock()
-
-				// Truncate the hash cache if the number of entries is larger than the haystack
-				if len(s.hashCache) > len(haystack) {
-					s.hashCache = make(map[string]string)
-				}
-
-				// Add the hash string to the cache
-				s.hashCache[urlStr] = h
-
-				// Relase the write lock
-				s.mu.Unlock()
-			} else {
-				// Release the read lock
-				s.mu.RUnlock()
-			}
+			// Copy serverURL and remove user info that we don't want in the
+			// needle/haystack comparison
+			serverURLNoUser := utils.CopyURL(serverURL)
+			serverURLNoUser.User = nil
+			urlStr = serverURLNoUser.String()
+			h = hash(urlStr)
 
 			if needle == h {
 				return true, serverURL
