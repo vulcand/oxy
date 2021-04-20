@@ -44,9 +44,14 @@ type tokenBucket struct {
 
 // newTokenBucket crates a `tokenBucket` instance for the specified `Rate`.
 func newTokenBucket(rate *rate, clock timetools.TimeProvider) *tokenBucket {
+	period := rate.period
+	if period == 0 {
+		period = time.Nanosecond
+	}
+
 	return &tokenBucket{
-		period:          rate.period,
-		timePerToken:    time.Duration(int64(rate.period) / rate.average),
+		period:          period,
+		timePerToken:    time.Duration(int64(period) / rate.average),
 		burst:           rate.burst,
 		clock:           clock,
 		lastRefresh:     clock.UtcNow(),
@@ -111,6 +116,10 @@ func (tb *tokenBucket) timeTillAvailable(tokens int64) time.Duration {
 func (tb *tokenBucket) updateAvailableTokens() {
 	now := tb.clock.UtcNow()
 	timePassed := now.Sub(tb.lastRefresh)
+
+	if tb.timePerToken == 0 {
+		return
+	}
 
 	tokens := tb.availableTokens + int64(timePassed/tb.timePerToken)
 	// If we haven't added any tokens that means that not enough time has passed,

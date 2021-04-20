@@ -179,7 +179,7 @@ func MemRequestBodyBytes(m int64) optSetter {
 	}
 }
 
-// MaxResponseBodyBytes sets the maximum request body size in bytes
+// MaxResponseBodyBytes sets the maximum response body size in bytes
 func MaxResponseBodyBytes(m int64) optSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
@@ -190,7 +190,7 @@ func MaxResponseBodyBytes(m int64) optSetter {
 	}
 }
 
-// MemResponseBodyBytes sets the maximum request body to be stored in memory
+// MemResponseBodyBytes sets the maximum response body to be stored in memory
 // buffer middleware will serialize the excess to disk.
 func MemResponseBodyBytes(m int64) optSetter {
 	return func(b *Buffer) error {
@@ -234,7 +234,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Set request body to buffered reader that can replay the read and execute Seek
 	// Note that we don't change the original request body as it's handled by the http server
-	// and we don'w want to mess with standard library
+	// and we don't want to mess with standard library
 	defer func() {
 		if body != nil {
 			errClose := body.Close()

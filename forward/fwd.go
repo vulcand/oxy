@@ -11,7 +11,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -153,25 +152,6 @@ func StreamingFlushInterval(flushInterval time.Duration) optSetter {
 	}
 }
 
-// ErrorHandlingRoundTripper a error handling round tripper
-type ErrorHandlingRoundTripper struct {
-	http.RoundTripper
-	errorHandler utils.ErrorHandler
-}
-
-// RoundTrip executes the round trip
-func (rt ErrorHandlingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	res, err := rt.RoundTripper.RoundTrip(req)
-	if err != nil {
-		// We use the recorder from httptest because there isn't another `public` implementation of a recorder.
-		recorder := httptest.NewRecorder()
-		rt.errorHandler.ServeHTTP(recorder, req, err)
-		res = recorder.Result()
-		err = nil
-	}
-	return res, err
-}
-
 // Forwarder wraps two traffic forwarding implementations: HTTP and websockets.
 // It decides based on the specified request which implementation to use
 type Forwarder struct {
@@ -254,11 +234,6 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		}
 	}
 
-	f.httpForwarder.roundTripper = ErrorHandlingRoundTripper{
-		RoundTripper: f.httpForwarder.roundTripper,
-		errorHandler: f.errHandler,
-	}
-
 	f.postConfig()
 
 	return f, nil
@@ -327,7 +302,7 @@ func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 	}
 }
 
-// serveHTTP forwards websocket traffic
+// serveWebSocket forwards websocket traffic
 func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
 	if f.log.GetLevel() >= log.DebugLevel {
 		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
@@ -533,6 +508,7 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ct
 		FlushInterval:  f.flushInterval,
 		ModifyResponse: f.modifyResponse,
 		BufferPool:     f.bufferPool,
+		ErrorHandler:   ctx.errHandler.ServeHTTP,
 	}
 
 	if f.log.GetLevel() >= log.DebugLevel {
