@@ -457,13 +457,13 @@ func BenchmarkStickysessions(b *testing.B) {
 	b.ResetTimer()
 
 	b.Run(
-		"isBackendAlive",
+		"getBackendURL",
 		func(b *testing.B) {
 			wg.Add(numCPU)
 			for i := 0; i < numCPU; i++ {
 				go func(bN int) {
 					for n := 0; n < bN; n++ {
-						s.isBackendAlive(urlsh[rand.Intn(urlsn)], urls)
+						s.getBackendURL(urlsh[rand.Intn(urlsn)], urls)
 					}
 					wg.Done()
 				}(b.N)
@@ -471,4 +471,153 @@ func BenchmarkStickysessions(b *testing.B) {
 			wg.Wait()
 		},
 	)
+}
+
+func TestStickySession_getBackendURL(t *testing.T) {
+	s := &StickySession{
+		cookieName: "sticky",
+	}
+
+	tests := []struct {
+		name        string
+		haystack    []*url.URL
+		needle      string
+		expectedURL *url.URL
+		user        *url.Userinfo
+	}{
+		{
+			name:     "Empty haystack",
+			haystack: []*url.URL{},
+			needle:   "http://10.10.10.10/",
+		},
+		{
+			name:        "Simple",
+			haystack:    []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/"}},
+			needle:      "http://10.10.10.10/",
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+		},
+		{
+			name:     "Host no match for needle",
+			haystack: []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/"}},
+			needle:   "http://10.10.10.42/",
+		},
+		{
+			name:     "Scheme no match for needle",
+			haystack: []*url.URL{{Scheme: "https", Host: "10.10.10.10", Path: "/"}},
+			needle:   "http://10.10.10.10/",
+		},
+		{
+			name:     "Path no match for needle",
+			haystack: []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/foo/bar"}},
+			needle:   "http://10.10.10.10/",
+		},
+		{
+			name:        "With user in haystack but not in needle",
+			haystack:    []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/", User: url.User("John Doe")}},
+			needle:      "http://10.10.10.10/",
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/", User: url.User("John Doe")},
+		},
+		{
+			name:        "With user in haystack, and in needle",
+			haystack:    []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/", User: url.User("John Doe")}},
+			needle:      "http://John%20Doe@10.10.10.10/",
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/", User: url.User("John Doe")},
+		},
+		{
+			name:        "With user in needle but not in haystack",
+			haystack:    []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/"}},
+			needle:      "http://John%20Doe@10.10.10.10/",
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+		},
+		{
+			name: "With multiple URLs in Haystack",
+			haystack: []*url.URL{
+				{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+				{Scheme: "https", Host: "10.10.10.42", Path: "/"},
+			},
+			needle:      "http://10.10.10.10/",
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+		},
+		{
+			name: "With multiple URL in Haystack, not matched for needle",
+			haystack: []*url.URL{
+				{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+				{Scheme: "https", Host: "10.10.10.42", Path: "/"},
+			},
+			needle: "http://10.10.10.10/foo/bar",
+		},
+		{
+			name:     "Empty haystack, hashed",
+			haystack: []*url.URL{},
+			needle:   hash("http://10.10.10.10/"),
+		},
+		{
+			name:        "Simple, hashed",
+			haystack:    []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/"}},
+			needle:      hash("http://10.10.10.10/"),
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+		},
+		{
+			name:     "Host no match for needle, hashed",
+			haystack: []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/"}},
+			needle:   hash("http://10.10.10.42/"),
+		},
+		{
+			name:     "Scheme no match for needle, hashed",
+			haystack: []*url.URL{{Scheme: "https", Host: "10.10.10.10", Path: "/"}},
+			needle:   hash("http://10.10.10.10/"),
+		},
+		{
+			name:     "Path no match for needle, hashed",
+			haystack: []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/foo/bar"}},
+			needle:   hash("http://10.10.10.10/"),
+		},
+		{
+			name:        "With user in haystack but not in needle, hashed",
+			haystack:    []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/", User: url.User("John Doe")}},
+			needle:      hash("http://10.10.10.10/"),
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/", User: url.User("John Doe")},
+		},
+		{
+			name:     "With user in haystack, and in needle, hashed",
+			haystack: []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/", User: url.User("John Doe")}},
+			needle:   hash("http://John%20Doe@10.10.10.10/"),
+		},
+		{
+			name:     "With user in needle but not in haystack, hashed",
+			haystack: []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/"}},
+			needle:   hash("http://John%20Doe@10.10.10.10/"),
+		},
+		{
+			name: "With multiple URLs in Haystack, hashed",
+			haystack: []*url.URL{
+				{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+				{Scheme: "https", Host: "10.10.10.42", Path: "/"},
+			},
+			needle:      hash("http://10.10.10.10/"),
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+		},
+		{
+			name: "With multiple URL in Haystack, not matched for needle, hashed",
+			haystack: []*url.URL{
+				{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+				{Scheme: "https", Host: "10.10.10.42", Path: "/"},
+			},
+			needle: hash("http://10.10.10.10/foo/bar"),
+		},
+		{
+			name:        "Filtering unused parameters before hashing",
+			haystack:    []*url.URL{{Scheme: "http", Host: "10.10.10.10", Path: "/", ForceQuery: true}},
+			needle:      hash("http://10.10.10.10/"),
+			expectedURL: &url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/", ForceQuery: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			backendURL := s.getBackendURL(tt.needle, tt.haystack)
+			assert.Equal(t, tt.expectedURL, backendURL)
+		})
+	}
 }
