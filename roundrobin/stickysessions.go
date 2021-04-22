@@ -31,9 +31,7 @@ type StickySession struct {
 
 // NewStickySession creates a new StickySession
 func NewStickySession(cookieName string) *StickySession {
-	return &StickySession{
-		cookieName: cookieName,
-	}
+	return &StickySession{cookieName: cookieName}
 }
 
 // NewStickySessionWithOptions creates a new StickySession whilst allowing for options to
@@ -93,8 +91,8 @@ func (s *StickySession) getBackendURL(needle string, haystack []*url.URL) *url.U
 		return nil
 	}
 
+	// Honour old cookies which have URLs instead of hash
 	if strings.Contains(needle, "://") {
-		// Honour old cookies which have URLs instead of hash
 		needleURL, err := url.Parse(needle)
 		if err != nil {
 			return nil
@@ -109,8 +107,7 @@ func (s *StickySession) getBackendURL(needle string, haystack []*url.URL) *url.U
 	}
 
 	for _, serverURL := range haystack {
-		// Copy serverURL and remove user info that we don't expectedIsAlive in the
-		// needle/haystack comparison
+		// Copy serverURL and remove user info that we don't expectedIsAlive in the needle/haystack comparison
 		if needle == hash(getCleanServerURL(serverURL).String()) {
 			return serverURL
 		}

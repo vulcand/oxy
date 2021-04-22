@@ -420,59 +420,6 @@ func TestBadCookieVal(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
 
-func BenchmarkStickysessions(b *testing.B) {
-	s := NewStickySession("pwet")
-	urls := []*url.URL{
-		&url.URL{Scheme: "http", Host: "10.10.10.10", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.11", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.12", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.13", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.14", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.15", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.16", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.17", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.18", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.19", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.20", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.21", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.22", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.23", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.24", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.25", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.26", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.27", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.28", Path: "/"},
-		&url.URL{Scheme: "http", Host: "10.10.10.29", Path: "/"},
-	}
-	urlsn := len(urls)
-
-	urlsh := make([]string, len(urls))
-	for i, u := range urls {
-		urlsh[i] = hash(u.String())
-	}
-
-	numCPU := runtime.NumCPU()
-	wg := sync.WaitGroup{}
-
-	b.ResetTimer()
-
-	b.Run(
-		"getBackendURL",
-		func(b *testing.B) {
-			wg.Add(numCPU)
-			for i := 0; i < numCPU; i++ {
-				go func(bN int) {
-					for n := 0; n < bN; n++ {
-						s.getBackendURL(urlsh[rand.Intn(urlsn)], urls)
-					}
-					wg.Done()
-				}(b.N)
-			}
-			wg.Wait()
-		},
-	)
-}
-
 func TestStickySession_getBackendURL(t *testing.T) {
 	s := &StickySession{
 		cookieName: "sticky",
@@ -620,4 +567,59 @@ func TestStickySession_getBackendURL(t *testing.T) {
 			assert.Equal(t, tt.expectedURL, backendURL)
 		})
 	}
+}
+
+func BenchmarkStickySessions(b *testing.B) {
+	s := NewStickySession("test")
+
+	haystack := []*url.URL{
+		{Scheme: "http", Host: "10.10.10.10", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.11", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.12", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.13", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.14", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.15", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.16", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.17", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.18", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.19", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.20", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.21", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.22", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.23", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.24", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.25", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.26", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.27", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.28", Path: "/"},
+		{Scheme: "http", Host: "10.10.10.29", Path: "/"},
+	}
+
+	length := len(haystack)
+
+	urlsH := make([]string, length)
+	for i, u := range haystack {
+		urlsH[i] = hash(u.String())
+	}
+
+	numCPU := runtime.NumCPU()
+	wg := sync.WaitGroup{}
+
+	b.ResetTimer()
+
+	b.Run(
+		"getBackendURL",
+		func(b *testing.B) {
+			wg.Add(numCPU)
+			for i := 0; i < numCPU; i++ {
+				go func(bN int) {
+					for n := 0; n < bN; n++ {
+						s.getBackendURL(urlsH[rand.Intn(length)], haystack)
+					}
+					wg.Done()
+				}(b.N)
+			}
+			wg.Wait()
+		},
+	)
 }
