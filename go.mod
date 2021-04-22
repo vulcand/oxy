@@ -12,6 +12,7 @@ require (
 	github.com/mailgun/multibuf v0.0.0-20150714184110-565402cd71fb
 	github.com/mailgun/timetools v0.0.0-20141028012446-7e6055773c51
 	github.com/mailgun/ttlmap v0.0.0-20170619185759-c1c17f74874f
+	github.com/segmentio/fasthash v1.0.3
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.5.1
 	github.com/vulcand/predicate v1.1.0
