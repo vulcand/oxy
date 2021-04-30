@@ -46,17 +46,26 @@ func RoundRobinRequestRewriteListener(rrl RequestRewriteListener) LBOption {
 	}
 }
 
+// RoundRobinPreRequestRewriteListener is a functional argument that sets error handler of the server
+func RoundRobinPreRequestRewriteListener(rrl RequestRewriteListener) LBOption {
+	return func(s *RoundRobin) error {
+		s.requestPreRewriteListener = rrl
+		return nil
+	}
+}
+
 // RoundRobin implements dynamic weighted round robin load balancer http handler
 type RoundRobin struct {
 	mutex      *sync.Mutex
 	next       http.Handler
 	errHandler utils.ErrorHandler
 	// Current index (starts from -1)
-	index                  int
-	servers                []*server
-	currentWeight          int
-	stickySession          *StickySession
-	requestRewriteListener RequestRewriteListener
+	index                     int
+	servers                   []*server
+	currentWeight             int
+	stickySession             *StickySession
+	requestPreRewriteListener RequestRewriteListener
+	requestRewriteListener    RequestRewriteListener
 
 	log *log.Logger
 }
@@ -107,6 +116,11 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
+	// Emit event to a listener if one exists
+	if r.requestPreRewriteListener != nil {
+		r.requestPreRewriteListener(req, &newReq)
+	}
+
 	stuck := false
 	if r.stickySession != nil {
 		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
@@ -116,6 +130,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if present {
+			r.stickySession.StickBackend(cookieURL, &w)
 			newReq.URL = cookieURL
 			stuck = true
 		}
