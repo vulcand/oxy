@@ -12,6 +12,61 @@ import (
 	"github.com/vulcand/oxy/testutils"
 )
 
+func BenchmarkRecord(b *testing.B) {
+	b.ReportAllocs()
+
+	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	require.NoError(b, err)
+
+	// warm up metrics. Adding a new code can do allocations, but in the steady
+	// state recording a code is cheap. We want to measure the steady state.
+	const codes = 100
+	for code := 0; code < codes; code++ {
+		rr.Record(code, time.Second)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		rr.Record(i%codes, time.Second)
+	}
+}
+
+func BenchmarkRecordConcurrently(b *testing.B) {
+	b.ReportAllocs()
+
+	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	require.NoError(b, err)
+
+	// warm up metrics. Adding a new code can do allocations, but in the steady
+	// state recording a code is cheap. We want to measure the steady state.
+	const codes = 100
+	for code := 0; code < codes; code++ {
+		rr.Record(code, time.Second)
+	}
+
+	concurrency := runtime.NumCPU()
+	b.Logf("NumCPU: %d, Concurrency: %d, GOMAXPROCS: %d",
+		runtime.NumCPU(), concurrency, runtime.GOMAXPROCS(0))
+	wg := sync.WaitGroup{}
+	wg.Add(concurrency)
+	perG := b.N/concurrency
+	if perG == 0 {
+		perG = 1
+	}
+
+	b.ResetTimer()
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			for j := 0; j < perG; j++ {
+				rr.Record(j%codes, time.Second)
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+}
+
 func TestDefaults(t *testing.T) {
 	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
 	require.NoError(t, err)
@@ -75,8 +130,11 @@ func TestAppend(t *testing.T) {
 }
 
 func TestConcurrentRecords(t *testing.T) {
-	// This test asserts a race condition which requires parallelism
+	// This test asserts a race condition which requires concurrency. Set
+	// GOMAXPROCS high for this test, then restore after test completes.
+	n := runtime.GOMAXPROCS(0)
 	runtime.GOMAXPROCS(100)
+	defer runtime.GOMAXPROCS(n)
 
 	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
 	require.NoError(t, err)
@@ -84,7 +142,7 @@ func TestConcurrentRecords(t *testing.T) {
 	for code := 0; code < 100; code++ {
 		for numRecords := 0; numRecords < 10; numRecords++ {
 			go func(statusCode int) {
-				_ = rr.recordStatusCode(statusCode)
+				rr.Record(statusCode, time.Second)
 			}(code)
 		}
 	}
@@ -92,11 +150,9 @@ func TestConcurrentRecords(t *testing.T) {
 
 func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	a := RTMetrics{
-		clock:           &timetools.RealTime{},
-		statusCodes:     map[int]*RollingCounter{},
-		statusCodesLock: sync.RWMutex{},
-		histogram:       &RollingHDRHistogram{},
-		histogramLock:   sync.RWMutex{},
+		clock:       &timetools.RealTime{},
+		statusCodes: map[int]*RollingCounter{},
+		histogram:   &RollingHDRHistogram{},
 	}
 
 	var err error
@@ -129,23 +185,4 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	assert.NotNil(t, b.newCounter)
 	assert.NotNil(t, b.newHist)
 	assert.NotNil(t, b.clock)
-
-	// a and b should have different locks
-	locksSucceed := make(chan bool)
-	go func() {
-		a.statusCodesLock.Lock()
-		b.statusCodesLock.Lock()
-		a.histogramLock.Lock()
-		b.histogramLock.Lock()
-		locksSucceed <- true
-	}()
-
-	for {
-		select {
-		case <-locksSucceed:
-			return
-		case <-time.After(10 * time.Second):
-			t.FailNow()
-		}
-	}
 }
