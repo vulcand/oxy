@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/codahale/hdrhistogram"
+	"github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/mailgun/timetools"
 )
 
-// HDRHistogram is a tiny wrapper around github.com/codahale/hdrhistogram that provides convenience functions for measuring http latencies.
+// HDRHistogram is a tiny wrapper around github.com/HdrHistogram/hdrhistogram-go that provides convenience functions for measuring http latencies.
 type HDRHistogram struct {
 	// lowest trackable value
 	low int64
