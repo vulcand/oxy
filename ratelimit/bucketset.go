@@ -89,11 +89,11 @@ func (tbs *TokenBucketSet) GetMaxPeriod() time.Duration {
 // debugState returns string that reflects the current state of all buckets in
 // this set. It is intended to be used for debugging and testing only.
 func (tbs *TokenBucketSet) debugState() string {
-	periods := sort.IntSlice(make([]int, 0, len(tbs.buckets)))
+	periods := make([]int64, 0, len(tbs.buckets))
 	for period := range tbs.buckets {
-		periods = append(periods, int(period))
+		periods = append(periods, int64(period))
 	}
-	sort.Sort(periods)
+	sort.Slice(periods, func(i, j int) bool { return periods[i] < periods[j] })
 	bucketRepr := make([]string, 0, len(tbs.buckets))
 	for _, period := range periods {
 		bucket := tbs.buckets[time.Duration(period)]
