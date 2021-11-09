@@ -27,3 +27,4 @@ _testmain.go
 flymake_*
 
 vendor/
+.vscode/
