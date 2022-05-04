@@ -2,10 +2,9 @@ package memmetrics
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v4/clock"
 )
 
 // HDRHistogram is a tiny wrapper around github.com/HdrHistogram/hdrhistogram-go that provides convenience functions for measuring http latencies.
@@ -46,13 +45,13 @@ func (h *HDRHistogram) Export() *HDRHistogram {
 }
 
 // LatencyAtQuantile sets latency at quantile with microsecond precision.
-func (h *HDRHistogram) LatencyAtQuantile(q float64) time.Duration {
-	return time.Duration(h.ValueAtQuantile(q)) * time.Microsecond
+func (h *HDRHistogram) LatencyAtQuantile(q float64) clock.Duration {
+	return clock.Duration(h.ValueAtQuantile(q)) * clock.Microsecond
 }
 
 // RecordLatencies Records latencies with microsecond precision.
-func (h *HDRHistogram) RecordLatencies(d time.Duration, n int64) error {
-	return h.RecordValues(int64(d/time.Microsecond), n)
+func (h *HDRHistogram) RecordLatencies(d clock.Duration, n int64) error {
+	return h.RecordValues(int64(d/clock.Microsecond), n)
 }
 
 // Reset reset a HDRHistogram.
@@ -81,30 +80,21 @@ func (h *HDRHistogram) Merge(other *HDRHistogram) error {
 
 type rhOptSetter func(r *RollingHDRHistogram) error
 
-// RollingClock sets a clock.
-func RollingClock(clock timetools.TimeProvider) rhOptSetter {
-	return func(r *RollingHDRHistogram) error {
-		r.clock = clock
-		return nil
-	}
-}
-
 // RollingHDRHistogram holds multiple histograms and rotates every period.
 // It provides resulting histogram as a result of a call of 'Merged' function.
 type RollingHDRHistogram struct {
 	idx         int
-	lastRoll    time.Time
-	period      time.Duration
+	lastRoll    clock.Time
+	period      clock.Duration
 	bucketCount int
 	low         int64
 	high        int64
 	sigfigs     int
 	buckets     []*HDRHistogram
-	clock       timetools.TimeProvider
 }
 
 // NewRollingHDRHistogram created a new RollingHDRHistogram.
-func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, bucketCount int, options ...rhOptSetter) (*RollingHDRHistogram, error) {
+func NewRollingHDRHistogram(low, high int64, sigfigs int, period clock.Duration, bucketCount int, options ...rhOptSetter) (*RollingHDRHistogram, error) {
 	rh := &RollingHDRHistogram{
 		bucketCount: bucketCount,
 		period:      period,
@@ -117,10 +107,6 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 		if err := o(rh); err != nil {
 			return nil, err
 		}
-	}
-
-	if rh.clock == nil {
-		rh.clock = &timetools.RealTime{}
 	}
 
 	buckets := make([]*HDRHistogram, rh.bucketCount)
@@ -145,7 +131,6 @@ func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
 	export.low = r.low
 	export.high = r.high
 	export.sigfigs = r.sigfigs
-	export.clock = r.clock
 
 	exportBuckets := make([]*HDRHistogram, len(r.buckets))
 	for i, hist := range r.buckets {
@@ -173,7 +158,7 @@ func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 // Reset reset a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
-	r.lastRoll = r.clock.UtcNow()
+	r.lastRoll = clock.Now().UTC()
 	for _, b := range r.buckets {
 		b.Reset()
 	}
@@ -199,15 +184,15 @@ func (r *RollingHDRHistogram) Merged() (*HDRHistogram, error) {
 }
 
 func (r *RollingHDRHistogram) getHist() *HDRHistogram {
-	if r.clock.UtcNow().Sub(r.lastRoll) >= r.period {
+	if clock.Now().UTC().Sub(r.lastRoll) >= r.period {
 		r.rotate()
-		r.lastRoll = r.clock.UtcNow()
+		r.lastRoll = clock.Now().UTC()
 	}
 	return r.buckets[r.idx]
 }
 
 // RecordLatencies sets records latencies.
-func (r *RollingHDRHistogram) RecordLatencies(v time.Duration, n int64) error {
+func (r *RollingHDRHistogram) RecordLatencies(v clock.Duration, n int64) error {
 	return r.getHist().RecordLatencies(v, n)
 }
 

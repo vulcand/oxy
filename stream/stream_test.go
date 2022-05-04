@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
+	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,10 +73,10 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 		}
 		_, _ = fmt.Fprint(w, "Response")
 		flusher.Flush()
-		time.Sleep(time.Duration(500) * time.Millisecond)
+		clock.Sleep(500 * clock.Millisecond)
 		_, _ = fmt.Fprint(w, "in")
 		flusher.Flush()
-		time.Sleep(time.Duration(500) * time.Millisecond)
+		clock.Sleep(500 * clock.Millisecond)
 		_, _ = fmt.Fprint(w, "Chunks")
 		flusher.Flush()
 	})

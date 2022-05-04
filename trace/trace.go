@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"time"
 
+	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
@@ -84,17 +84,17 @@ func Logger(l *log.Logger) Option {
 }
 
 func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	start := time.Now()
+	start := clock.Now()
 	pw := utils.NewProxyWriterWithLogger(w, t.log)
 	t.next.ServeHTTP(pw, req)
 
-	l := t.newRecord(req, pw, time.Since(start))
+	l := t.newRecord(req, pw, clock.Since(start))
 	if err := json.NewEncoder(t.writer).Encode(l); err != nil {
 		t.log.Errorf("Failed to marshal request: %v", err)
 	}
 }
 
-func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.Duration) *Record {
+func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff clock.Duration) *Record {
 	return &Record{
 		Request: Request{
 			Method:    req.Method,
@@ -106,7 +106,7 @@ func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.D
 		Response: Response{
 			Code:      pw.StatusCode(),
 			BodyBytes: bodyBytes(pw.Header()),
-			Roundtrip: float64(diff) / float64(time.Millisecond),
+			Roundtrip: float64(diff) / float64(clock.Millisecond),
 			Headers:   captureHeaders(pw.Header(), t.respHeaders),
 		},
 	}

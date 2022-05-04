@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"time"
 
-	"github.com/mailgun/timetools"
-	"github.com/mailgun/ttlmap"
+	"github.com/mailgun/holster/v4/clock"
+	"github.com/mailgun/holster/v4/collections"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
@@ -18,19 +17,19 @@ const DefaultCapacity = 65536
 
 // RateSet maintains a set of rates. It can contain only one rate per period at a time.
 type RateSet struct {
-	m map[time.Duration]*rate
+	m map[clock.Duration]*rate
 }
 
 // NewRateSet crates an empty `RateSet` instance.
 func NewRateSet() *RateSet {
 	rs := new(RateSet)
-	rs.m = make(map[time.Duration]*rate)
+	rs.m = make(map[clock.Duration]*rate)
 	return rs
 }
 
 // Add adds a rate to the set. If there is a rate with the same period in the
 // set then the new rate overrides the old one.
-func (rs *RateSet) Add(period time.Duration, average int64, burst int64) error {
+func (rs *RateSet) Add(period clock.Duration, average int64, burst int64) error {
 	if period <= 0 {
 		return fmt.Errorf("invalid period: %v", period)
 	}
@@ -66,9 +65,8 @@ type TokenLimiter struct {
 	defaultRates *RateSet
 	extract      utils.SourceExtractor
 	extractRates RateExtractor
-	clock        timetools.TimeProvider
 	mutex        sync.Mutex
-	bucketSets   *ttlmap.TtlMap
+	bucketSets   *collections.TTLMap
 	errHandler   utils.ErrorHandler
 	capacity     int
 	next         http.Handler
@@ -98,11 +96,7 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		}
 	}
 	setDefaults(tl)
-	bucketSets, err := ttlmap.NewMapWithProvider(tl.capacity, tl.clock)
-	if err != nil {
-		return nil, err
-	}
-	tl.bucketSets = bucketSets
+	tl.bucketSets = collections.NewTTLMap(tl.capacity)
 	return tl, nil
 }
 
@@ -149,10 +143,10 @@ func (tl *TokenLimiter) consumeRates(req *http.Request, source string, amount in
 		bucketSet = bucketSetI.(*TokenBucketSet)
 		bucketSet.Update(effectiveRates)
 	} else {
-		bucketSet = NewTokenBucketSet(effectiveRates, tl.clock)
+		bucketSet = NewTokenBucketSet(effectiveRates)
 		// We set ttl as 10 times rate period. E.g. if rate is 100 requests/second per client ip
 		// the counters for this ip will expire after 10 seconds of inactivity
-		err := tl.bucketSets.Set(source, bucketSet, int(bucketSet.maxPeriod/time.Second)*10+1)
+		err := tl.bucketSets.Set(source, bucketSet, int(bucketSet.maxPeriod/clock.Second)*10+1)
 		if err != nil {
 			return err
 		}
@@ -191,7 +185,7 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 
 // MaxRateError max rate error.
 type MaxRateError struct {
-	Delay time.Duration
+	Delay clock.Duration
 }
 
 func (m *MaxRateError) Error() string {
@@ -231,14 +225,6 @@ func ExtractRates(e RateExtractor) TokenLimiterOption {
 	}
 }
 
-// Clock sets the clock.
-func Clock(clock timetools.TimeProvider) TokenLimiterOption {
-	return func(cl *TokenLimiter) error {
-		cl.clock = clock
-		return nil
-	}
-}
-
 // Capacity sets the capacity.
 func Capacity(capacity int) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
@@ -255,9 +241,6 @@ var defaultErrHandler = &RateErrHandler{}
 func setDefaults(tl *TokenLimiter) {
 	if tl.capacity <= 0 {
 		tl.capacity = DefaultCapacity
-	}
-	if tl.clock == nil {
-		tl.clock = &timetools.RealTime{}
 	}
 	if tl.errHandler == nil {
 		tl.errHandler = defaultErrHandler

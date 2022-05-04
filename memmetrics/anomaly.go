@@ -3,16 +3,17 @@ package memmetrics
 import (
 	"math"
 	"sort"
-	"time"
+
+	"github.com/mailgun/holster/v4/clock"
 )
 
 // SplitLatencies provides simple anomaly detection for requests latencies.
 // it splits values into good or bad category based on the threshold and the median value.
 // If all values are not far from the median, it will return all values in 'good' set.
 // Precision is the smallest value to consider, e.g. if set to millisecond, microseconds will be ignored.
-func SplitLatencies(values []time.Duration, precision time.Duration) (good map[time.Duration]bool, bad map[time.Duration]bool) {
+func SplitLatencies(values []clock.Duration, precision clock.Duration) (good map[clock.Duration]bool, bad map[clock.Duration]bool) {
 	// Find the max latency M and then map each latency L to the ratio L/M and then call SplitFloat64
-	v2r := map[float64]time.Duration{}
+	v2r := map[float64]clock.Duration{}
 	ratios := make([]float64, len(values))
 	m := maxTime(values)
 	for i, v := range values {
@@ -20,7 +21,7 @@ func SplitLatencies(values []time.Duration, precision time.Duration) (good map[t
 		v2r[ratio] = v
 		ratios[i] = ratio
 	}
-	good, bad = make(map[time.Duration]bool), make(map[time.Duration]bool)
+	good, bad = make(map[clock.Duration]bool), make(map[clock.Duration]bool)
 	// Note that multiplier makes this function way less sensitive than ratios detector, this is to avoid noise.
 	vgood, vbad := SplitFloat64(2, 0, ratios)
 	for r := range vgood {
@@ -88,7 +89,7 @@ func medianAbsoluteDeviation(values []float64) float64 {
 	return median(distances)
 }
 
-func maxTime(vals []time.Duration) time.Duration {
+func maxTime(vals []clock.Duration) clock.Duration {
 	val := vals[0]
 	for _, v := range vals {
 		if v > val {

@@ -4,9 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"sync"
-	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v4/clock"
 )
 
 // RTMetrics provides aggregated performance metrics for HTTP requests processing
@@ -24,7 +23,6 @@ type RTMetrics struct {
 
 	newCounter NewCounterFn
 	newHist    NewRollingHistogramFn
-	clock      timetools.TimeProvider
 }
 
 type rrOptSetter func(r *RTMetrics) error
@@ -54,14 +52,6 @@ func RTHistogram(fn NewRollingHistogramFn) rrOptSetter {
 	}
 }
 
-// RTClock sets a clock.
-func RTClock(clock timetools.TimeProvider) rrOptSetter {
-	return func(r *RTMetrics) error {
-		r.clock = clock
-		return nil
-	}
-}
-
 // NewRTMetrics returns new instance of metrics collector.
 func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
 	m := &RTMetrics{
@@ -74,19 +64,15 @@ func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
 		}
 	}
 
-	if m.clock == nil {
-		m.clock = &timetools.RealTime{}
-	}
-
 	if m.newCounter == nil {
 		m.newCounter = func() (*RollingCounter, error) {
-			return NewCounter(counterBuckets, counterResolution, CounterClock(m.clock))
+			return NewCounter(counterBuckets, counterResolution)
 		}
 	}
 
 	if m.newHist == nil {
 		m.newHist = func() (*RollingHDRHistogram, error) {
-			return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets, RollingClock(m.clock))
+			return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets)
 		}
 	}
 
@@ -133,13 +119,12 @@ func (m *RTMetrics) Export() *RTMetrics {
 	}
 	export.newCounter = m.newCounter
 	export.newHist = m.newHist
-	export.clock = m.clock
 
 	return export
 }
 
 // CounterWindowSize gets total windows size.
-func (m *RTMetrics) CounterWindowSize() time.Duration {
+func (m *RTMetrics) CounterWindowSize() clock.Duration {
 	return m.total.WindowSize()
 }
 
@@ -207,7 +192,7 @@ func (m *RTMetrics) Append(other *RTMetrics) error {
 }
 
 // Record records a metric.
-func (m *RTMetrics) Record(code int, duration time.Duration) {
+func (m *RTMetrics) Record(code int, duration clock.Duration) {
 	m.total.Inc(1)
 	if code == http.StatusGatewayTimeout || code == http.StatusBadGateway {
 		m.netErrors.Inc(1)
@@ -258,7 +243,7 @@ func (m *RTMetrics) Reset() {
 	m.statusCodes = make(map[int]*RollingCounter)
 }
 
-func (m *RTMetrics) recordLatency(d time.Duration) error {
+func (m *RTMetrics) recordLatency(d clock.Duration) error {
 	m.histogramLock.Lock()
 	defer m.histogramLock.Unlock()
 	return m.histogram.RecordLatencies(d, 1)
@@ -293,10 +278,10 @@ func (m *RTMetrics) recordStatusCode(statusCode int) error {
 
 const (
 	counterBuckets         = 10
-	counterResolution      = time.Second
+	counterResolution      = clock.Second
 	histMin                = 1
-	histMax                = 3600000000       // 1 hour in microseconds
-	histSignificantFigures = 2                // significant figures (1% precision)
-	histBuckets            = 6                // number of sub-histograms in a rolling histogram
-	histPeriod             = 10 * time.Second // roll time
+	histMax                = 3600000000        // 1 hour in microseconds
+	histSignificantFigures = 2                 // significant figures (1% precision)
+	histBuckets            = 6                 // number of sub-histograms in a rolling histogram
+	histPeriod             = 10 * clock.Second // roll time
 )

@@ -4,26 +4,23 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v4/clock"
 )
 
 // TokenBucketSet represents a set of TokenBucket covering different time periods.
 type TokenBucketSet struct {
-	buckets   map[time.Duration]*tokenBucket
-	maxPeriod time.Duration
-	clock     timetools.TimeProvider
+	buckets   map[clock.Duration]*tokenBucket
+	maxPeriod clock.Duration
 }
 
 // NewTokenBucketSet creates a `TokenBucketSet` from the specified `rates`.
-func NewTokenBucketSet(rates *RateSet, clock timetools.TimeProvider) *TokenBucketSet {
+func NewTokenBucketSet(rates *RateSet) *TokenBucketSet {
 	tbs := new(TokenBucketSet)
-	tbs.clock = clock
 	// In the majority of cases we will have only one bucket.
-	tbs.buckets = make(map[time.Duration]*tokenBucket, len(rates.m))
+	tbs.buckets = make(map[clock.Duration]*tokenBucket, len(rates.m))
 	for _, rate := range rates.m {
-		newBucket := newTokenBucket(rate, clock)
+		newBucket := newTokenBucket(rate)
 		tbs.buckets[rate.period] = newBucket
 		tbs.maxPeriod = maxDuration(tbs.maxPeriod, rate.period)
 	}
@@ -43,7 +40,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 	// Add missing buckets.
 	for _, rate := range rates.m {
 		if _, ok := tbs.buckets[rate.period]; !ok {
-			newBucket := newTokenBucket(rate, tbs.clock)
+			newBucket := newTokenBucket(rate)
 			tbs.buckets[rate.period] = newBucket
 		}
 	}
@@ -55,8 +52,8 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 }
 
 // Consume consume tokens.
-func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
-	var maxDelay time.Duration = UndefinedDelay
+func (tbs *TokenBucketSet) Consume(tokens int64) (clock.Duration, error) {
+	var maxDelay clock.Duration = UndefinedDelay
 	var firstErr error
 	for _, tokenBucket := range tbs.buckets {
 		// We keep calling `Consume` even after a error is returned for one of
@@ -82,7 +79,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 }
 
 // GetMaxPeriod returns the max period.
-func (tbs *TokenBucketSet) GetMaxPeriod() time.Duration {
+func (tbs *TokenBucketSet) GetMaxPeriod() clock.Duration {
 	return tbs.maxPeriod
 }
 
@@ -96,13 +93,13 @@ func (tbs *TokenBucketSet) debugState() string {
 	sort.Slice(periods, func(i, j int) bool { return periods[i] < periods[j] })
 	bucketRepr := make([]string, 0, len(tbs.buckets))
 	for _, period := range periods {
-		bucket := tbs.buckets[time.Duration(period)]
+		bucket := tbs.buckets[clock.Duration(period)]
 		bucketRepr = append(bucketRepr, fmt.Sprintf("{%v: %v}", bucket.period, bucket.availableTokens))
 	}
 	return strings.Join(bucketRepr, ", ")
 }
 
-func maxDuration(x time.Duration, y time.Duration) time.Duration {
+func maxDuration(x, y clock.Duration) clock.Duration {
 	if x > y {
 		return x
 	}

@@ -2,8 +2,8 @@ package cbreaker
 
 import (
 	"testing"
-	"time"
 
+	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/memmetrics"
@@ -27,12 +27,12 @@ func TestTripped(t *testing.T) {
 		},
 		{
 			expression: "LatencyAtQuantileMS(50.0) > 50",
-			metrics:    statsLatencyAtQuantile(50, time.Millisecond*51),
+			metrics:    statsLatencyAtQuantile(50, clock.Millisecond*51),
 			expected:   true,
 		},
 		{
 			expression: "LatencyAtQuantileMS(50.0) < 50",
-			metrics:    statsLatencyAtQuantile(50, time.Millisecond*51),
+			metrics:    statsLatencyAtQuantile(50, clock.Millisecond*51),
 			expected:   false,
 		},
 		{

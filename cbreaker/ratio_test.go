@@ -3,25 +3,29 @@ package cbreaker
 import (
 	"math"
 	"testing"
-	"time"
 
+	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/vulcand/oxy/testutils"
 )
 
 func TestRampUp(t *testing.T) {
-	clock := testutils.GetClock()
-	duration := 10 * time.Second
-	rc := newRatioController(clock, duration, log.StandardLogger())
+	done := testutils.FreezeTime()
+	defer done()
+	duration := 10 * clock.Second
+	rc := newRatioController(duration, log.StandardLogger())
 
 	allowed, denied := 0, 0
-	for i := 0; i < int(duration/time.Millisecond); i++ {
+	for i := 0; i < int(duration/clock.Millisecond); i++ {
 		ratio := sendRequest(&allowed, &denied, rc)
 		expected := rc.targetRatio()
 		diff := math.Abs(expected - ratio)
+		t.Log("Ratio", ratio)
+		t.Log("Expected", expected)
+		t.Log("Diff", diff)
 		assert.EqualValues(t, 0, round(diff, 0.5, 1))
-		clock.CurrentTime = clock.CurrentTime.Add(time.Millisecond)
+		clock.Advance(clock.Millisecond)
 	}
 }
 

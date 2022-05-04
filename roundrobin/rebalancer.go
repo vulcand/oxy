@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
-	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
@@ -19,7 +18,7 @@ type RebalancerOption func(*Rebalancer) error
 // Meter measures server performance and returns it's relative value via rating.
 type Meter interface {
 	Rating() float64
-	Record(int, time.Duration)
+	Record(int, clock.Duration)
 	IsReady() bool
 }
 
@@ -31,12 +30,10 @@ type NewMeterFn func() (Meter, error)
 type Rebalancer struct {
 	// mutex
 	mtx *sync.Mutex
-	// As usual, control time in tests
-	clock timetools.TimeProvider
 	// Time that freezes state machine to accumulate stats after updating the weights
-	backoffDuration time.Duration
+	backoffDuration clock.Duration
 	// Timer is set to give probing some time to take place
-	timer time.Time
+	timer clock.Time
 	// server records that remember original weights
 	servers []*rbServer
 	// next is  internal load balancer next in chain
@@ -57,16 +54,8 @@ type Rebalancer struct {
 	log *log.Logger
 }
 
-// RebalancerClock sets a clock.
-func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.clock = clock
-		return nil
-	}
-}
-
 // RebalancerBackoff sets a beck off duration.
-func RebalancerBackoff(d time.Duration) RebalancerOption {
+func RebalancerBackoff(d clock.Duration) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.backoffDuration = d
 		return nil
@@ -119,15 +108,12 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 			return nil, err
 		}
 	}
-	if rb.clock == nil {
-		rb.clock = &timetools.RealTime{}
-	}
 	if rb.backoffDuration == 0 {
-		rb.backoffDuration = 10 * time.Second
+		rb.backoffDuration = 10 * clock.Second
 	}
 	if rb.newMeter == nil {
 		rb.newMeter = func() (Meter, error) {
-			rc, err := memmetrics.NewRatioCounter(10, time.Second, memmetrics.RatioClock(rb.clock))
+			rc, err := memmetrics.NewRatioCounter(10, clock.Second)
 			if err != nil {
 				return nil, err
 			}
@@ -170,7 +156,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	pw := utils.NewProxyWriter(w)
-	start := rb.clock.UtcNow()
+	start := clock.Now().UTC()
 
 	// make shallow copy of request before changing anything to avoid side effects
 	newReq := *req
@@ -214,11 +200,11 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	rb.next.Next().ServeHTTP(pw, &newReq)
 
-	rb.recordMetrics(newReq.URL, pw.StatusCode(), rb.clock.UtcNow().Sub(start))
+	rb.recordMetrics(newReq.URL, pw.StatusCode(), clock.Now().UTC().Sub(start))
 	rb.adjustWeights()
 }
 
-func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency time.Duration) {
+func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency clock.Duration) {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
 	if srv, i := rb.findServer(u); i != -1 {
@@ -231,7 +217,7 @@ func (rb *Rebalancer) reset() {
 		s.curWeight = s.origWeight
 		_ = rb.next.UpsertServer(s.url, Weight(s.origWeight))
 	}
-	rb.timer = rb.clock.UtcNow().Add(-1 * time.Second)
+	rb.timer = clock.Now().UTC().Add(-1 * clock.Second)
 	rb.ratings = make([]float64, len(rb.servers))
 }
 
@@ -369,11 +355,11 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 }
 
 func (rb *Rebalancer) setTimer() {
-	rb.timer = rb.clock.UtcNow().Add(rb.backoffDuration)
+	rb.timer = clock.Now().UTC().Add(rb.backoffDuration)
 }
 
 func (rb *Rebalancer) timerExpired() bool {
-	return rb.timer.Before(rb.clock.UtcNow())
+	return rb.timer.Before(clock.Now().UTC())
 }
 
 func (rb *Rebalancer) metricsReady() bool {
@@ -488,7 +474,7 @@ func (n *codeMeter) Rating() float64 {
 }
 
 // Record records a meter.
-func (n *codeMeter) Record(code int, d time.Duration) {
+func (n *codeMeter) Record(code int, d clock.Duration) {
 	if code >= n.codeS && code < n.codeE {
 		n.r.IncA(1)
 	} else {

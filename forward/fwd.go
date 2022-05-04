@@ -15,9 +15,9 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/utils"
 )
@@ -144,7 +144,7 @@ func ResponseModifier(responseModifier func(*http.Response) error) optSetter {
 }
 
 // StreamingFlushInterval defines a streaming flush interval for the HTTP forwarder.
-func StreamingFlushInterval(flushInterval time.Duration) optSetter {
+func StreamingFlushInterval(flushInterval clock.Duration) optSetter {
 	return func(f *Forwarder) error {
 		f.httpForwarder.flushInterval = flushInterval
 		return nil
@@ -171,7 +171,7 @@ type httpForwarder struct {
 	roundTripper   http.RoundTripper
 	rewriter       ReqRewriter
 	passHost       bool
-	flushInterval  time.Duration
+	flushInterval  clock.Duration
 	modifyResponse func(*http.Response) error
 
 	tlsClientConfig *tls.Config
@@ -182,7 +182,7 @@ type httpForwarder struct {
 	websocketConnectionClosedHook func(req *http.Request, conn net.Conn)
 }
 
-const defaultFlushInterval = time.Duration(100) * time.Millisecond
+const defaultFlushInterval = 100 * clock.Millisecond
 
 // Connection states.
 const (
@@ -492,7 +492,7 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ct
 		defer logEntry.Debug("vulcand/oxy/forward/http: completed ServeHttp on request")
 	}
 
-	start := time.Now().UTC()
+	start := clock.Now().UTC()
 
 	outReq := new(http.Request)
 	*outReq = *inReq // includes shallow copies of maps, but we handle this in Director
@@ -514,14 +514,14 @@ func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ct
 
 		if inReq.TLS != nil {
 			f.log.Debugf("vulcand/oxy/forward/http: Round trip: %v, code: %v, Length: %v, duration: %v tls:version: %x, tls:resume:%t, tls:csuite:%x, tls:server:%v",
-				inReq.URL, pw.StatusCode(), pw.GetLength(), time.Now().UTC().Sub(start),
+				inReq.URL, pw.StatusCode(), pw.GetLength(), clock.Now().UTC().Sub(start),
 				inReq.TLS.Version,
 				inReq.TLS.DidResume,
 				inReq.TLS.CipherSuite,
 				inReq.TLS.ServerName)
 		} else {
 			f.log.Debugf("vulcand/oxy/forward/http: Round trip: %v, code: %v, Length: %v, duration: %v",
-				inReq.URL, pw.StatusCode(), pw.GetLength(), time.Now().UTC().Sub(start))
+				inReq.URL, pw.StatusCode(), pw.GetLength(), clock.Now().UTC().Sub(start))
 		}
 	} else {
 		revproxy.ServeHTTP(w, outReq)

@@ -4,23 +4,25 @@ import (
 	"runtime"
 	"sync"
 	"testing"
-	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
 )
 
 func TestDefaults(t *testing.T) {
-	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	done := testutils.FreezeTime()
+	defer done()
+
+	rr, err := NewRTMetrics()
 	require.NoError(t, err)
 	require.NotNil(t, rr)
 
-	rr.Record(200, time.Second)
-	rr.Record(502, 2*time.Second)
-	rr.Record(200, time.Second)
-	rr.Record(200, time.Second)
+	rr.Record(200, clock.Second)
+	rr.Record(502, 2*clock.Second)
+	rr.Record(200, clock.Second)
+	rr.Record(200, clock.Second)
 
 	assert.EqualValues(t, 1, rr.NetworkErrorCount())
 	assert.EqualValues(t, 4, rr.TotalCount())
@@ -30,7 +32,7 @@ func TestDefaults(t *testing.T) {
 
 	h, err := rr.LatencyHistogram()
 	require.NoError(t, err)
-	assert.Equal(t, 2, int(h.LatencyAtQuantile(100)/time.Second))
+	assert.Equal(t, 2, int(h.LatencyAtQuantile(100)/clock.Second))
 
 	rr.Reset()
 	assert.EqualValues(t, 0, rr.NetworkErrorCount())
@@ -41,29 +43,30 @@ func TestDefaults(t *testing.T) {
 
 	h, err = rr.LatencyHistogram()
 	require.NoError(t, err)
-	assert.Equal(t, time.Duration(0), h.LatencyAtQuantile(100))
+	assert.Equal(t, clock.Duration(0), h.LatencyAtQuantile(100))
 }
 
 func TestAppend(t *testing.T) {
-	clock := testutils.GetClock()
+	done := testutils.FreezeTime()
+	defer done()
 
-	rr, err := NewRTMetrics(RTClock(clock))
+	rr, err := NewRTMetrics()
 	require.NoError(t, err)
 	require.NotNil(t, rr)
 
-	rr.Record(200, time.Second)
-	rr.Record(502, 2*time.Second)
-	rr.Record(200, time.Second)
-	rr.Record(200, time.Second)
+	rr.Record(200, clock.Second)
+	rr.Record(502, 2*clock.Second)
+	rr.Record(200, clock.Second)
+	rr.Record(200, clock.Second)
 
-	rr2, err := NewRTMetrics(RTClock(clock))
+	rr2, err := NewRTMetrics()
 	require.NoError(t, err)
 	require.NotNil(t, rr2)
 
-	rr2.Record(200, 3*time.Second)
-	rr2.Record(501, 3*time.Second)
-	rr2.Record(200, 3*time.Second)
-	rr2.Record(200, 3*time.Second)
+	rr2.Record(200, 3*clock.Second)
+	rr2.Record(501, 3*clock.Second)
+	rr2.Record(200, 3*clock.Second)
+	rr2.Record(200, 3*clock.Second)
 
 	require.NoError(t, rr2.Append(rr))
 	assert.Equal(t, map[int]int64{501: 1, 502: 1, 200: 6}, rr2.StatusCodesCounts())
@@ -71,14 +74,14 @@ func TestAppend(t *testing.T) {
 
 	h, err := rr2.LatencyHistogram()
 	require.NoError(t, err)
-	assert.EqualValues(t, 3, h.LatencyAtQuantile(100)/time.Second)
+	assert.EqualValues(t, 3, h.LatencyAtQuantile(100)/clock.Second)
 }
 
 func TestConcurrentRecords(t *testing.T) {
 	// This test asserts a race condition which requires parallelism
 	runtime.GOMAXPROCS(100)
 
-	rr, err := NewRTMetrics(RTClock(testutils.GetClock()))
+	rr, err := NewRTMetrics()
 	require.NoError(t, err)
 
 	for code := 0; code < 100; code++ {
@@ -92,7 +95,6 @@ func TestConcurrentRecords(t *testing.T) {
 
 func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	a := RTMetrics{
-		clock:           &timetools.RealTime{},
 		statusCodes:     map[int]*RollingCounter{},
 		statusCodesLock: sync.RWMutex{},
 		histogram:       &RollingHDRHistogram{},
@@ -100,17 +102,17 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	}
 
 	var err error
-	a.total, err = NewCounter(1, time.Second, CounterClock(a.clock))
+	a.total, err = NewCounter(1, clock.Second)
 	require.NoError(t, err)
 
-	a.netErrors, err = NewCounter(1, time.Second, CounterClock(a.clock))
+	a.netErrors, err = NewCounter(1, clock.Second)
 	require.NoError(t, err)
 
 	a.newCounter = func() (*RollingCounter, error) {
-		return NewCounter(counterBuckets, counterResolution, CounterClock(a.clock))
+		return NewCounter(counterBuckets, counterResolution)
 	}
 	a.newHist = func() (*RollingHDRHistogram, error) {
-		return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets, RollingClock(a.clock))
+		return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets)
 	}
 
 	b := a.Export()
@@ -120,7 +122,6 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	a.histogram = nil
 	a.newCounter = nil
 	a.newHist = nil
-	a.clock = nil
 
 	assert.NotNil(t, b.total)
 	assert.NotNil(t, b.netErrors)
@@ -128,7 +129,6 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 	assert.NotNil(t, b.histogram)
 	assert.NotNil(t, b.newCounter)
 	assert.NotNil(t, b.newHist)
-	assert.NotNil(t, b.clock)
 
 	// a and b should have different locks
 	locksSucceed := make(chan bool)
@@ -144,7 +144,7 @@ func TestRTMetricExportReturnsNewCopy(t *testing.T) {
 		select {
 		case <-locksSucceed:
 			return
-		case <-time.After(10 * time.Second):
+		case <-clock.After(10 * clock.Second):
 			t.FailNow()
 		}
 	}

@@ -2,9 +2,8 @@ package ratelimit
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v4/clock"
 )
 
 // UndefinedDelay  default delay.
@@ -12,7 +11,7 @@ const UndefinedDelay = -1
 
 // rate defines token bucket parameters.
 type rate struct {
-	period  time.Duration
+	period  clock.Duration
 	average int64
 	burst   int64
 }
@@ -24,37 +23,34 @@ func (r *rate) String() string {
 // tokenBucket Implements token bucket algorithm (http://en.wikipedia.org/wiki/Token_bucket)
 type tokenBucket struct {
 	// The time period controlled by the bucket in nanoseconds.
-	period time.Duration
+	period clock.Duration
 	// The number of nanoseconds that takes to add one more token to the total
 	// number of available tokens. It effectively caches the value that could
 	// have been otherwise deduced from refillRate.
-	timePerToken time.Duration
+	timePerToken clock.Duration
 	// The maximum number of tokens that can be accumulate in the bucket.
 	burst int64
 	// The number of tokens available for consumption at the moment. It can
 	// nether be larger then capacity.
 	availableTokens int64
-	// Interface that gives current time (so tests can override)
-	clock timetools.TimeProvider
 	// Tells when tokensAvailable was updated the last time.
-	lastRefresh time.Time
+	lastRefresh clock.Time
 	// The number of tokens consumed the last time.
 	lastConsumed int64
 }
 
 // newTokenBucket crates a `tokenBucket` instance for the specified `Rate`.
-func newTokenBucket(rate *rate, clock timetools.TimeProvider) *tokenBucket {
+func newTokenBucket(rate *rate) *tokenBucket {
 	period := rate.period
 	if period == 0 {
-		period = time.Nanosecond
+		period = clock.Nanosecond
 	}
 
 	return &tokenBucket{
 		period:          period,
-		timePerToken:    time.Duration(int64(period) / rate.average),
+		timePerToken:    clock.Duration(int64(period) / rate.average),
 		burst:           rate.burst,
-		clock:           clock,
-		lastRefresh:     clock.UtcNow(),
+		lastRefresh:     clock.Now().UTC(),
 		availableTokens: rate.burst,
 	}
 }
@@ -65,7 +61,7 @@ func newTokenBucket(rate *rate, clock timetools.TimeProvider) *tokenBucket {
 // and the delay is not defined; otherwise returned a none zero delay that tells
 // how much time the caller needs to wait until the desired number of tokens
 // will become available for consumption.
-func (tb *tokenBucket) consume(tokens int64) (time.Duration, error) {
+func (tb *tokenBucket) consume(tokens int64) (clock.Duration, error) {
 	tb.updateAvailableTokens()
 	tb.lastConsumed = 0
 	if tokens > tb.burst {
@@ -95,7 +91,7 @@ func (tb *tokenBucket) update(rate *rate) error {
 	if rate.period != tb.period {
 		return fmt.Errorf("period mismatch: %v != %v", tb.period, rate.period)
 	}
-	tb.timePerToken = time.Duration(int64(tb.period) / rate.average)
+	tb.timePerToken = clock.Duration(int64(tb.period) / rate.average)
 	tb.burst = rate.burst
 	if tb.availableTokens > rate.burst {
 		tb.availableTokens = rate.burst
@@ -105,16 +101,16 @@ func (tb *tokenBucket) update(rate *rate) error {
 
 // timeTillAvailable returns the number of nanoseconds that we need to
 // wait until the specified number of tokens becomes available for consumption.
-func (tb *tokenBucket) timeTillAvailable(tokens int64) time.Duration {
+func (tb *tokenBucket) timeTillAvailable(tokens int64) clock.Duration {
 	missingTokens := tokens - tb.availableTokens
-	return time.Duration(missingTokens) * tb.timePerToken
+	return clock.Duration(missingTokens) * tb.timePerToken
 }
 
 // updateAvailableTokens updates the number of tokens available for consumption.
 // It is calculated based on the refill rate, the time passed since last refresh,
 // and is limited by the bucket capacity.
 func (tb *tokenBucket) updateAvailableTokens() {
-	now := tb.clock.UtcNow()
+	now := clock.Now().UTC()
 	timePassed := now.Sub(tb.lastRefresh)
 
 	if tb.timePerToken == 0 {

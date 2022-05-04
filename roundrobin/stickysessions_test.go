@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"time"
 
+	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/forward"
@@ -125,7 +125,7 @@ func TestBasicWithAESValue(t *testing.T) {
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
 
-	aesValue, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*time.Second)
+	aesValue, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*clock.Second)
 	require.NoError(t, err)
 
 	sticky.SetCookieValue(aesValue)
@@ -284,13 +284,13 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			desc: "Expires",
 			name: "test",
 			options: CookieOptions{
-				Expires: time.Date(1955, 11, 12, 1, 22, 0, 0, time.UTC),
+				Expires: clock.Date(1955, 11, 12, 1, 22, 0, 0, clock.UTC),
 			},
 			expected: &http.Cookie{
 				Name:       "test",
 				Value:      a.URL,
 				Path:       "/",
-				Expires:    time.Date(1955, 11, 12, 1, 22, 0, 0, time.UTC),
+				Expires:    clock.Date(1955, 11, 12, 1, 22, 0, 0, clock.UTC),
 				RawExpires: "Sat, 12 Nov 1955 01:22:00 GMT",
 				Raw:        fmt.Sprintf("test=%s; Path=/; Expires=Sat, 12 Nov 1955 01:22:00 GMT", a.URL),
 			},
@@ -536,11 +536,11 @@ func TestStickySession_GetBackend(t *testing.T) {
 	rawValue := &stickycookie.RawValue{}
 	hashValue := &stickycookie.HashValue{}
 	saltyHashValue := &stickycookie.HashValue{Salt: "test salt"}
-	aesValue, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*time.Second)
+	aesValue, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*clock.Second)
 	require.NoError(t, err)
 	aesValueInfinite, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 0)
 	require.NoError(t, err)
-	aesValueExpired, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 1*time.Nanosecond)
+	aesValueExpired, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 1*clock.Nanosecond)
 	require.NoError(t, err)
 
 	tests := []struct {

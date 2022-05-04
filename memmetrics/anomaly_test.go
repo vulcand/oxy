@@ -3,8 +3,8 @@ package memmetrics
 import (
 	"strconv"
 	"testing"
-	"time"
 
+	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -173,22 +173,22 @@ func TestSplitLatencies(t *testing.T) {
 		t.Run(strconv.Itoa(ind), func(t *testing.T) {
 			t.Parallel()
 
-			values := make([]time.Duration, len(test.values))
+			values := make([]clock.Duration, len(test.values))
 			for i, d := range test.values {
-				values[i] = time.Millisecond * time.Duration(d)
+				values[i] = clock.Millisecond * clock.Duration(d)
 			}
 
-			good, bad := SplitLatencies(values, time.Millisecond)
+			good, bad := SplitLatencies(values, clock.Millisecond)
 
-			vgood := make(map[time.Duration]bool, len(test.good))
+			vgood := make(map[clock.Duration]bool, len(test.good))
 			for _, v := range test.good {
-				vgood[time.Duration(v)*time.Millisecond] = true
+				vgood[clock.Duration(v)*clock.Millisecond] = true
 			}
 			assert.Equal(t, vgood, good)
 
-			vbad := make(map[time.Duration]bool, len(test.bad))
+			vbad := make(map[clock.Duration]bool, len(test.bad))
 			for _, v := range test.bad {
-				vbad[time.Duration(v)*time.Millisecond] = true
+				vbad[clock.Duration(v)*clock.Millisecond] = true
 			}
 			assert.Equal(t, vbad, bad)
 		})

@@ -1,30 +1,19 @@
 package memmetrics
 
 import (
-	"time"
-
-	"github.com/mailgun/timetools"
+	"github.com/mailgun/holster/v4/clock"
 )
 
 type ratioOptSetter func(r *RatioCounter) error
 
-// RatioClock sets a clock.
-func RatioClock(clock timetools.TimeProvider) ratioOptSetter {
-	return func(r *RatioCounter) error {
-		r.clock = clock
-		return nil
-	}
-}
-
 // RatioCounter calculates a ratio of a/a+b over a rolling window of predefined buckets.
 type RatioCounter struct {
-	clock timetools.TimeProvider
-	a     *RollingCounter
-	b     *RollingCounter
+	a *RollingCounter
+	b *RollingCounter
 }
 
 // NewRatioCounter creates a new RatioCounter.
-func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptSetter) (*RatioCounter, error) {
+func NewRatioCounter(buckets int, resolution clock.Duration, options ...ratioOptSetter) (*RatioCounter, error) {
 	rc := &RatioCounter{}
 
 	for _, o := range options {
@@ -33,16 +22,12 @@ func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptS
 		}
 	}
 
-	if rc.clock == nil {
-		rc.clock = &timetools.RealTime{}
-	}
-
-	a, err := NewCounter(buckets, resolution, CounterClock(rc.clock))
+	a, err := NewCounter(buckets, resolution)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := NewCounter(buckets, resolution, CounterClock(rc.clock))
+	b, err := NewCounter(buckets, resolution)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +59,7 @@ func (r *RatioCounter) CountB() int64 {
 }
 
 // Resolution gets resolution.
-func (r *RatioCounter) Resolution() time.Duration {
+func (r *RatioCounter) Resolution() clock.Duration {
 	return r.a.Resolution()
 }
 
@@ -84,7 +69,7 @@ func (r *RatioCounter) Buckets() int {
 }
 
 // WindowSize gets windows size.
-func (r *RatioCounter) WindowSize() time.Duration {
+func (r *RatioCounter) WindowSize() clock.Duration {
 	return r.a.WindowSize()
 }
 
@@ -118,11 +103,11 @@ func (r *RatioCounter) IncB(v int) {
 type TestMeter struct {
 	Rate       float64
 	NotReady   bool
-	WindowSize time.Duration
+	WindowSize clock.Duration
 }
 
 // GetWindowSize gets windows size.
-func (tm *TestMeter) GetWindowSize() time.Duration {
+func (tm *TestMeter) GetWindowSize() clock.Duration {
 	return tm.WindowSize
 }
 
