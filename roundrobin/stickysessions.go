@@ -1,6 +1,7 @@
 package roundrobin
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"time"
@@ -8,7 +9,7 @@ import (
 	"github.com/vulcand/oxy/roundrobin/stickycookie"
 )
 
-// CookieOptions has all the options one would like to set on the affinity cookie
+// CookieOptions has all the options one would like to set on the affinity cookie.
 type CookieOptions struct {
 	HTTPOnly bool
 	Secure   bool
@@ -21,20 +22,20 @@ type CookieOptions struct {
 	SameSite http.SameSite
 }
 
-// StickySession is a mixin for load balancers that implements layer 7 (http cookie) session affinity
+// StickySession is a mixin for load balancers that implements layer 7 (http cookie) session affinity.
 type StickySession struct {
 	cookieName  string
 	cookieValue stickycookie.CookieValue
 	options     CookieOptions
 }
 
-// NewStickySession creates a new StickySession
+// NewStickySession creates a new StickySession.
 func NewStickySession(cookieName string) *StickySession {
 	return &StickySession{cookieName: cookieName, cookieValue: &stickycookie.RawValue{}}
 }
 
 // NewStickySessionWithOptions creates a new StickySession whilst allowing for options to
-// shape its affinity cookie such as "httpOnly" or "secure"
+// shape its affinity cookie such as "httpOnly" or "secure".
 func NewStickySessionWithOptions(cookieName string, options CookieOptions) *StickySession {
 	return &StickySession{cookieName: cookieName, options: options, cookieValue: &stickycookie.RawValue{}}
 }
@@ -48,11 +49,11 @@ func (s *StickySession) SetCookieValue(value stickycookie.CookieValue) *StickySe
 // GetBackend returns the backend URL stored in the sticky cookie, iff the backend is still in the valid list of servers.
 func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.URL, bool, error) {
 	cookie, err := req.Cookie(s.cookieName)
-	switch err {
-	case nil:
-	case http.ErrNoCookie:
-		return nil, false, nil
-	default:
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			return nil, false, nil
+		}
+
 		return nil, false, err
 	}
 
@@ -61,8 +62,8 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 	return server, server != nil, err
 }
 
-// StickBackend creates and sets the cookie
-func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
+// StickBackend creates and sets the cookie.
+func (s *StickySession) StickBackend(backend *url.URL, w http.ResponseWriter) {
 	opt := s.options
 
 	cp := "/"
@@ -81,5 +82,5 @@ func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 		HttpOnly: opt.HTTPOnly,
 		SameSite: opt.SameSite,
 	}
-	http.SetCookie(*w, cookie)
+	http.SetCookie(w, cookie)
 }

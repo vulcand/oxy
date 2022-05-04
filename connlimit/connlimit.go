@@ -11,7 +11,7 @@ import (
 )
 
 // ConnLimiter tracks concurrent connection per token
-// and is capable of rejecting connections if they are failed
+// and is capable of rejecting connections if they are failed.
 type ConnLimiter struct {
 	mutex            *sync.Mutex
 	extract          utils.SourceExtractor
@@ -24,7 +24,7 @@ type ConnLimiter struct {
 	log        *log.Logger
 }
 
-// New creates a new ConnLimiter
+// New creates a new ConnLimiter.
 func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64, options ...ConnLimitOption) (*ConnLimiter, error) {
 	if extract == nil {
 		return nil, fmt.Errorf("Extract function can not be nil")
@@ -61,7 +61,7 @@ func Logger(l *log.Logger) ConnLimitOption {
 	}
 }
 
-// Wrap sets the next handler to be called by connexion limiter handler.
+// Wrap sets the next handler to be called by connection limiter handler.
 func (cl *ConnLimiter) Wrap(h http.Handler) {
 	cl.next = h
 }
@@ -111,7 +111,7 @@ func (cl *ConnLimiter) release(token string, amount int64) {
 	}
 }
 
-// MaxConnError maximum connections reached error
+// MaxConnError maximum connections reached error.
 type MaxConnError struct {
 	max int64
 }
@@ -120,7 +120,7 @@ func (m *MaxConnError) Error() string {
 	return fmt.Sprintf("max connections reached: %d", m.max)
 }
 
-// ConnErrHandler connection limiter error handler
+// ConnErrHandler connection limiter error handler.
 type ConnErrHandler struct {
 	log *log.Logger
 }
@@ -134,16 +134,16 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 
 	if _, ok := err.(*MaxConnError); ok {
 		w.WriteHeader(429)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }
 
-// ConnLimitOption connection limit option type
+// ConnLimitOption connection limit option type.
 type ConnLimitOption func(l *ConnLimiter) error
 
-// ErrorHandler sets error handler of the server
+// ErrorHandler sets error handler of the server.
 func ErrorHandler(h utils.ErrorHandler) ConnLimitOption {
 	return func(cl *ConnLimiter) error {
 		cl.errHandler = h

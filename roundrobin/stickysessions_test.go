@@ -2,7 +2,7 @@ package roundrobin
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -51,7 +51,7 @@ func TestBasic(t *testing.T) {
 		require.NoError(t, err)
 
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 
 		require.NoError(t, err)
 		assert.Equal(t, "a", string(body))
@@ -97,7 +97,7 @@ func TestBasicWithHashValue(t *testing.T) {
 		resp, err := client.Do(req)
 		require.NoError(t, err)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		defer resp.Body.Close()
 
 		require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestBasicWithAESValue(t *testing.T) {
 		resp, err := client.Do(req)
 		require.NoError(t, err)
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		defer resp.Body.Close()
 
 		require.NoError(t, err)
@@ -327,7 +327,6 @@ func TestStickyCookieWithOptions(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.desc, func(t *testing.T) {
-
 			fwd, err := forward.New()
 			require.NoError(t, err)
 
@@ -390,7 +389,7 @@ func TestRemoveRespondingServer(t *testing.T) {
 		require.NoError(t, errReq)
 		defer resp.Body.Close()
 
-		body, errReq := ioutil.ReadAll(resp.Body)
+		body, errReq := io.ReadAll(resp.Body)
 		require.NoError(t, errReq)
 
 		assert.Equal(t, "a", string(body))
@@ -417,7 +416,7 @@ func TestRemoveRespondingServer(t *testing.T) {
 		require.NoError(t, err)
 
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 
 		require.NoError(t, err)
 		assert.Equal(t, "b", string(body))
@@ -459,7 +458,7 @@ func TestRemoveAllServers(t *testing.T) {
 		require.NoError(t, errReq)
 		defer resp.Body.Close()
 
-		body, errReq := ioutil.ReadAll(resp.Body)
+		body, errReq := io.ReadAll(resp.Body)
 		require.NoError(t, errReq)
 
 		assert.Equal(t, "a", string(body))
@@ -508,7 +507,7 @@ func TestBadCookieVal(t *testing.T) {
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, "a", string(body))
 
@@ -519,7 +518,7 @@ func TestBadCookieVal(t *testing.T) {
 	resp, err = client.Do(req)
 	require.NoError(t, err)
 
-	_, err = ioutil.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
@@ -538,6 +537,7 @@ func TestStickySession_GetBackend(t *testing.T) {
 	hashValue := &stickycookie.HashValue{}
 	saltyHashValue := &stickycookie.HashValue{Salt: "test salt"}
 	aesValue, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*time.Second)
+	require.NoError(t, err)
 	aesValueInfinite, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 0)
 	require.NoError(t, err)
 	aesValueExpired, err := stickycookie.NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 1*time.Nanosecond)

@@ -53,7 +53,7 @@ func TestNoA(t *testing.T) {
 	assert.Equal(t, 0.0, fr.Ratio())
 }
 
-// Make sure that data is properly calculated over several buckets
+// Make sure that data is properly calculated over several buckets.
 func TestMultipleBuckets(t *testing.T) {
 	clock := testutils.GetClock()
 
@@ -72,7 +72,7 @@ func TestMultipleBuckets(t *testing.T) {
 }
 
 // Make sure that data is properly calculated over several buckets
-// When we overwrite old data when the window is rolling
+// When we overwrite old data when the window is rolling.
 func TestOverwriteBuckets(t *testing.T) {
 	clock := testutils.GetClock()
 
@@ -97,7 +97,7 @@ func TestOverwriteBuckets(t *testing.T) {
 }
 
 // Make sure we cleanup the data after periods of inactivity
-// So it does not mess up the stats
+// So it does not mess up the stats.
 func TestInactiveBuckets(t *testing.T) {
 	clock := testutils.GetClock()
 

@@ -121,7 +121,6 @@ func TestReset(t *testing.T) {
 	m, err = h.Merged()
 	require.NoError(t, err)
 	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
-
 }
 
 func TestHDRHistogramExportReturnsNewCopy(t *testing.T) {

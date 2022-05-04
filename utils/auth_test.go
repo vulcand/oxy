@@ -8,7 +8,7 @@ import (
 )
 
 // Just to make sure we don't panic, return err and not
-// username and pass and cover the function
+// username and pass and cover the function.
 func TestParseBadHeaders(t *testing.T) {
 	headers := []string{
 		// just empty string
@@ -29,7 +29,7 @@ func TestParseBadHeaders(t *testing.T) {
 }
 
 // Just to make sure we don't panic, return err and not
-// username and pass and cover the function
+// username and pass and cover the function.
 func TestParseSuccess(t *testing.T) {
 	headers := []struct {
 		Header   string
@@ -50,11 +50,11 @@ func TestParseSuccess(t *testing.T) {
 			BasicAuth{Username: "Aladdin", Password: ""},
 		},
 	}
+
 	for _, h := range headers {
 		request, err := ParseAuthHeader(h.Header)
 		require.NoError(t, err)
 		assert.Equal(t, h.Expected.Username, request.Username)
 		assert.Equal(t, h.Expected.Password, request.Password)
-
 	}
 }

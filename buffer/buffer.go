@@ -39,7 +39,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"reflect"
@@ -50,18 +49,18 @@ import (
 )
 
 const (
-	// DefaultMemBodyBytes Store up to 1MB in RAM
+	// DefaultMemBodyBytes Store up to 1MB in RAM.
 	DefaultMemBodyBytes = 1048576
-	// DefaultMaxBodyBytes No limit by default
+	// DefaultMaxBodyBytes No limit by default.
 	DefaultMaxBodyBytes = -1
-	// DefaultMaxRetryAttempts Maximum retry attempts
+	// DefaultMaxRetryAttempts Maximum retry attempts.
 	DefaultMaxRetryAttempts = 10
 )
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
 
 // Buffer is responsible for buffering requests and responses
-// It buffers large requests and responses to disk,
+// It buffers large requests and responses to disk,.
 type Buffer struct {
 	maxRequestBodyBytes int64
 	memRequestBodyBytes int64
@@ -77,7 +76,7 @@ type Buffer struct {
 	log *log.Logger
 }
 
-// New returns a new buffer middleware. New() function supports optional functional arguments
+// New returns a new buffer middleware. New() function supports optional functional arguments.
 func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 	strm := &Buffer{
 		next: next,
@@ -135,7 +134,7 @@ func CondSetter(condition bool, setter optSetter) optSetter {
 //
 // Example of the predicate:
 //
-// `Attempts() <= 2 && ResponseCode() == 502`
+// `Attempts() <= 2 && ResponseCode() == 502`.
 //
 func Retry(predicate string) optSetter {
 	return func(b *Buffer) error {
@@ -148,7 +147,7 @@ func Retry(predicate string) optSetter {
 	}
 }
 
-// ErrorHandler sets error handler of the server
+// ErrorHandler sets error handler of the server.
 func ErrorHandler(h utils.ErrorHandler) optSetter {
 	return func(b *Buffer) error {
 		b.errHandler = h
@@ -156,7 +155,7 @@ func ErrorHandler(h utils.ErrorHandler) optSetter {
 	}
 }
 
-// MaxRequestBodyBytes sets the maximum request body size in bytes
+// MaxRequestBodyBytes sets the maximum request body size in bytes.
 func MaxRequestBodyBytes(m int64) optSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
@@ -179,7 +178,7 @@ func MemRequestBodyBytes(m int64) optSetter {
 	}
 }
 
-// MaxResponseBodyBytes sets the maximum response body size in bytes
+// MaxResponseBodyBytes sets the maximum response body size in bytes.
 func MaxResponseBodyBytes(m int64) optSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
@@ -301,7 +300,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			utils.CopyHeaders(w.Header(), bw.Header())
 			w.WriteHeader(bw.code)
 			if reader != nil {
-				io.Copy(w, reader)
+				_, _ = io.Copy(w, reader)
 			}
 			return
 		}
@@ -330,9 +329,9 @@ func (b *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int
 	o.TransferEncoding = []string{}
 	// http.Transport will close the request body on any error, we are controlling the close process ourselves, so we override the closer here
 	if body == nil {
-		o.Body = ioutil.NopCloser(req.Body)
+		o.Body = io.NopCloser(req.Body)
 	} else {
-		o.Body = ioutil.NopCloser(body.(io.Reader))
+		o.Body = io.NopCloser(body.(io.Reader))
 	}
 	return &o
 }
@@ -356,7 +355,7 @@ type bufferWriter struct {
 	log            *log.Logger
 }
 
-// RFC2616 #4.4
+// RFC2616 #4.4.
 func (b *bufferWriter) expectBody(r *http.Request) bool {
 	if r.Method == "HEAD" {
 		return false
@@ -420,13 +419,13 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("the response writer wrapped in this proxy does not implement http.Hijacker. Its type is: %v", reflect.TypeOf(b.responseWriter))
 }
 
-// SizeErrHandler Size error handler
+// SizeErrHandler Size error handler.
 type SizeErrHandler struct{}
 
 func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
-		w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
+		_, _ = w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
 		return
 	}
 	utils.DefaultHandler.ServeHTTP(w, req, err)

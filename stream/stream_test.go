@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +30,7 @@ func (n noOpIoWriter) Write(bytes []byte) (int, error) {
 
 func TestSimple(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -61,7 +61,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	var reqBody string
 	var contentLength int64
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		body, err := ioutil.ReadAll(req.Body)
+		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
 		reqBody = string(body)
 		contentLength = req.ContentLength
@@ -71,13 +71,13 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 		if !ok {
 			panic("expected http.ResponseWriter to be an http.Flusher")
 		}
-		fmt.Fprint(w, "Response")
+		_, _ = fmt.Fprint(w, "Response")
 		flusher.Flush()
 		time.Sleep(time.Duration(500) * time.Millisecond)
-		fmt.Fprint(w, "in")
+		_, _ = fmt.Fprint(w, "in")
 		flusher.Flush()
 		time.Sleep(time.Duration(500) * time.Millisecond)
-		fmt.Fprint(w, "Chunks")
+		_, _ = fmt.Fprint(w, "Chunks")
 		flusher.Flush()
 	})
 	defer srv.Close()
@@ -101,7 +101,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 
 	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
 	require.NoError(t, err)
-	fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+	_, _ = fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	reader := bufio.NewReader(conn)
 
 	status, err := reader.ReadString('\n')
@@ -122,7 +122,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 
 func TestRequestLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -150,7 +150,7 @@ func TestRequestLimitReached(t *testing.T) {
 
 func TestResponseLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello, this response is too large"))
+		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	defer srv.Close()
 
@@ -178,7 +178,7 @@ func TestResponseLimitReached(t *testing.T) {
 
 func TestFileStreamingResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello, this response is too large to fit in memory"))
+		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
 	defer srv.Close()
 
@@ -207,7 +207,7 @@ func TestFileStreamingResponse(t *testing.T) {
 
 func TestCustomErrorHandler(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello, this response is too large"))
+		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	defer srv.Close()
 
@@ -288,11 +288,11 @@ func TestNoBody(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
-// Make sure that stream handler preserves TLS settings
+// Make sure that stream handler preserves TLS settings.
 func TestPreservesTLS(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 	defer srv.Close()
 

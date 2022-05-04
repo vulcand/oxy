@@ -9,7 +9,7 @@ import (
 
 type rcOptSetter func(*RollingCounter) error
 
-// CounterClock defines a counter clock
+// CounterClock defines a counter clock.
 func CounterClock(c timetools.TimeProvider) rcOptSetter {
 	return func(r *RollingCounter) error {
 		r.clock = c
@@ -17,7 +17,7 @@ func CounterClock(c timetools.TimeProvider) rcOptSetter {
 	}
 }
 
-// RollingCounter Calculates in memory failure rate of an endpoint using rolling window of a predefined size
+// RollingCounter Calculates in memory failure rate of an endpoint using rolling window of a predefined size.
 type RollingCounter struct {
 	clock          timetools.TimeProvider
 	resolution     time.Duration
@@ -29,7 +29,7 @@ type RollingCounter struct {
 
 // NewCounter creates a counter with fixed amount of buckets that are rotated every resolution period.
 // E.g. 10 buckets with 1 second means that every new second the bucket is refreshed, so it maintains 10 second rolling window.
-// By default creates a bucket with 10 buckets and 1 second resolution
+// By default creates a bucket with 10 buckets and 1 second resolution.
 func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (*RollingCounter, error) {
 	if buckets <= 0 {
 		return nil, fmt.Errorf("Buckets should be >= 0")
@@ -58,13 +58,13 @@ func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (
 	return rc, nil
 }
 
-// Append append a counter
+// Append append a counter.
 func (c *RollingCounter) Append(o *RollingCounter) error {
 	c.Inc(int(o.Count()))
 	return nil
 }
 
-// Clone clone a counter
+// Clone clone a counter.
 func (c *RollingCounter) Clone() *RollingCounter {
 	c.cleanup()
 	other := &RollingCounter{
@@ -78,7 +78,7 @@ func (c *RollingCounter) Clone() *RollingCounter {
 	return other
 }
 
-// Reset reset a counter
+// Reset reset a counter.
 func (c *RollingCounter) Reset() {
 	c.lastBucket = -1
 	c.countedBuckets = 0
@@ -88,33 +88,33 @@ func (c *RollingCounter) Reset() {
 	}
 }
 
-// CountedBuckets gets counted buckets
+// CountedBuckets gets counted buckets.
 func (c *RollingCounter) CountedBuckets() int {
 	return c.countedBuckets
 }
 
-// Count counts
+// Count counts.
 func (c *RollingCounter) Count() int64 {
 	c.cleanup()
 	return c.sum()
 }
 
-// Resolution gets resolution
+// Resolution gets resolution.
 func (c *RollingCounter) Resolution() time.Duration {
 	return c.resolution
 }
 
-// Buckets gets buckets
+// Buckets gets buckets.
 func (c *RollingCounter) Buckets() int {
 	return len(c.values)
 }
 
-// WindowSize gets windows size
+// WindowSize gets windows size.
 func (c *RollingCounter) WindowSize() time.Duration {
 	return time.Duration(len(c.values)) * c.resolution
 }
 
-// Inc increment counter
+// Inc increment counter.
 func (c *RollingCounter) Inc(v int) {
 	c.cleanup()
 	c.incBucketValue(v)
@@ -136,12 +136,12 @@ func (c *RollingCounter) incBucketValue(v int) {
 	}
 }
 
-// Returns the number in the moving window bucket that this slot occupies
+// Returns the number in the moving window bucket that this slot occupies.
 func (c *RollingCounter) getBucket(t time.Time) int {
 	return int(t.Truncate(c.resolution).Unix() % int64(len(c.values)))
 }
 
-// Reset buckets that were not updated
+// Reset buckets that were not updated.
 func (c *RollingCounter) cleanup() {
 	now := c.clock.UtcNow()
 	for i := 0; i < len(c.values); i++ {

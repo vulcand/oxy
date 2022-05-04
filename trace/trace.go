@@ -14,10 +14,10 @@ import (
 	"github.com/vulcand/oxy/utils"
 )
 
-// Option is a functional option setter for Tracer
+// Option is a functional option setter for Tracer.
 type Option func(*Tracer) error
 
-// ErrorHandler is a functional argument that sets error handler of the server
+// ErrorHandler is a functional argument that sets error handler of the server.
 func ErrorHandler(h utils.ErrorHandler) Option {
 	return func(t *Tracer) error {
 		t.errHandler = h
@@ -25,7 +25,7 @@ func ErrorHandler(h utils.ErrorHandler) Option {
 	}
 }
 
-// RequestHeaders adds request headers to capture
+// RequestHeaders adds request headers to capture.
 func RequestHeaders(headers ...string) Option {
 	return func(t *Tracer) error {
 		t.reqHeaders = append(t.reqHeaders, headers...)
@@ -33,7 +33,7 @@ func RequestHeaders(headers ...string) Option {
 	}
 }
 
-// ResponseHeaders adds response headers to capture
+// ResponseHeaders adds response headers to capture.
 func ResponseHeaders(headers ...string) Option {
 	return func(t *Tracer) error {
 		t.respHeaders = append(t.respHeaders, headers...)
@@ -41,7 +41,7 @@ func ResponseHeaders(headers ...string) Option {
 	}
 }
 
-// Tracer records request and response emitting JSON structured data to the output
+// Tracer records request and response emitting JSON structured data to the output.
 type Tracer struct {
 	errHandler  utils.ErrorHandler
 	next        http.Handler
@@ -141,13 +141,13 @@ func captureHeaders(in http.Header, headers []string) http.Header {
 	return out
 }
 
-// Record represents a structured request and response record
+// Record represents a structured request and response record.
 type Record struct {
 	Request  Request  `json:"request"`
 	Response Response `json:"response"`
 }
 
-// Request contains information about an HTTP request
+// Request contains information about an HTTP request.
 type Request struct {
 	Method    string      `json:"method"`            // Method - request method
 	BodyBytes int64       `json:"body_bytes"`        // BodyBytes - size of request body in bytes
@@ -156,7 +156,7 @@ type Request struct {
 	TLS       *TLS        `json:"tls,omitempty"`     // TLS - optional TLS record, will be recorded if it's a TLS connection
 }
 
-// Response contains information about HTTP response
+// Response contains information about HTTP response.
 type Response struct {
 	Code      int         `json:"code"`              // Code - response status code
 	Roundtrip float64     `json:"roundtrip"`         // Roundtrip - round trip time in milliseconds
@@ -164,7 +164,7 @@ type Response struct {
 	BodyBytes int64       `json:"body_bytes"`        // BodyBytes - size of response body in bytes
 }
 
-// TLS contains information about this TLS connection
+// TLS contains information about this TLS connection.
 type TLS struct {
 	Version     string `json:"version"`      // Version - TLS version
 	Resume      bool   `json:"resume"`       // Resume tells if the session has been re-used (session tickets)

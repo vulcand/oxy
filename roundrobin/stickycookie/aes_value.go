@@ -55,7 +55,7 @@ func (v *AESValue) Get(raw *url.URL) string {
 		// This is a near-impossible error condition on Linux systems.
 		// An error here means rand.Reader (and thus getrandom(2), and thus /dev/urandom) returned
 		// less than 4 bytes of data. /dev/urandom is guaranteed to always return the number of
-		// bytes requested up to 512 bytes on modern kernels. Behaviour on non-Linux systems
+		// bytes requested up to 512 bytes on modern kernels. Behavior on non-Linux systems
 		// varies, of course.
 		panic(err)
 	}
@@ -109,7 +109,7 @@ func (v *AESValue) fromValue(obfuscatedStr string) (string, error) {
 	nonce := obfuscated[n:]
 	obfuscated = obfuscated[:n]
 
-	raw, err := v.block.Open(nil, nonce, []byte(obfuscated), nil)
+	raw, err := v.block.Open(nil, nonce, obfuscated, nil)
 	if err != nil {
 		return "", err
 	}

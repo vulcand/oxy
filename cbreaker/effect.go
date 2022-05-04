@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,12 +12,12 @@ import (
 	"github.com/vulcand/oxy/utils"
 )
 
-// SideEffect a side effect
+// SideEffect a side effect.
 type SideEffect interface {
 	Exec() error
 }
 
-// Webhook Web hook
+// Webhook Web hook.
 type Webhook struct {
 	URL     string
 	Method  string
@@ -27,14 +26,14 @@ type Webhook struct {
 	Body    []byte
 }
 
-// WebhookSideEffect a web hook side effect
+// WebhookSideEffect a web hook side effect.
 type WebhookSideEffect struct {
 	w Webhook
 
 	log *log.Logger
 }
 
-// NewWebhookSideEffectsWithLogger creates a new WebhookSideEffect
+// NewWebhookSideEffectsWithLogger creates a new WebhookSideEffect.
 func NewWebhookSideEffectsWithLogger(w Webhook, l *log.Logger) (*WebhookSideEffect, error) {
 	if w.Method == "" {
 		return nil, fmt.Errorf("Supply method")
@@ -47,7 +46,7 @@ func NewWebhookSideEffectsWithLogger(w Webhook, l *log.Logger) (*WebhookSideEffe
 	return &WebhookSideEffect{w: w, log: l}, nil
 }
 
-// NewWebhookSideEffect creates a new WebhookSideEffect
+// NewWebhookSideEffect creates a new WebhookSideEffect.
 func NewWebhookSideEffect(w Webhook) (*WebhookSideEffect, error) {
 	return NewWebhookSideEffectsWithLogger(w, log.StandardLogger())
 }
@@ -62,7 +61,7 @@ func (w *WebhookSideEffect) getBody() io.Reader {
 	return nil
 }
 
-// Exec execute the side effect
+// Exec execute the side effect.
 func (w *WebhookSideEffect) Exec() error {
 	r, err := http.NewRequest(w.w.Method, w.w.URL, w.getBody())
 	if err != nil {
@@ -81,7 +80,7 @@ func (w *WebhookSideEffect) Exec() error {
 	if re.Body != nil {
 		defer re.Body.Close()
 	}
-	body, err := ioutil.ReadAll(re.Body)
+	body, err := io.ReadAll(re.Body)
 	if err != nil {
 		return err
 	}

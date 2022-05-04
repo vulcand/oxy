@@ -7,7 +7,7 @@ import (
 	"github.com/mailgun/timetools"
 )
 
-// UndefinedDelay  default delay
+// UndefinedDelay  default delay.
 const UndefinedDelay = -1
 
 // rate defines token bucket parameters.
@@ -90,7 +90,7 @@ func (tb *tokenBucket) rollback() {
 }
 
 // update modifies `average` and `burst` fields of the token bucket according
-// to the provided `Rate`
+// to the provided `Rate`.
 func (tb *tokenBucket) update(rate *rate) error {
 	if rate.period != tb.period {
 		return fmt.Errorf("period mismatch: %v != %v", tb.period, rate.period)

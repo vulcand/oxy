@@ -35,7 +35,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 	// Update existing buckets and delete those that have no corresponding spec.
 	for _, bucket := range tbs.buckets {
 		if rate, ok := rates.m[bucket.period]; ok {
-			bucket.update(rate)
+			_ = bucket.update(rate)
 		} else {
 			delete(tbs.buckets, bucket.period)
 		}
@@ -54,7 +54,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 	}
 }
 
-// Consume consume tokens
+// Consume consume tokens.
 func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	var maxDelay time.Duration = UndefinedDelay
 	var firstErr error
@@ -81,7 +81,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	return maxDelay, firstErr
 }
 
-// GetMaxPeriod returns the max period
+// GetMaxPeriod returns the max period.
 func (tbs *TokenBucketSet) GetMaxPeriod() time.Duration {
 	return tbs.maxPeriod
 }

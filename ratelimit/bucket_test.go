@@ -116,7 +116,7 @@ func TestDelayIsCorrect(t *testing.T) {
 	assert.Equal(t, time.Duration(0), delay)
 }
 
-// Make sure requests that exceed burst size are not allowed
+// Make sure requests that exceed burst size are not allowed.
 func TestExceedsBurst(t *testing.T) {
 	tb := newTokenBucket(&rate{period: time.Second, average: 1, burst: 10}, testutils.GetClock())
 
@@ -206,7 +206,7 @@ func TestUpdateBurstIncreased(t *testing.T) {
 	// Then
 	delay, err := tb.consume(50)
 	require.NoError(t, err)
-	assert.Equal(t, time.Duration(time.Second/10*45), delay)
+	assert.Equal(t, time.Second/10*45, delay)
 }
 
 // If the capacity of the bucket is increased by the update then it takes some
@@ -245,7 +245,7 @@ func TestUpdateRateChanged(t *testing.T) {
 	// Then
 	delay, err := tb.consume(20)
 	require.NoError(t, err)
-	assert.Equal(t, time.Duration(time.Second/20*15), delay)
+	assert.Equal(t, time.Second/20*15, delay)
 }
 
 // Only the most recent consumption is reverted by `Rollback`.

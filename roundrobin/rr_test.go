@@ -37,7 +37,7 @@ func TestRemoveBadServer(t *testing.T) {
 func TestCustomErrHandler(t *testing.T) {
 	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
 		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte(http.StatusText(http.StatusTeapot)))
+		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
 	fwd, err := forward.New()
@@ -168,7 +168,7 @@ func TestUpsertWeight(t *testing.T) {
 
 func TestWeighted(t *testing.T) {
 	require.NoError(t, SetDefaultWeight(0))
-	defer SetDefaultWeight(1)
+	defer func() { _ = SetDefaultWeight(1) }()
 
 	a := testutils.NewResponder("a")
 	defer a.Close()
@@ -229,6 +229,8 @@ func TestRequestRewriteListener(t *testing.T) {
 }
 
 func seq(t *testing.T, url string, repeat int) []string {
+	t.Helper()
+
 	var out []string
 	for i := 0; i < repeat; i++ {
 		_, body, err := testutils.Get(url)

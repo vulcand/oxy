@@ -2,7 +2,7 @@ package cbreaker
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,7 +19,7 @@ const triggerNetRatio = `NetworkErrorRatio() > 0.5`
 
 func TestStandbyCycle(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	cb, err := New(handler, triggerNetRatio)
@@ -36,7 +36,7 @@ func TestStandbyCycle(t *testing.T) {
 
 func TestFullCycle(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	clock := testutils.GetClock()
@@ -92,7 +92,7 @@ func TestFullCycle(t *testing.T) {
 
 func TestRedirectWithPath(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	fallbackRedirectPath, err := NewRedirectFallback(Redirect{
@@ -125,7 +125,7 @@ func TestRedirectWithPath(t *testing.T) {
 
 func TestRedirect(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	fallbackRedirect, err := NewRedirectFallback(Redirect{URL: "http://localhost:5000"})
@@ -155,7 +155,7 @@ func TestRedirect(t *testing.T) {
 
 func TestTriggerDuringRecovery(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	clock := testutils.GetClock()
@@ -196,17 +196,17 @@ func TestSideEffects(t *testing.T) {
 	srv1Chan := make(chan *http.Request, 1)
 	var srv1Body []byte
 	srv1 := testutils.NewHandler(func(w http.ResponseWriter, r *http.Request) {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		srv1Body = b
-		w.Write([]byte("srv1"))
+		_, _ = w.Write([]byte("srv1"))
 		srv1Chan <- r
 	})
 	defer srv1.Close()
 
 	srv2Chan := make(chan *http.Request, 1)
 	srv2 := testutils.NewHandler(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("srv2"))
+		_, _ = w.Write([]byte("srv2"))
 		err := r.ParseForm()
 		require.NoError(t, err)
 		srv2Chan <- r
@@ -231,7 +231,7 @@ func TestSideEffects(t *testing.T) {
 	require.NoError(t, err)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	clock := testutils.GetClock()

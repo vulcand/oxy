@@ -20,7 +20,7 @@ import (
 func TestTraceSimple(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Length", "5")
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	trace := &bytes.Buffer{}
@@ -53,7 +53,7 @@ func TestTraceCaptureHeaders(t *testing.T) {
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		utils.CopyHeaders(w.Header(), respHeaders)
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	trace := &bytes.Buffer{}
@@ -77,7 +77,7 @@ func TestTraceCaptureHeaders(t *testing.T) {
 
 func TestTraceTLS(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	trace := &bytes.Buffer{}
@@ -98,12 +98,12 @@ func TestTraceTLS(t *testing.T) {
 	conn, err := tls.Dial("tcp", u.Host, config)
 	require.NoError(t, err)
 
-	fmt.Fprint(conn, "GET / HTTP/1.0\r\n\r\n")
+	_, _ = fmt.Fprint(conn, "GET / HTTP/1.0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
 	require.NoError(t, err)
 	assert.Equal(t, "HTTP/1.0 200 OK\r\n", status)
 	state := conn.ConnectionState()
-	conn.Close()
+	_ = conn.Close()
 
 	var r *Record
 	require.NoError(t, json.Unmarshal(trace.Bytes(), &r))

@@ -7,7 +7,7 @@ import (
 	"github.com/vulcand/predicate"
 )
 
-// IsValidExpression check if it's a valid expression
+// IsValidExpression check if it's a valid expression.
 func IsValidExpression(expr string) bool {
 	_, err := parseExpression(expr)
 	return err == nil
@@ -21,7 +21,7 @@ type context struct {
 
 type hpredicate func(*context) bool
 
-// Parses expression in the go language into Failover predicates
+// Parses expression in the go language into Failover predicates.
 func parseExpression(in string) (hpredicate, error) {
 	p, err := predicate.NewParser(predicate.Def{
 		Operators: predicate.Operators{
@@ -56,16 +56,17 @@ func parseExpression(in string) (hpredicate, error) {
 }
 
 type toString func(c *context) string
+
 type toInt func(c *context) int
 
-// RequestMethod returns mapper of the request to its method e.g. POST
+// RequestMethod returns mapper of the request to its method e.g. POST.
 func requestMethod() toString {
 	return func(c *context) string {
 		return c.r.Method
 	}
 }
 
-// Attempts returns mapper of the request to the number of proxy attempts
+// Attempts returns mapper of the request to the number of proxy attempts.
 func attempts() toInt {
 	return func(c *context) int {
 		return c.attempt
@@ -86,7 +87,7 @@ func isNetworkError() hpredicate {
 	}
 }
 
-// and returns predicate by joining the passed predicates with logical 'and'
+// and returns predicate by joining the passed predicates with logical 'and'.
 func and(fns ...hpredicate) hpredicate {
 	return func(c *context) bool {
 		for _, fn := range fns {
@@ -98,7 +99,7 @@ func and(fns ...hpredicate) hpredicate {
 	}
 }
 
-// or returns predicate by joining the passed predicates with logical 'or'
+// or returns predicate by joining the passed predicates with logical 'or'.
 func or(fns ...hpredicate) hpredicate {
 	return func(c *context) bool {
 		for _, fn := range fns {
@@ -110,14 +111,14 @@ func or(fns ...hpredicate) hpredicate {
 	}
 }
 
-// not creates negation of the passed predicate
+// not creates negation of the passed predicate.
 func not(p hpredicate) hpredicate {
 	return func(c *context) bool {
 		return !p(c)
 	}
 }
 
-// eq returns predicate that tests for equality of the value of the mapper and the constant
+// eq returns predicate that tests for equality of the value of the mapper and the constant.
 func eq(m interface{}, value interface{}) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toString:
@@ -128,7 +129,7 @@ func eq(m interface{}, value interface{}) (hpredicate, error) {
 	return nil, fmt.Errorf("unsupported argument: %T", m)
 }
 
-// neq returns predicate that tests for inequality of the value of the mapper and the constant
+// neq returns predicate that tests for inequality of the value of the mapper and the constant.
 func neq(m interface{}, value interface{}) (hpredicate, error) {
 	p, err := eq(m, value)
 	if err != nil {
@@ -137,16 +138,17 @@ func neq(m interface{}, value interface{}) (hpredicate, error) {
 	return not(p), nil
 }
 
-// lt returns predicate that tests that value of the mapper function is less than the constant
+// lt returns predicate that tests that value of the mapper function is less than the constant.
 func lt(m interface{}, value interface{}) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
 		return intLT(mapper, value)
+	default:
+		return nil, fmt.Errorf("unsupported argument: %T", m)
 	}
-	return nil, fmt.Errorf("unsupported argument: %T", m)
 }
 
-// le returns predicate that tests that value of the mapper function is less or equal than the constant
+// le returns predicate that tests that value of the mapper function is less or equal than the constant.
 func le(m interface{}, value interface{}) (hpredicate, error) {
 	l, err := lt(m, value)
 	if err != nil {
@@ -161,16 +163,17 @@ func le(m interface{}, value interface{}) (hpredicate, error) {
 	}, nil
 }
 
-// gt returns predicate that tests that value of the mapper function is greater than the constant
+// gt returns predicate that tests that value of the mapper function is greater than the constant.
 func gt(m interface{}, value interface{}) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
 		return intGT(mapper, value)
+	default:
+		return nil, fmt.Errorf("unsupported argument: %T", m)
 	}
-	return nil, fmt.Errorf("unsupported argument: %T", m)
 }
 
-// ge returns predicate that tests that value of the mapper function is less or equal than the constant
+// ge returns predicate that tests that value of the mapper function is less or equal than the constant.
 func ge(m interface{}, value interface{}) (hpredicate, error) {
 	g, err := gt(m, value)
 	if err != nil {

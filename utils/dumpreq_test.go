@@ -19,7 +19,7 @@ func (r *readCloserTestImpl) Close() error {
 }
 
 // Just to make sure we don't panic, return err and not
-// username and pass and cover the function
+// username and pass and cover the function.
 func TestHttpReqToString(t *testing.T) {
 	req := &http.Request{
 		URL:    &url.URL{Host: "localhost:2374", Path: "/unittest"},

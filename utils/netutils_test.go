@@ -9,7 +9,7 @@ import (
 )
 
 // Make sure copy does it right, so the copied url
-// is safe to alter without modifying the other
+// is safe to alter without modifying the other.
 func TestCopyUrl(t *testing.T) {
 	urlA := &url.URL{
 		Scheme:   "http",
@@ -28,7 +28,7 @@ func TestCopyUrl(t *testing.T) {
 	assert.NotEqual(t, urlA, urlB)
 }
 
-// Make sure copy headers is not shallow and copies all headers
+// Make sure copy headers is not shallow and copies all headers.
 func TestCopyHeaders(t *testing.T) {
 	source, destination := make(http.Header), make(http.Header)
 	source.Add("a", "b")
