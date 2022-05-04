@@ -11,7 +11,6 @@ jobs:
     env:
       GO_VERSION: 1.17
       GOLANGCI_LINT_VERSION: v1.45.2
-      CGO_ENABLED: 0
 
     steps:
 

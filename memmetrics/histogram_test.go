@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/codahale/hdrhistogram"
+	"github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/testutils"
@@ -25,11 +25,6 @@ func TestMerge(t *testing.T) {
 
 	assert.EqualValues(t, 1, a.ValueAtQuantile(50))
 	assert.EqualValues(t, 2, a.ValueAtQuantile(100))
-}
-
-func TestInvalidParams(t *testing.T) {
-	_, err := NewHDRHistogram(1, 3600000, 0)
-	require.Error(t, err)
 }
 
 func TestMergeNil(t *testing.T) {
