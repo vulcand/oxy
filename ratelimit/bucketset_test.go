@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"testing"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ func TestConsume(t *testing.T) {
 	require.NoError(t, err)
 
 	// Then
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 	assert.Equal(t, "{1s: 5}, {10s: 35}", tbs.debugState())
 }
 
@@ -71,7 +72,7 @@ func TestConsumeRefill(t *testing.T) {
 	require.NoError(t, err)
 
 	// Then
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 	assert.Equal(t, "{10s: 15}, {1m40s: 37}", tbs.debugState())
 }
 

@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"testing"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ func TestConsumeSingleToken(t *testing.T) {
 	// First request passes
 	delay, err := tb.consume(1)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	// Next request does not pass the same second
 	delay, err = tb.consume(1)
@@ -30,7 +31,7 @@ func TestConsumeSingleToken(t *testing.T) {
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	// Five seconds later, still only one request is allowed
 	// because maxBurst is 1
@@ -38,7 +39,7 @@ func TestConsumeSingleToken(t *testing.T) {
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	// The next one is forbidden
 	delay, err = tb.consume(1)
@@ -55,7 +56,7 @@ func TestFastConsumption(t *testing.T) {
 	// First request passes
 	delay, err := tb.consume(1)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	// Try 200 ms later
 	clock.Advance(clock.Millisecond * 200)
@@ -76,7 +77,7 @@ func TestFastConsumption(t *testing.T) {
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 }
 
 func TestConsumeMultipleTokens(t *testing.T) {
@@ -87,15 +88,15 @@ func TestConsumeMultipleTokens(t *testing.T) {
 
 	delay, err := tb.consume(3)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	delay, err = tb.consume(2)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
-	assert.NotEqual(t, clock.Duration(0), delay)
+	assert.NotEqual(t, time.Duration(0), delay)
 }
 
 func TestDelayIsCorrect(t *testing.T) {
@@ -107,18 +108,18 @@ func TestDelayIsCorrect(t *testing.T) {
 	// Exhaust initial capacity
 	delay, err := tb.consume(5)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	delay, err = tb.consume(3)
 	require.NoError(t, err)
-	assert.NotEqual(t, clock.Duration(0), delay)
+	assert.NotEqual(t, time.Duration(0), delay)
 
 	// Now wait provided delay and make sure we can consume now
 	clock.Advance(delay)
 
 	delay, err = tb.consume(3)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 }
 
 // Make sure requests that exceed burst size are not allowed.
@@ -144,7 +145,7 @@ func TestConsumeBurst(t *testing.T) {
 	// Lets consume 5 at once
 	delay, err := tb.consume(5)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 }
 
 func TestConsumeEstimate(t *testing.T) {
@@ -156,12 +157,12 @@ func TestConsumeEstimate(t *testing.T) {
 	// Consume all burst at once
 	delay, err := tb.consume(4)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	// Now try to consume it and face delay
 	delay, err = tb.consume(4)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(2)*clock.Second, delay)
+	assert.Equal(t, time.Duration(2)*clock.Second, delay)
 }
 
 // If a rate with different period is passed to the `update` method, then an
@@ -191,7 +192,7 @@ func TestUpdateInvalidPeriod(t *testing.T) {
 	delay, err = tb.consume(10)
 	require.NoError(t, err)
 	// 0 available
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	// ...check that burst did not change
 	clock.Advance(40 * clock.Second)
@@ -201,7 +202,7 @@ func TestUpdateInvalidPeriod(t *testing.T) {
 	delay, err = tb.consume(20)
 	require.NoError(t, err)
 	// 0 available
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 }
 
 // If the capacity of the bucket is increased by the update then it takes some
@@ -243,7 +244,7 @@ func TestUpdateBurstDecreased(t *testing.T) {
 	// Then
 	delay, err := tb.consume(21)
 	require.Error(t, err)
-	assert.Equal(t, clock.Duration(-1), delay)
+	assert.Equal(t, time.Duration(-1), delay)
 }
 
 // If rate is updated then it affects the bucket refill speed.
@@ -284,7 +285,7 @@ func TestRollback(t *testing.T) {
 	// Then
 	delay, err := tb.consume(12)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
@@ -311,7 +312,7 @@ func TestRollbackSeveralTimes(t *testing.T) {
 	// Then: all 20 tokens can be consumed
 	delay, err := tb.consume(20)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
@@ -338,7 +339,7 @@ func TestRollbackAfterAvailableExceeded(t *testing.T) {
 	// Then
 	delay, err = tb.consume(12)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
@@ -357,7 +358,7 @@ func TestRollbackAfterError(t *testing.T) {
 	require.NoError(t, err)
 	delay, err := tb.consume(21) // still 12 tokens available
 	require.Error(t, err)
-	assert.Equal(t, clock.Duration(-1), delay)
+	assert.Equal(t, time.Duration(-1), delay)
 
 	// When
 	tb.rollback() // Previous operation consumed 0 tokens, so rollback has no effect.
@@ -365,7 +366,7 @@ func TestRollbackAfterError(t *testing.T) {
 	// Then
 	delay, err = tb.consume(12)
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), delay)
+	assert.Equal(t, time.Duration(0), delay)
 
 	delay, err = tb.consume(1)
 	require.NoError(t, err)
@@ -374,7 +375,7 @@ func TestRollbackAfterError(t *testing.T) {
 
 func TestDivisionByZeroOnPeriod(t *testing.T) {
 	var emptyPeriod int64
-	tb := newTokenBucket(&rate{period: clock.Duration(emptyPeriod), average: 2, burst: 2})
+	tb := newTokenBucket(&rate{period: time.Duration(emptyPeriod), average: 2, burst: 2})
 
 	_, err := tb.consume(1)
 	assert.NoError(t, err)

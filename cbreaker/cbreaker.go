@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
@@ -43,8 +44,8 @@ type CircuitBreaker struct {
 
 	condition hpredicate
 
-	fallbackDuration clock.Duration
-	recoveryDuration clock.Duration
+	fallbackDuration time.Duration
+	recoveryDuration time.Duration
 
 	onTripped SideEffect
 	onStandby SideEffect
@@ -54,7 +55,7 @@ type CircuitBreaker struct {
 
 	rc *ratioController
 
-	checkPeriod clock.Duration
+	checkPeriod time.Duration
 	lastCheck   clock.Time
 
 	fallback http.Handler
@@ -210,7 +211,7 @@ func (c *CircuitBreaker) exec(s SideEffect) {
 	}()
 }
 
-func (c *CircuitBreaker) setState(state cbState, until clock.Time) {
+func (c *CircuitBreaker) setState(state cbState, until time.Time) {
 	c.log.Debugf("%v setting state to %v, until %v", c, state, until)
 	c.state = state
 	c.until = until
@@ -267,7 +268,7 @@ type CircuitBreakerOption func(*CircuitBreaker) error
 
 // FallbackDuration is how long the CircuitBreaker will remain in the Tripped
 // state before trying to recover.
-func FallbackDuration(d clock.Duration) CircuitBreakerOption {
+func FallbackDuration(d time.Duration) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.fallbackDuration = d
 		return nil
@@ -276,7 +277,7 @@ func FallbackDuration(d clock.Duration) CircuitBreakerOption {
 
 // RecoveryDuration is how long the CircuitBreaker will take to ramp up
 // requests during the Recovering state.
-func RecoveryDuration(d clock.Duration) CircuitBreakerOption {
+func RecoveryDuration(d time.Duration) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.recoveryDuration = d
 		return nil
@@ -285,7 +286,7 @@ func RecoveryDuration(d clock.Duration) CircuitBreakerOption {
 
 // CheckPeriod is how long the CircuitBreaker will wait between successive
 // checks of the breaker condition.
-func CheckPeriod(d clock.Duration) CircuitBreakerOption {
+func CheckPeriod(d time.Duration) CircuitBreakerOption {
 	return func(c *CircuitBreaker) error {
 		c.checkPeriod = d
 		return nil

@@ -1,8 +1,6 @@
 package memmetrics
 
-import (
-	"github.com/mailgun/holster/v4/clock"
-)
+import "time"
 
 type ratioOptSetter func(r *RatioCounter) error
 
@@ -13,7 +11,7 @@ type RatioCounter struct {
 }
 
 // NewRatioCounter creates a new RatioCounter.
-func NewRatioCounter(buckets int, resolution clock.Duration, options ...ratioOptSetter) (*RatioCounter, error) {
+func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptSetter) (*RatioCounter, error) {
 	rc := &RatioCounter{}
 
 	for _, o := range options {
@@ -59,7 +57,7 @@ func (r *RatioCounter) CountB() int64 {
 }
 
 // Resolution gets resolution.
-func (r *RatioCounter) Resolution() clock.Duration {
+func (r *RatioCounter) Resolution() time.Duration {
 	return r.a.Resolution()
 }
 
@@ -69,7 +67,7 @@ func (r *RatioCounter) Buckets() int {
 }
 
 // WindowSize gets windows size.
-func (r *RatioCounter) WindowSize() clock.Duration {
+func (r *RatioCounter) WindowSize() time.Duration {
 	return r.a.WindowSize()
 }
 
@@ -103,11 +101,11 @@ func (r *RatioCounter) IncB(v int) {
 type TestMeter struct {
 	Rate       float64
 	NotReady   bool
-	WindowSize clock.Duration
+	WindowSize time.Duration
 }
 
 // GetWindowSize gets windows size.
-func (tm *TestMeter) GetWindowSize() clock.Duration {
+func (tm *TestMeter) GetWindowSize() time.Duration {
 	return tm.WindowSize
 }
 

@@ -4,21 +4,20 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-
-	"github.com/mailgun/holster/v4/clock"
+	"time"
 )
 
 // TokenBucketSet represents a set of TokenBucket covering different time periods.
 type TokenBucketSet struct {
-	buckets   map[clock.Duration]*tokenBucket
-	maxPeriod clock.Duration
+	buckets   map[time.Duration]*tokenBucket
+	maxPeriod time.Duration
 }
 
 // NewTokenBucketSet creates a `TokenBucketSet` from the specified `rates`.
 func NewTokenBucketSet(rates *RateSet) *TokenBucketSet {
 	tbs := new(TokenBucketSet)
 	// In the majority of cases we will have only one bucket.
-	tbs.buckets = make(map[clock.Duration]*tokenBucket, len(rates.m))
+	tbs.buckets = make(map[time.Duration]*tokenBucket, len(rates.m))
 	for _, rate := range rates.m {
 		newBucket := newTokenBucket(rate)
 		tbs.buckets[rate.period] = newBucket
@@ -52,8 +51,8 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 }
 
 // Consume consume tokens.
-func (tbs *TokenBucketSet) Consume(tokens int64) (clock.Duration, error) {
-	var maxDelay clock.Duration = UndefinedDelay
+func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
+	var maxDelay time.Duration = UndefinedDelay
 	var firstErr error
 	for _, tokenBucket := range tbs.buckets {
 		// We keep calling `Consume` even after a error is returned for one of
@@ -79,7 +78,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (clock.Duration, error) {
 }
 
 // GetMaxPeriod returns the max period.
-func (tbs *TokenBucketSet) GetMaxPeriod() clock.Duration {
+func (tbs *TokenBucketSet) GetMaxPeriod() time.Duration {
 	return tbs.maxPeriod
 }
 
@@ -93,13 +92,13 @@ func (tbs *TokenBucketSet) debugState() string {
 	sort.Slice(periods, func(i, j int) bool { return periods[i] < periods[j] })
 	bucketRepr := make([]string, 0, len(tbs.buckets))
 	for _, period := range periods {
-		bucket := tbs.buckets[clock.Duration(period)]
+		bucket := tbs.buckets[time.Duration(period)]
 		bucketRepr = append(bucketRepr, fmt.Sprintf("{%v: %v}", bucket.period, bucket.availableTokens))
 	}
 	return strings.Join(bucketRepr, ", ")
 }
 
-func maxDuration(x, y clock.Duration) clock.Duration {
+func maxDuration(x, y time.Duration) time.Duration {
 	if x > y {
 		return x
 	}

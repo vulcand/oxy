@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
@@ -307,7 +308,7 @@ func statsNetErrors(threshold float64) *memmetrics.RTMetrics {
 	return m
 }
 
-func statsLatencyAtQuantile(_ float64, value clock.Duration) *memmetrics.RTMetrics {
+func statsLatencyAtQuantile(_ float64, value time.Duration) *memmetrics.RTMetrics {
 	m, err := memmetrics.NewRTMetrics()
 	if err != nil {
 		panic(err)

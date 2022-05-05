@@ -4,6 +4,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestDefaults(t *testing.T) {
 
 	h, err = rr.LatencyHistogram()
 	require.NoError(t, err)
-	assert.Equal(t, clock.Duration(0), h.LatencyAtQuantile(100))
+	assert.Equal(t, time.Duration(0), h.LatencyAtQuantile(100))
 }
 
 func TestAppend(t *testing.T) {

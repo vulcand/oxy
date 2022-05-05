@@ -2,6 +2,7 @@ package memmetrics
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 )
@@ -10,7 +11,7 @@ type rcOptSetter func(*RollingCounter) error
 
 // RollingCounter Calculates in memory failure rate of an endpoint using rolling window of a predefined size.
 type RollingCounter struct {
-	resolution     clock.Duration
+	resolution     time.Duration
 	values         []int
 	countedBuckets int // how many samples in different buckets have we collected so far
 	lastBucket     int // last recorded bucket
@@ -20,7 +21,7 @@ type RollingCounter struct {
 // NewCounter creates a counter with fixed amount of buckets that are rotated every resolution period.
 // E.g. 10 buckets with 1 second means that every new second the bucket is refreshed, so it maintains 10 second rolling window.
 // By default creates a bucket with 10 buckets and 1 second resolution.
-func NewCounter(buckets int, resolution clock.Duration, options ...rcOptSetter) (*RollingCounter, error) {
+func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (*RollingCounter, error) {
 	if buckets <= 0 {
 		return nil, fmt.Errorf("Buckets should be >= 0")
 	}
@@ -85,7 +86,7 @@ func (c *RollingCounter) Count() int64 {
 }
 
 // Resolution gets resolution.
-func (c *RollingCounter) Resolution() clock.Duration {
+func (c *RollingCounter) Resolution() time.Duration {
 	return c.resolution
 }
 
@@ -95,8 +96,8 @@ func (c *RollingCounter) Buckets() int {
 }
 
 // WindowSize gets windows size.
-func (c *RollingCounter) WindowSize() clock.Duration {
-	return clock.Duration(len(c.values)) * c.resolution
+func (c *RollingCounter) WindowSize() time.Duration {
+	return time.Duration(len(c.values)) * c.resolution
 }
 
 // Inc increment counter.
@@ -122,7 +123,7 @@ func (c *RollingCounter) incBucketValue(v int) {
 }
 
 // Returns the number in the moving window bucket that this slot occupies.
-func (c *RollingCounter) getBucket(t clock.Time) int {
+func (c *RollingCounter) getBucket(t time.Time) int {
 	return int(t.Truncate(c.resolution).Unix() % int64(len(c.values)))
 }
 
@@ -130,7 +131,7 @@ func (c *RollingCounter) getBucket(t clock.Time) int {
 func (c *RollingCounter) cleanup() {
 	now := clock.Now().UTC()
 	for i := 0; i < len(c.values); i++ {
-		now = now.Add(clock.Duration(-1*i) * c.resolution)
+		now = now.Add(time.Duration(-1*i) * c.resolution)
 		if now.Truncate(c.resolution).After(c.lastUpdated.Truncate(c.resolution)) {
 			c.values[c.getBucket(now)] = 0
 		} else {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
@@ -94,7 +95,7 @@ func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff clock.Duration) *Record {
+func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.Duration) *Record {
 	return &Record{
 		Request: Request{
 			Method:    req.Method,

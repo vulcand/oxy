@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ type RebalancerOption func(*Rebalancer) error
 // Meter measures server performance and returns it's relative value via rating.
 type Meter interface {
 	Rating() float64
-	Record(int, clock.Duration)
+	Record(int, time.Duration)
 	IsReady() bool
 }
 
@@ -31,7 +32,7 @@ type Rebalancer struct {
 	// mutex
 	mtx *sync.Mutex
 	// Time that freezes state machine to accumulate stats after updating the weights
-	backoffDuration clock.Duration
+	backoffDuration time.Duration
 	// Timer is set to give probing some time to take place
 	timer clock.Time
 	// server records that remember original weights
@@ -55,7 +56,7 @@ type Rebalancer struct {
 }
 
 // RebalancerBackoff sets a beck off duration.
-func RebalancerBackoff(d clock.Duration) RebalancerOption {
+func RebalancerBackoff(d time.Duration) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.backoffDuration = d
 		return nil
@@ -204,7 +205,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	rb.adjustWeights()
 }
 
-func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency clock.Duration) {
+func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency time.Duration) {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
 	if srv, i := rb.findServer(u); i != -1 {
@@ -474,7 +475,7 @@ func (n *codeMeter) Rating() float64 {
 }
 
 // Record records a meter.
-func (n *codeMeter) Record(code int, d clock.Duration) {
+func (n *codeMeter) Record(code int, d time.Duration) {
 	if code >= n.codeS && code < n.codeE {
 		n.r.IncA(1)
 	} else {

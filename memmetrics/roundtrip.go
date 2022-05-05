@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 )
@@ -124,7 +125,7 @@ func (m *RTMetrics) Export() *RTMetrics {
 }
 
 // CounterWindowSize gets total windows size.
-func (m *RTMetrics) CounterWindowSize() clock.Duration {
+func (m *RTMetrics) CounterWindowSize() time.Duration {
 	return m.total.WindowSize()
 }
 
@@ -192,7 +193,7 @@ func (m *RTMetrics) Append(other *RTMetrics) error {
 }
 
 // Record records a metric.
-func (m *RTMetrics) Record(code int, duration clock.Duration) {
+func (m *RTMetrics) Record(code int, duration time.Duration) {
 	m.total.Inc(1)
 	if code == http.StatusGatewayTimeout || code == http.StatusBadGateway {
 		m.netErrors.Inc(1)
@@ -243,7 +244,7 @@ func (m *RTMetrics) Reset() {
 	m.statusCodes = make(map[int]*RollingCounter)
 }
 
-func (m *RTMetrics) recordLatency(d clock.Duration) error {
+func (m *RTMetrics) recordLatency(d time.Duration) error {
 	m.histogramLock.Lock()
 	defer m.histogramLock.Unlock()
 	return m.histogram.RecordLatencies(d, 1)

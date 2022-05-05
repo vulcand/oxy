@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 )
@@ -19,12 +20,12 @@ import (
 // AESValue manages hashed sticky value.
 type AESValue struct {
 	block cipher.AEAD
-	ttl   clock.Duration
+	ttl   time.Duration
 }
 
 // NewAESValue takes a fixed-size key and returns an CookieValue or an error.
 // Key size must be exactly one of 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
-func NewAESValue(key []byte, ttl clock.Duration) (*AESValue, error) {
+func NewAESValue(key []byte, ttl time.Duration) (*AESValue, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
@@ -443,7 +444,7 @@ func (tm *testMeter) Rating() float64 {
 	return tm.rating
 }
 
-func (tm *testMeter) Record(int, clock.Duration) {
+func (tm *testMeter) Record(int, time.Duration) {
 }
 
 func (tm *testMeter) IsReady() bool {

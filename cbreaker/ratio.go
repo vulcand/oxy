@@ -2,6 +2,7 @@ package cbreaker
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mailgun/holster/v4/clock"
 	"github.com/sirupsen/logrus"
@@ -13,7 +14,7 @@ import (
 //   allowedRequestsRatio = 0.5 * (Now() - Start())/Duration
 //
 type ratioController struct {
-	duration clock.Duration
+	duration time.Duration
 	start    clock.Time
 	allowed  int
 	denied   int
@@ -21,7 +22,7 @@ type ratioController struct {
 	log *logrus.Logger
 }
 
-func newRatioController(rampUp clock.Duration, log *logrus.Logger) *ratioController {
+func newRatioController(rampUp time.Duration, log *logrus.Logger) *ratioController {
 	return &ratioController{
 		duration: rampUp,
 		start:    clock.Now().UTC(),

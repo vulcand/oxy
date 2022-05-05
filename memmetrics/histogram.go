@@ -2,6 +2,7 @@ package memmetrics
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/mailgun/holster/v4/clock"
@@ -45,12 +46,12 @@ func (h *HDRHistogram) Export() *HDRHistogram {
 }
 
 // LatencyAtQuantile sets latency at quantile with microsecond precision.
-func (h *HDRHistogram) LatencyAtQuantile(q float64) clock.Duration {
-	return clock.Duration(h.ValueAtQuantile(q)) * clock.Microsecond
+func (h *HDRHistogram) LatencyAtQuantile(q float64) time.Duration {
+	return time.Duration(h.ValueAtQuantile(q)) * clock.Microsecond
 }
 
 // RecordLatencies Records latencies with microsecond precision.
-func (h *HDRHistogram) RecordLatencies(d clock.Duration, n int64) error {
+func (h *HDRHistogram) RecordLatencies(d time.Duration, n int64) error {
 	return h.RecordValues(int64(d/clock.Microsecond), n)
 }
 
@@ -85,7 +86,7 @@ type rhOptSetter func(r *RollingHDRHistogram) error
 type RollingHDRHistogram struct {
 	idx         int
 	lastRoll    clock.Time
-	period      clock.Duration
+	period      time.Duration
 	bucketCount int
 	low         int64
 	high        int64
@@ -94,7 +95,7 @@ type RollingHDRHistogram struct {
 }
 
 // NewRollingHDRHistogram created a new RollingHDRHistogram.
-func NewRollingHDRHistogram(low, high int64, sigfigs int, period clock.Duration, bucketCount int, options ...rhOptSetter) (*RollingHDRHistogram, error) {
+func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, bucketCount int, options ...rhOptSetter) (*RollingHDRHistogram, error) {
 	rh := &RollingHDRHistogram{
 		bucketCount: bucketCount,
 		period:      period,
@@ -192,7 +193,7 @@ func (r *RollingHDRHistogram) getHist() *HDRHistogram {
 }
 
 // RecordLatencies sets records latencies.
-func (r *RollingHDRHistogram) RecordLatencies(v clock.Duration, n int64) error {
+func (r *RollingHDRHistogram) RecordLatencies(v time.Duration, n int64) error {
 	return r.getHist().RecordLatencies(v, n)
 }
 

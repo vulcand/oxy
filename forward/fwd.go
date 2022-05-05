@@ -15,6 +15,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/mailgun/holster/v4/clock"
@@ -144,7 +145,7 @@ func ResponseModifier(responseModifier func(*http.Response) error) optSetter {
 }
 
 // StreamingFlushInterval defines a streaming flush interval for the HTTP forwarder.
-func StreamingFlushInterval(flushInterval clock.Duration) optSetter {
+func StreamingFlushInterval(flushInterval time.Duration) optSetter {
 	return func(f *Forwarder) error {
 		f.httpForwarder.flushInterval = flushInterval
 		return nil
@@ -171,7 +172,7 @@ type httpForwarder struct {
 	roundTripper   http.RoundTripper
 	rewriter       ReqRewriter
 	passHost       bool
-	flushInterval  clock.Duration
+	flushInterval  time.Duration
 	modifyResponse func(*http.Response) error
 
 	tlsClientConfig *tls.Config
