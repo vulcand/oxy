@@ -16,6 +16,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/gravitational/trace v0.0.0-20190726142706-a535a178675f // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
