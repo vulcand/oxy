@@ -6,9 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
 )

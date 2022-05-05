@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mailgun/holster/v4/clock"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 type rcOptSetter func(*RollingCounter) error

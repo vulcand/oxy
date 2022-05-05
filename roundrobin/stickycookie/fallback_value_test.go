@@ -6,9 +6,9 @@ import (
 	"path"
 	"testing"
 
-	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 func TestFallbackValue_FindURL(t *testing.T) {

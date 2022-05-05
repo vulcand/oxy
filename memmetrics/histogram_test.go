@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 )
 

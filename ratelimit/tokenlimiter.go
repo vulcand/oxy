@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/holster/v4/clock"
-	"github.com/mailgun/holster/v4/collections"
 	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/internal/holsterv4/collections"
 	"github.com/vulcand/oxy/utils"
 )
 

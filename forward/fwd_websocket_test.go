@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	gorillawebsocket "github.com/gorilla/websocket"
-	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 	"golang.org/x/net/websocket"
 )

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/mailgun/holster/v4/clock"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 // HDRHistogram is a tiny wrapper around github.com/HdrHistogram/hdrhistogram-go that provides convenience functions for measuring http latencies.

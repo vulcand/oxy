@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mailgun/holster/v4/clock"
 	"github.com/stretchr/testify/assert"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 func TestMedian(t *testing.T) {

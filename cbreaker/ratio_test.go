@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/mailgun/holster/v4/clock"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 )
 

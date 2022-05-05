@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mailgun/holster/v4/clock"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 // AESValue manages hashed sticky value.

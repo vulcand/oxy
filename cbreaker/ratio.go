@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mailgun/holster/v4/clock"
 	"github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 // ratioController allows passing portions traffic back to the endpoints,
