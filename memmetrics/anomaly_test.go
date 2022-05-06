@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 func TestMedian(t *testing.T) {
@@ -175,20 +176,20 @@ func TestSplitLatencies(t *testing.T) {
 
 			values := make([]time.Duration, len(test.values))
 			for i, d := range test.values {
-				values[i] = time.Millisecond * time.Duration(d)
+				values[i] = clock.Millisecond * time.Duration(d)
 			}
 
-			good, bad := SplitLatencies(values, time.Millisecond)
+			good, bad := SplitLatencies(values, clock.Millisecond)
 
 			vgood := make(map[time.Duration]bool, len(test.good))
 			for _, v := range test.good {
-				vgood[time.Duration(v)*time.Millisecond] = true
+				vgood[time.Duration(v)*clock.Millisecond] = true
 			}
 			assert.Equal(t, vgood, good)
 
 			vbad := make(map[time.Duration]bool, len(test.bad))
 			for _, v := range test.bad {
-				vbad[time.Duration(v)*time.Millisecond] = true
+				vbad[time.Duration(v)*clock.Millisecond] = true
 			}
 			assert.Equal(t, vbad, bad)
 		})

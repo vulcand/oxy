@@ -8,9 +8,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"time"
 
-	"github.com/mailgun/timetools"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/utils"
 )
 
@@ -175,9 +174,9 @@ func Post(uri string, opts ...ReqOption) (*http.Response, []byte, error) {
 	return MakeRequest(uri, opts...)
 }
 
-// GetClock gets a FreezedTime.
-func GetClock() *timetools.FreezedTime {
-	return &timetools.FreezedTime{
-		CurrentTime: time.Date(2012, 3, 4, 5, 6, 7, 0, time.UTC),
-	}
+// FreezeTime to the predetermined time. Returns a function that should be
+// deferred to unfreeze time. Meant for testing.
+func FreezeTime() func() {
+	clock.Freeze(clock.Date(2012, 3, 4, 5, 6, 7, 0, clock.UTC))
+	return clock.Unfreeze
 }

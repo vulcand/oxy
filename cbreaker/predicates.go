@@ -2,8 +2,8 @@ package cbreaker
 
 import (
 	"fmt"
-	"time"
 
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/predicate"
 )
 
@@ -53,7 +53,7 @@ func latencyAtQuantile(quantile float64) toInt {
 			c.log.Errorf("Failed to get latency histogram, for %v error: %v", c, err)
 			return 0
 		}
-		return int(h.LatencyAtQuantile(quantile) / time.Millisecond)
+		return int(h.LatencyAtQuantile(quantile) / clock.Millisecond)
 	}
 }
 

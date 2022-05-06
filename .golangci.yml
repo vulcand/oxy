@@ -1,7 +1,7 @@
 run:
   deadline: 5m
   skip-files: [ ]
-  skip-dirs: [ ]
+  skip-dirs: ["internal/holsterv4"]
 
 linters-settings:
   govet:

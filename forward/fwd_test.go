@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
 )
@@ -218,14 +218,14 @@ func TestCustomRewriter(t *testing.T) {
 
 func TestCustomTransportTimeout(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		time.Sleep(20 * time.Millisecond)
+		clock.Sleep(20 * clock.Millisecond)
 		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
 	f, err := New(RoundTripper(
 		&http.Transport{
-			ResponseHeaderTimeout: 5 * time.Millisecond,
+			ResponseHeaderTimeout: 5 * clock.Millisecond,
 		}))
 	require.NoError(t, err)
 

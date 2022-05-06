@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 // AESValue manages hashed sticky value.
@@ -41,14 +43,14 @@ func NewAESValue(key []byte, ttl time.Duration) (*AESValue, error) {
 func (v *AESValue) Get(raw *url.URL) string {
 	base := raw.String()
 	if v.ttl > 0 {
-		base = fmt.Sprintf("%s|%d", base, time.Now().UTC().Add(v.ttl).Unix())
+		base = fmt.Sprintf("%s|%d", base, clock.Now().UTC().Add(v.ttl).Unix())
 	}
 
 	// Nonce is the 64bit nanosecond-resolution time, plus 32bits of crypto/rand, for 96bits (12Bytes).
 	// Theoretically, if 2^32 calls were made in 1 nanoseconds, there might be a repeat.
 	// Adds ~765ns, and 4B heap in 1 alloc
 	nonce := make([]byte, 12)
-	binary.PutVarint(nonce, time.Now().UnixNano())
+	binary.PutVarint(nonce, clock.Now().UnixNano())
 
 	rpend := make([]byte, 4)
 	if _, err := io.ReadFull(rand.Reader, rpend); err != nil {
@@ -126,8 +128,8 @@ func (v *AESValue) fromValue(obfuscatedStr string) (string, error) {
 			return "", err
 		}
 
-		if time.Now().UTC().After(time.Unix(i, 0).UTC()) {
-			strTime := time.Unix(i, 0).UTC().String()
+		if clock.Now().UTC().After(clock.Unix(i, 0).UTC()) {
+			strTime := clock.Unix(i, 0).UTC().String()
 			return "", fmt.Errorf("TTL expired: '%s' (%s)\n", raw, strTime)
 		}
 

@@ -5,10 +5,10 @@ import (
 	"net/url"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 )
 
 func TestFallbackValue_FindURL(t *testing.T) {
@@ -19,7 +19,7 @@ func TestFallbackValue_FindURL(t *testing.T) {
 		{Scheme: "http", Host: "10.10.10.10", Path: "/"},
 	}
 
-	aesValue, err := NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*time.Second)
+	aesValue, err := NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*clock.Second)
 	require.NoError(t, err)
 
 	values := []struct {
@@ -81,7 +81,7 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 
 	hashValue := &HashValue{Salt: "foo"}
 	rawValue := &RawValue{}
-	aesValue, err := NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*time.Second)
+	aesValue, err := NewAESValue([]byte("95Bx9JkKX3xbd7z3"), 5*clock.Second)
 	require.NoError(t, err)
 
 	tests := []struct {

@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 )
 
@@ -73,10 +73,10 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 		}
 		_, _ = fmt.Fprint(w, "Response")
 		flusher.Flush()
-		time.Sleep(time.Duration(500) * time.Millisecond)
+		clock.Sleep(500 * clock.Millisecond)
 		_, _ = fmt.Fprint(w, "in")
 		flusher.Flush()
-		time.Sleep(time.Duration(500) * time.Millisecond)
+		clock.Sleep(500 * clock.Millisecond)
 		_, _ = fmt.Fprint(w, "Chunks")
 		flusher.Flush()
 	})
