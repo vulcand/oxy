@@ -8,9 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Make sure copy does it right, so the copied url
-// is safe to alter without modifying the other.
+// Make sure copy does it right, so the copied url is safe to alter without modifying the other.
 func TestCopyUrl(t *testing.T) {
+	userinfo := url.UserPassword("foo", "secret")
+
 	urlA := &url.URL{
 		Scheme:   "http",
 		Host:     "localhost:5000",
@@ -18,13 +19,19 @@ func TestCopyUrl(t *testing.T) {
 		Opaque:   "opaque",
 		RawQuery: "a=1&b=2",
 		Fragment: "#hello",
-		User:     &url.Userinfo{},
+		User:     userinfo,
 	}
 
 	urlB := CopyURL(urlA)
 	assert.Equal(t, urlA, urlB)
 
+	*userinfo = *url.User("bar")
+
+	assert.Equal(t, urlA.User, userinfo)
+	assert.NotEqual(t, urlA.User, urlB.User)
+
 	urlB.Scheme = "https"
+
 	assert.NotEqual(t, urlA, urlB)
 }
 

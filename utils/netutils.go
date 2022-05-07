@@ -160,13 +160,14 @@ func NopWriteCloser(w io.Writer) io.WriteCloser {
 func CopyURL(i *url.URL) *url.URL {
 	out := *i
 	if i.User != nil {
-		out.User = &(*i.User)
+		u := *i.User
+		out.User = &u
 	}
 	return &out
 }
 
 // CopyHeaders copies http headers from source to destination, it
-// does not overide, but adds multiple headers.
+// does not override, but adds multiple headers.
 func CopyHeaders(dst http.Header, src http.Header) {
 	for k, vv := range src {
 		dst[k] = append(dst[k], vv...)

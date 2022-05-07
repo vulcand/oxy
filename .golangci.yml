@@ -140,8 +140,6 @@ issues:
       text: "context-keys-type: should not use basic type string as key" # TODO(ldez) must be fixed
     - path: .*_test.go
       text: "SA1029: should not use built-in type string as key for value" # TODO(ldez) must be fixed
-    - path: utils/netutils.go
-      text: "SA4001: &\\*x will be simplified to x. It will not copy x." # TODO(ldez) must be fixed
     - path: cbreaker/cbreaker_test.go
       text: "`statsNetErrors` - `threshold` always receives `0.6`" # TODO(ldez) must be fixed
     - path: buffer/buffer.go
