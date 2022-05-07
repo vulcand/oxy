@@ -28,5 +28,5 @@ func TestHttpReqToString(t *testing.T) {
 		Body:   &readCloserTestImpl{},
 	}
 
-	assert.True(t, len(DumpHttpRequest(req)) > 0)
+	assert.True(t, len(DumpHTTPRequest(req)) > 0)
 }

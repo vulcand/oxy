@@ -94,7 +94,7 @@ func (s *Stream) Wrap(next http.Handler) error {
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if s.log.Level >= log.DebugLevel {
-		logEntry := s.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := s.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/stream: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/stream: completed ServeHttp on request")
 	}

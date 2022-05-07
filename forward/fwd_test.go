@@ -115,22 +115,22 @@ func TestXForwardedHostHeader(t *testing.T) {
 	tests := []struct {
 		Description            string
 		PassHostHeader         bool
-		TargetUrl              string
-		ProxyfiedUrl           string
+		TargetURL              string
+		ProxyfiedURL           string
 		ExpectedXForwardedHost string
 	}{
 		{
 			Description:            "XForwardedHost without PassHostHeader",
 			PassHostHeader:         false,
-			TargetUrl:              "http://xforwardedhost.com",
-			ProxyfiedUrl:           "http://backend.com",
+			TargetURL:              "http://xforwardedhost.com",
+			ProxyfiedURL:           "http://backend.com",
 			ExpectedXForwardedHost: "xforwardedhost.com",
 		},
 		{
 			Description:            "XForwardedHost with PassHostHeader",
 			PassHostHeader:         true,
-			TargetUrl:              "http://xforwardedhost.com",
-			ProxyfiedUrl:           "http://backend.com",
+			TargetURL:              "http://xforwardedhost.com",
+			ProxyfiedURL:           "http://backend.com",
 			ExpectedXForwardedHost: "xforwardedhost.com",
 		},
 	}
@@ -143,11 +143,11 @@ func TestXForwardedHostHeader(t *testing.T) {
 			f, err := New(PassHostHeader(test.PassHostHeader))
 			require.NoError(t, err)
 
-			r, err := http.NewRequest(http.MethodGet, test.TargetUrl, nil)
+			r, err := http.NewRequest(http.MethodGet, test.TargetURL, nil)
 			require.NoError(t, err)
-			backendUrl, err := url.Parse(test.ProxyfiedUrl)
+			backendURL, err := url.Parse(test.ProxyfiedURL)
 			require.NoError(t, err)
-			f.modifyRequest(r, backendUrl)
+			f.modifyRequest(r, backendURL)
 			require.Equal(t, test.ExpectedXForwardedHost, r.Header.Get(XForwardedHost))
 		})
 	}
@@ -331,12 +331,14 @@ func TestForwardedProto(t *testing.T) {
 }
 
 func TestContextWithValueInErrHandler(t *testing.T) {
-	var originalPBool *bool
 	originalBool := false
-	originalPBool = &originalBool
+	originalPBool := &originalBool
+
+	type MyKey string
+	const key MyKey = "test"
 
 	f, err := New(ErrorHandler(utils.ErrorHandlerFunc(func(rw http.ResponseWriter, req *http.Request, err error) {
-		test, isBool := req.Context().Value("test").(*bool)
+		test, isBool := req.Context().Value(key).(*bool)
 		if isBool {
 			*test = true
 		}
@@ -349,13 +351,15 @@ func TestContextWithValueInErrHandler(t *testing.T) {
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		// We need a network error
 		req.URL = testutils.ParseURI("http://localhost:63450")
-		newReq := req.WithContext(context.WithValue(req.Context(), "test", originalPBool))
+		newReq := req.WithContext(context.WithValue(req.Context(), key, originalPBool))
+
 		f.ServeHTTP(w, newReq)
 	})
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
+
 	assert.Equal(t, http.StatusBadGateway, re.StatusCode)
 	assert.True(t, *originalPBool)
 }

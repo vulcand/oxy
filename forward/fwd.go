@@ -121,7 +121,7 @@ func Logger(l log.FieldLogger) optSetter {
 }
 
 // StateListener defines a state listener for the HTTP forwarder.
-func StateListener(stateListener UrlForwardingStateListener) optSetter {
+func StateListener(stateListener URLForwardingStateListener) optSetter {
 	return func(f *Forwarder) error {
 		f.stateListener = stateListener
 		return nil
@@ -157,7 +157,7 @@ func StreamingFlushInterval(flushInterval time.Duration) optSetter {
 type Forwarder struct {
 	*httpForwarder
 	*handlerContext
-	stateListener UrlForwardingStateListener
+	stateListener URLForwardingStateListener
 	stream        bool
 }
 
@@ -166,8 +166,7 @@ type handlerContext struct {
 	errHandler utils.ErrorHandler
 }
 
-// httpForwarder is a handler that can reverse proxy
-// HTTP traffic.
+// httpForwarder is a handler that can reverse proxy HTTP traffic.
 type httpForwarder struct {
 	roundTripper   http.RoundTripper
 	rewriter       ReqRewriter
@@ -191,8 +190,12 @@ const (
 	StateDisconnected
 )
 
-// UrlForwardingStateListener URL forwarding state listener.
-type UrlForwardingStateListener func(*url.URL, int)
+// UrlForwardingStateListener alias on URLForwardingStateListener.
+// Deprecated: use URLForwardingStateListener instead.
+type UrlForwardingStateListener = URLForwardingStateListener
+
+// URLForwardingStateListener URL forwarding state listener.
+type URLForwardingStateListener func(*url.URL, int)
 
 // New creates an instance of Forwarder based on the provided list of configuration options.
 func New(setters ...optSetter) (*Forwarder, error) {
@@ -243,7 +246,7 @@ func New(setters ...optSetter) (*Forwarder, error) {
 // request and delegates to the proper implementation.
 func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.log.GetLevel() >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := f.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/forward: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/forward: completed ServeHttp on request")
 	}
@@ -259,7 +262,7 @@ func (f *Forwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (f *httpForwarder) getUrlFromRequest(req *http.Request) *url.URL {
+func (f *httpForwarder) getURLFromRequest(req *http.Request) *url.URL {
 	// If the Request was created by Go via a real HTTP request,  RequestURI will
 	// contain the original query string. If the Request was created in code, RequestURI
 	// will be empty, and we will use the URL object instead
@@ -281,7 +284,7 @@ func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 	outReq.URL.Scheme = target.Scheme
 	outReq.URL.Host = target.Host
 
-	u := f.getUrlFromRequest(outReq)
+	u := f.getURLFromRequest(outReq)
 
 	outReq.URL.Path = u.Path
 	outReq.URL.RawPath = u.RawPath
@@ -305,7 +308,7 @@ func (f *httpForwarder) modifyRequest(outReq *http.Request, target *url.URL) {
 // serveWebSocket forwards websocket traffic.
 func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request, ctx *handlerContext) {
 	if f.log.GetLevel() >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := f.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/forward/websocket: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/forward/websocket: completed ServeHttp on request")
 	}
@@ -341,7 +344,7 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 			return
 		}
 		defer func() {
-			conn.Close()
+			_ = conn.Close()
 			if f.websocketConnectionClosedHook != nil {
 				f.websocketConnectionClosedHook(req, conn)
 			}
@@ -371,8 +374,8 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 		return
 	}
 	defer func() {
-		underlyingConn.Close()
-		targetConn.Close()
+		_ = underlyingConn.Close()
+		_ = targetConn.Close()
 		if f.websocketConnectionClosedHook != nil {
 			f.websocketConnectionClosedHook(req, underlyingConn.UnderlyingConn())
 		}
@@ -461,7 +464,7 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 		outReq.URL.Scheme = "ws"
 	}
 
-	u := f.getUrlFromRequest(outReq)
+	u := f.getURLFromRequest(outReq)
 
 	outReq.URL.Path = u.Path
 	outReq.URL.RawPath = u.RawPath
@@ -488,7 +491,7 @@ func (f *httpForwarder) copyWebSocketRequest(req *http.Request) (outReq *http.Re
 // serveHTTP forwards HTTP traffic using the configured transport.
 func (f *httpForwarder) serveHTTP(w http.ResponseWriter, inReq *http.Request, ctx *handlerContext) {
 	if f.log.GetLevel() >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(inReq))
+		logEntry := f.log.WithField("Request", utils.DumpHTTPRequest(inReq))
 		logEntry.Debug("vulcand/oxy/forward/http: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/forward/http: completed ServeHttp on request")
 	}

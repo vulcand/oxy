@@ -59,47 +59,7 @@ const (
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
 
-// Buffer is responsible for buffering requests and responses
-// It buffers large requests and responses to disk,.
-type Buffer struct {
-	maxRequestBodyBytes int64
-	memRequestBodyBytes int64
-
-	maxResponseBodyBytes int64
-	memResponseBodyBytes int64
-
-	retryPredicate hpredicate
-
-	next       http.Handler
-	errHandler utils.ErrorHandler
-
-	log *log.Logger
-}
-
-// New returns a new buffer middleware. New() function supports optional functional arguments.
-func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
-	strm := &Buffer{
-		next: next,
-
-		maxRequestBodyBytes: DefaultMaxBodyBytes,
-		memRequestBodyBytes: DefaultMemBodyBytes,
-
-		maxResponseBodyBytes: DefaultMaxBodyBytes,
-		memResponseBodyBytes: DefaultMemBodyBytes,
-
-		log: log.StandardLogger(),
-	}
-	for _, s := range setters {
-		if err := s(strm); err != nil {
-			return nil, err
-		}
-	}
-	if strm.errHandler == nil {
-		strm.errHandler = errHandler
-	}
-
-	return strm, nil
-}
+type optSetter func(b *Buffer) error
 
 // Logger defines the logger the buffer will use.
 //
@@ -110,8 +70,6 @@ func Logger(l *log.Logger) optSetter {
 		return nil
 	}
 }
-
-type optSetter func(b *Buffer) error
 
 // CondSetter Conditional setter.
 // ex: Cond(a > 4, MemRequestBodyBytes(a))
@@ -201,6 +159,48 @@ func MemResponseBodyBytes(m int64) optSetter {
 	}
 }
 
+// Buffer is responsible for buffering requests and responses
+// It buffers large requests and responses to disk,.
+type Buffer struct {
+	maxRequestBodyBytes int64
+	memRequestBodyBytes int64
+
+	maxResponseBodyBytes int64
+	memResponseBodyBytes int64
+
+	retryPredicate hpredicate
+
+	next       http.Handler
+	errHandler utils.ErrorHandler
+
+	log *log.Logger
+}
+
+// New returns a new buffer middleware. New() function supports optional functional arguments.
+func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
+	strm := &Buffer{
+		next: next,
+
+		maxRequestBodyBytes: DefaultMaxBodyBytes,
+		memRequestBodyBytes: DefaultMemBodyBytes,
+
+		maxResponseBodyBytes: DefaultMaxBodyBytes,
+		memResponseBodyBytes: DefaultMemBodyBytes,
+
+		log: log.StandardLogger(),
+	}
+	for _, s := range setters {
+		if err := s(strm); err != nil {
+			return nil, err
+		}
+	}
+	if strm.errHandler == nil {
+		strm.errHandler = errHandler
+	}
+
+	return strm, nil
+}
+
 // Wrap sets the next handler to be called by buffer handler.
 func (b *Buffer) Wrap(next http.Handler) error {
 	b.next = next
@@ -209,7 +209,7 @@ func (b *Buffer) Wrap(next http.Handler) error {
 
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if b.log.Level >= log.DebugLevel {
-		logEntry := b.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := b.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/buffer: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/buffer: completed ServeHttp on request")
 	}
@@ -397,7 +397,7 @@ func (b *bufferWriter) WriteHeader(code int) {
 	b.code = code
 }
 
-// CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
+// CloseNotify CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
 func (b *bufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.responseWriter.(http.CloseNotifier); ok {
 		return cn.CloseNotify()

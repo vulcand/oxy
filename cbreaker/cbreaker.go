@@ -110,7 +110,7 @@ func Logger(l *log.Logger) CircuitBreakerOption {
 
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.log.Level >= log.DebugLevel {
-		logEntry := c.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := c.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/circuitbreaker: completed ServeHttp on request")
 	}

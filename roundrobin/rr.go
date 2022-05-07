@@ -46,6 +46,24 @@ func RoundRobinRequestRewriteListener(rrl RequestRewriteListener) LBOption {
 	}
 }
 
+// RoundRobinLogger defines the logger the round robin load balancer will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+// Deprecated: use Logger instead.
+func RoundRobinLogger(l *log.Logger) LBOption {
+	return Logger(l)
+}
+
+// Logger defines the logger the round robin load balancer will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) LBOption {
+	return func(r *RoundRobin) error {
+		r.log = l
+		return nil
+	}
+}
+
 // RoundRobin implements dynamic weighted round robin load balancer http handler.
 type RoundRobin struct {
 	mutex      *sync.Mutex
@@ -83,16 +101,6 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 	return rr, nil
 }
 
-// RoundRobinLogger defines the logger the round robin load balancer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func RoundRobinLogger(l *log.Logger) LBOption {
-	return func(r *RoundRobin) error {
-		r.log = l
-		return nil
-	}
-}
-
 // Next returns the next handler.
 func (r *RoundRobin) Next() http.Handler {
 	return r.next
@@ -100,7 +108,7 @@ func (r *RoundRobin) Next() http.Handler {
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.log.Level >= log.DebugLevel {
-		logEntry := r.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := r.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request")
 	}
@@ -135,7 +143,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if r.log.Level >= log.DebugLevel {
 		// log which backend URL we're sending this request to
-		r.log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
+		r.log.WithFields(log.Fields{"Request": utils.DumpHTTPRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
 	}
 
 	// Emit event to a listener if one exists

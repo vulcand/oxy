@@ -25,7 +25,7 @@ type ConnLimiter struct {
 }
 
 // New creates a new ConnLimiter.
-func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64, options ...ConnLimitOption) (*ConnLimiter, error) {
+func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64, options ...Option) (*ConnLimiter, error) {
 	if extract == nil {
 		return nil, fmt.Errorf("Extract function can not be nil")
 	}
@@ -49,16 +49,6 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 		}
 	}
 	return cl, nil
-}
-
-// Logger defines the logger the connection limiter will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) ConnLimitOption {
-	return func(cl *ConnLimiter) error {
-		cl.log = l
-		return nil
-	}
 }
 
 // Wrap sets the next handler to be called by connection limiter handler.
@@ -127,7 +117,7 @@ type ConnErrHandler struct {
 
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if e.log.Level >= log.DebugLevel {
-		logEntry := e.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := e.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/connlimit: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/connlimit: completed ServeHttp on request")
 	}
@@ -140,11 +130,25 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }
 
+// Logger defines the logger the connection limiter will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) Option {
+	return func(cl *ConnLimiter) error {
+		cl.log = l
+		return nil
+	}
+}
+
 // ConnLimitOption connection limit option type.
-type ConnLimitOption func(l *ConnLimiter) error
+// Deprecated: use Option instead.
+type ConnLimitOption = Option
+
+// Option connection limit option type.
+type Option func(l *ConnLimiter) error
 
 // ErrorHandler sets error handler of the server.
-func ErrorHandler(h utils.ErrorHandler) ConnLimitOption {
+func ErrorHandler(h utils.ErrorHandler) Option {
 	return func(cl *ConnLimiter) error {
 		cl.errHandler = h
 		return nil

@@ -1,4 +1,4 @@
-.PHONY: all
+.PHONY: default clean checks test test-verbose
 
 export GO111MODULE=on
 

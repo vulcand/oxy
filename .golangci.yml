@@ -91,42 +91,38 @@ issues:
     - 'Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked'
     - 'SA1019: http.CloseNotifier has been deprecated'
     - 'string `https` has 3 occurrences, make it a constant'
-    - 'ST1000: at least one file in a package should have a package comment' # TODO(ldez) must be fixed
-    - 'SA1019: tls.VersionSSL30 has been deprecated' # TODO(ldez) must be fixed
-    - 'ST1005: error strings should not be capitalized'# TODO(ldez) must be fixed
-    - 'exported: func name will be used as roundrobin.RoundRobinLogger by other packages'# TODO(ldez) must be fixed
-    - 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'# TODO(ldez) must be fixed
-    - 'exported: type name will be used as connlimit.ConnLimitOption by other packages'# TODO(ldez) must be fixed
+
     - 'ST1003: method ToJson should be ToJSON' # TODO(ldez) must be fixed
     - 'ST1003: type SerializableHttpRequest should be SerializableHTTPRequest' # TODO(ldez) must be fixed
     - 'ST1003: func DumpHttpRequest should be DumpHTTPRequest' # TODO(ldez) must be fixed
-    - 'ST1003: method getUrlFromRequest should be getURLFromRequest' # TODO(ldez) must be fixed
-    - 'ST1003: struct field ProxyfiedUrl should be ProxyfiedURL' # TODO(ldez) must be fixed
-    - 'ST1003: struct field TargetUrl should be TargetURL' # TODO(ldez) must be fixed
     - 'ST1003: const XRealIp should be XRealIP' # TODO(ldez) must be fixed
     - 'ST1003: type UrlForwardingStateListener should be URLForwardingStateListener' # TODO(ldez) must be fixed
-    - 'ST1003: var backendUrl should be backendURL' # TODO(ldez) must be fixed
-    - 'var-naming: var backendUrl should be backendURL' # TODO(ldez) must be fixed
     - 'var-naming: type UrlForwardingStateListener should be URLForwardingStateListener' # TODO(ldez) must be fixed
     - 'var-naming: const XRealIp should be XRealIP' # TODO(ldez) must be fixed
-    - 'var-naming: struct field TargetUrl should be TargetURL' # TODO(ldez) must be fixed
-    - 'var-naming: struct field ProxyfiedUrl should be ProxyfiedURL' # TODO(ldez) must be fixed
-    - 'var-naming: method getUrlFromRequest should be getURLFromRequest' # TODO(ldez) must be fixed
     - 'var-naming: method ToJson should be ToJSON' # TODO(ldez) must be fixed
     - 'var-naming: type SerializableHttpRequest should be SerializableHTTPRequest' # TODO(ldez) must be fixed
     - 'var-naming: func DumpHttpRequest should be DumpHTTPRequest' # TODO(ldez) must be fixed
+
+    - 'exported: func name will be used as roundrobin.RoundRobinLogger by other packages'# TODO(ldez) must be fixed
+    - 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'# TODO(ldez) must be fixed
+    - 'exported: type name will be used as connlimit.ConnLimitOption by other packages'# TODO(ldez) must be fixed
+
+    - 'ST1000: at least one file in a package should have a package comment' # TODO(ldez) must be fixed
+    - 'SA1019: tls.VersionSSL30 has been deprecated' # TODO(ldez) must be fixed
+    - 'Error return value of `resp.Body.Close` is not checked' # TODO(ldez) must be fixed
+    - '`marshalling` is a misspelling of `marshaling`' # TODO(ldez) must be fixed
+
+    - 'ST1005: error strings should not be capitalized'# TODO(ldez) must be fixed
+    - 'ST1005: error strings should not end with punctuation or a newline' # TODO(ldez) must be fixed
+    - 'error-strings: error strings should not be capitalized or end with punctuation or a newline' # TODO(ldez) must be fixed
+
     - 'unexported-return: exported func ([^ ]+) returns unexported type stream.optSetter, which can be annoying to use' # TODO(ldez) must be fixed
     - 'unexported-return: exported func ([^ ]+) returns unexported type buffer.optSetter, which can be annoying to use' # TODO(ldez) must be fixed
+    - 'unexported-return: exported func ([^ ]+) returns unexported type forward.optSetter, which can be annoying to use' # TODO(ldez) must be fixed
     - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.rrOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
     - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.rcOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
     - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.rhOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
     - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.ratioOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
-    - 'unexported-return: exported func ([^ ]+) returns unexported type forward.optSetter, which can be annoying to use' # TODO(ldez) must be fixed
-    - 'error-strings: error strings should not be capitalized or end with punctuation or a newline' # TODO(ldez) must be fixed
-    - 'ST1005: error strings should not end with punctuation or a newline' # TODO(ldez) must be fixed
-    - 'Error return value of `resp.Body.Close` is not checked' # TODO(ldez) must be fixed
-    - 'G104: Errors unhandled.' # TODO(ldez) must be fixed
-    - '`marshalling` is a misspelling of `marshaling`' # TODO(ldez) must be fixed
 
   exclude-rules:
     - path: .*_test.go
@@ -136,10 +132,6 @@ issues:
     - path: testutils/.+
       linters:
         - gosec
-    - path: .*_test.go
-      text: "context-keys-type: should not use basic type string as key" # TODO(ldez) must be fixed
-    - path: .*_test.go
-      text: "SA1029: should not use built-in type string as key for value" # TODO(ldez) must be fixed
     - path: cbreaker/cbreaker_test.go
       text: "`statsNetErrors` - `threshold` always receives `0.6`" # TODO(ldez) must be fixed
     - path: buffer/buffer.go

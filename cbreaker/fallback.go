@@ -39,7 +39,7 @@ func NewResponseFallback(r Response) (*ResponseFallback, error) {
 
 func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.log.Level >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := f.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/fallback/response: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/fallback/response: completed ServeHttp on request")
 	}
@@ -86,7 +86,7 @@ func NewRedirectFallback(r Redirect) (*RedirectFallback, error) {
 
 func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.log.Level >= log.DebugLevel {
-		logEntry := f.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := f.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/fallback/redirect: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/fallback/redirect: completed ServeHttp on request")
 	}
