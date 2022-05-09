@@ -43,7 +43,7 @@ type ReqRewriter interface {
 	Rewrite(r *http.Request)
 }
 
-// WsHook websocket message hook called when message is received or sent
+// WsHook websocket message hook called when message is received or sent.
 type WsHook func(req *http.Request, messageType int, reader io.Reader) (io.Reader, error)
 
 type optSetter func(f *Forwarder) error
@@ -84,7 +84,7 @@ func WebsocketTLSClientConfig(tcc *tls.Config) optSetter {
 	}
 }
 
-// WebsocketNetDialContext define the websocket client DialContext function
+// WebsocketNetDialContext define the websocket client DialContext function.
 func WebsocketNetDialContext(dialContext func(ctx context.Context, network string, addr string) (net.Conn, error)) optSetter {
 	return func(f *Forwarder) error {
 		f.websocketDialer.NetDialContext = dialContext
@@ -151,7 +151,7 @@ func WebsocketConnectionClosedHook(hook func(req *http.Request, conn net.Conn)) 
 	}
 }
 
-// WebsocketMessageReceivedHook defines a hook called when websocket message is received
+// WebsocketMessageReceivedHook defines a hook called when websocket message is received.
 func WebsocketMessageReceivedHook(hook WsHook) optSetter {
 	return func(f *Forwarder) error {
 		f.httpForwarder.websocketMessageReceivedHook = hook
@@ -159,7 +159,7 @@ func WebsocketMessageReceivedHook(hook WsHook) optSetter {
 	}
 }
 
-// WebsocketMessageSentHook defines a hook called when websocket message is sent
+// WebsocketMessageSentHook defines a hook called when websocket message is sent.
 func WebsocketMessageSentHook(hook WsHook) optSetter {
 	return func(f *Forwarder) error {
 		f.httpForwarder.websocketMessageSentHook = hook
@@ -205,7 +205,7 @@ type httpForwarder struct {
 	flushInterval  time.Duration
 	modifyResponse func(*http.Response) error
 
-	tlsClientConfig *tls.Config
+	tlsClientConfig *tls.Config //nolint:structcheck // used via embed in Forwarder
 
 	log OxyLogger
 
