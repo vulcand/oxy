@@ -695,7 +695,11 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ok", resp)
 
+	priorTLS := http.DefaultTransport.(*http.Transport).TLSClientConfig
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	defer func() {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = priorTLS
+	}()
 
 	forwarderWithTLSConfigFromDefaultTransport, err := New(PassHostHeader(true))
 	require.NoError(t, err)
