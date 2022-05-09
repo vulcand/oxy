@@ -275,7 +275,9 @@ func New(setters ...optSetter) (*Forwarder, error) {
 		if ht, ok := f.httpForwarder.roundTripper.(*http.Transport); ok {
 			f.tlsClientConfig = ht.TLSClientConfig
 			if f.websocketDialer.TLSClientConfig == nil && ht.TLSClientConfig != nil {
-				_ = WebsocketTLSClientConfig(ht.TLSClientConfig)(f)
+				if err := WebsocketTLSClientConfig(ht.TLSClientConfig)(f); err != nil {
+					return f, err
+				}
 			}
 		}
 	}
