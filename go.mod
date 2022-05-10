@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2
 	github.com/gorilla/websocket v1.5.0
-	github.com/mailgun/multibuf v0.0.0-20150714184110-565402cd71fb
+	github.com/mailgun/multibuf v0.1.2
 	github.com/segmentio/fasthash v1.0.3
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.1
