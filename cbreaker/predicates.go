@@ -2,8 +2,8 @@ package cbreaker
 
 import (
 	"fmt"
-	"time"
 
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/predicate"
 )
 
@@ -43,6 +43,7 @@ func parseExpression(in string) (hpredicate, error) {
 }
 
 type toInt func(c *CircuitBreaker) int
+
 type toFloat64 func(c *CircuitBreaker) float64
 
 func latencyAtQuantile(quantile float64) toInt {
@@ -52,7 +53,7 @@ func latencyAtQuantile(quantile float64) toInt {
 			c.log.Errorf("Failed to get latency histogram, for %v error: %v", c, err)
 			return 0
 		}
-		return int(h.LatencyAtQuantile(quantile) / time.Millisecond)
+		return int(h.LatencyAtQuantile(quantile) / clock.Millisecond)
 	}
 }
 
@@ -68,7 +69,7 @@ func responseCodeRatio(startA, endA, startB, endB int) toFloat64 {
 	}
 }
 
-// or returns predicate by joining the passed predicates with logical 'or'
+// or returns predicate by joining the passed predicates with logical 'or'.
 func or(fns ...hpredicate) hpredicate {
 	return func(c *CircuitBreaker) bool {
 		for _, fn := range fns {
@@ -80,7 +81,7 @@ func or(fns ...hpredicate) hpredicate {
 	}
 }
 
-// and returns predicate by joining the passed predicates with logical 'and'
+// and returns predicate by joining the passed predicates with logical 'and'.
 func and(fns ...hpredicate) hpredicate {
 	return func(c *CircuitBreaker) bool {
 		for _, fn := range fns {
@@ -92,14 +93,14 @@ func and(fns ...hpredicate) hpredicate {
 	}
 }
 
-// not creates negation of the passed predicate
+// not creates negation of the passed predicate.
 func not(p hpredicate) hpredicate {
 	return func(c *CircuitBreaker) bool {
 		return !p(c)
 	}
 }
 
-// eq returns predicate that tests for equality of the value of the mapper and the constant
+// eq returns predicate that tests for equality of the value of the mapper and the constant.
 func eq(m interface{}, value interface{}) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
@@ -110,7 +111,7 @@ func eq(m interface{}, value interface{}) (hpredicate, error) {
 	return nil, fmt.Errorf("eq: unsupported argument: %T", m)
 }
 
-// neq returns predicate that tests for inequality of the value of the mapper and the constant
+// neq returns predicate that tests for inequality of the value of the mapper and the constant.
 func neq(m interface{}, value interface{}) (hpredicate, error) {
 	p, err := eq(m, value)
 	if err != nil {
@@ -119,7 +120,7 @@ func neq(m interface{}, value interface{}) (hpredicate, error) {
 	return not(p), nil
 }
 
-// lt returns predicate that tests that value of the mapper function is less than the constant
+// lt returns predicate that tests that value of the mapper function is less than the constant.
 func lt(m interface{}, value interface{}) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
@@ -130,7 +131,7 @@ func lt(m interface{}, value interface{}) (hpredicate, error) {
 	return nil, fmt.Errorf("lt: unsupported argument: %T", m)
 }
 
-// le returns predicate that tests that value of the mapper function is less or equal than the constant
+// le returns predicate that tests that value of the mapper function is less or equal than the constant.
 func le(m interface{}, value interface{}) (hpredicate, error) {
 	l, err := lt(m, value)
 	if err != nil {
@@ -145,7 +146,7 @@ func le(m interface{}, value interface{}) (hpredicate, error) {
 	}, nil
 }
 
-// gt returns predicate that tests that value of the mapper function is greater than the constant
+// gt returns predicate that tests that value of the mapper function is greater than the constant.
 func gt(m interface{}, value interface{}) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
@@ -156,7 +157,7 @@ func gt(m interface{}, value interface{}) (hpredicate, error) {
 	return nil, fmt.Errorf("gt: unsupported argument: %T", m)
 }
 
-// ge returns predicate that tests that value of the mapper function is less or equal than the constant
+// ge returns predicate that tests that value of the mapper function is less or equal than the constant.
 func ge(m interface{}, value interface{}) (hpredicate, error) {
 	g, err := gt(m, value)
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -20,7 +20,7 @@ import (
 
 func TestSimple(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -51,11 +51,11 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	var reqBody string
 	var contentLength int64
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		body, err := ioutil.ReadAll(req.Body)
+		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
 		reqBody = string(body)
 		contentLength = req.ContentLength
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -79,7 +79,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
 	require.NoError(t, err)
 
-	fmt.Fprintf(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+	_, _ = fmt.Fprintf(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
 	require.NoError(t, err)
 
@@ -90,7 +90,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 
 func TestChunkedEncodingLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -113,7 +113,7 @@ func TestChunkedEncodingLimitReached(t *testing.T) {
 
 	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
 	require.NoError(t, err)
-	fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+	_, _ = fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
 	require.NoError(t, err)
 
@@ -124,8 +124,8 @@ func TestChunkedResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
-		fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
-		conn.Close()
+		_, _ = fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
+		_ = conn.Close()
 	})
 	defer srv.Close()
 
@@ -151,7 +151,7 @@ func TestChunkedResponse(t *testing.T) {
 
 func TestRequestLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -179,7 +179,7 @@ func TestRequestLimitReached(t *testing.T) {
 
 func TestResponseLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello, this response is too large"))
+		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	defer srv.Close()
 
@@ -207,7 +207,7 @@ func TestResponseLimitReached(t *testing.T) {
 
 func TestFileStreamingResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello, this response is too large to fit in memory"))
+		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
 	defer srv.Close()
 
@@ -236,7 +236,7 @@ func TestFileStreamingResponse(t *testing.T) {
 
 func TestCustomErrorHandler(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello, this response is too large"))
+		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	defer srv.Close()
 
@@ -253,7 +253,7 @@ func TestCustomErrorHandler(t *testing.T) {
 	// stream handler will forward requests to redirect
 	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
 		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte(http.StatusText(http.StatusTeapot)))
+		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 	st, err := New(rdr, MaxResponseBodyBytes(4), ErrorHandler(errHandler))
 	require.NoError(t, err)
@@ -322,11 +322,11 @@ func TestNoBody(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
-// Make sure that stream handler preserves TLS settings
+// Make sure that stream handler preserves TLS settings.
 func TestPreservesTLS(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	})
 	defer srv.Close()
 
@@ -358,7 +358,7 @@ func TestPreservesTLS(t *testing.T) {
 
 func TestNotNilBody(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 

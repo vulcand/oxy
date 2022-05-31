@@ -9,21 +9,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// StatusClientClosedRequest non-standard HTTP status code for client disconnection
+// StatusClientClosedRequest non-standard HTTP status code for client disconnection.
 const StatusClientClosedRequest = 499
 
-// StatusClientClosedRequestText non-standard HTTP status for client disconnection
+// StatusClientClosedRequestText non-standard HTTP status for client disconnection.
 const StatusClientClosedRequestText = "Client Closed Request"
 
-// ErrorHandler error handler
+// ErrorHandler error handler.
 type ErrorHandler interface {
 	ServeHTTP(w http.ResponseWriter, req *http.Request, err error)
 }
 
-// DefaultHandler default error handler
+// DefaultHandler default error handler.
 var DefaultHandler ErrorHandler = &StdHandler{}
 
-// StdHandler Standard error handler
+// StdHandler Standard error handler.
 type StdHandler struct{}
 
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
@@ -42,7 +42,7 @@ func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err err
 	}
 
 	w.WriteHeader(statusCode)
-	w.Write([]byte(statusText(statusCode)))
+	_, _ = w.Write([]byte(statusText(statusCode)))
 	log.Debugf("'%d %s' caused by: %v", statusCode, statusText(statusCode), err)
 }
 
@@ -53,7 +53,7 @@ func statusText(statusCode int) string {
 	return http.StatusText(statusCode)
 }
 
-// ErrorHandlerFunc error handler function type
+// ErrorHandlerFunc error handler function type.
 type ErrorHandlerFunc func(http.ResponseWriter, *http.Request, error)
 
 // ServeHTTP calls f(w, r).

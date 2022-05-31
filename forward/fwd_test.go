@@ -2,21 +2,20 @@ package forward
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 	"github.com/vulcand/oxy/utils"
 )
 
-// Makes sure hop-by-hop headers are removed
+// Makes sure hop-by-hop headers are removed.
 func TestForwardHopHeaders(t *testing.T) {
 	called := false
 	var outHeaders http.Header
@@ -25,7 +24,7 @@ func TestForwardHopHeaders(t *testing.T) {
 		called = true
 		outHeaders = req.Header
 		outHost = req.Host
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -72,7 +71,7 @@ func TestDefaultErrHandler(t *testing.T) {
 func TestCustomErrHandler(t *testing.T) {
 	f, err := New(ErrorHandler(utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
 		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte(http.StatusText(http.StatusTeapot)))
+		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})))
 	require.NoError(t, err)
 
@@ -90,7 +89,7 @@ func TestCustomErrHandler(t *testing.T) {
 
 func TestResponseModifier(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -116,22 +115,22 @@ func TestXForwardedHostHeader(t *testing.T) {
 	tests := []struct {
 		Description            string
 		PassHostHeader         bool
-		TargetUrl              string
-		ProxyfiedUrl           string
+		TargetURL              string
+		ProxyfiedURL           string
 		ExpectedXForwardedHost string
 	}{
 		{
 			Description:            "XForwardedHost without PassHostHeader",
 			PassHostHeader:         false,
-			TargetUrl:              "http://xforwardedhost.com",
-			ProxyfiedUrl:           "http://backend.com",
+			TargetURL:              "http://xforwardedhost.com",
+			ProxyfiedURL:           "http://backend.com",
 			ExpectedXForwardedHost: "xforwardedhost.com",
 		},
 		{
 			Description:            "XForwardedHost with PassHostHeader",
 			PassHostHeader:         true,
-			TargetUrl:              "http://xforwardedhost.com",
-			ProxyfiedUrl:           "http://backend.com",
+			TargetURL:              "http://xforwardedhost.com",
+			ProxyfiedURL:           "http://backend.com",
 			ExpectedXForwardedHost: "xforwardedhost.com",
 		},
 	}
@@ -144,22 +143,22 @@ func TestXForwardedHostHeader(t *testing.T) {
 			f, err := New(PassHostHeader(test.PassHostHeader))
 			require.NoError(t, err)
 
-			r, err := http.NewRequest(http.MethodGet, test.TargetUrl, nil)
+			r, err := http.NewRequest(http.MethodGet, test.TargetURL, nil)
 			require.NoError(t, err)
-			backendUrl, err := url.Parse(test.ProxyfiedUrl)
+			backendURL, err := url.Parse(test.ProxyfiedURL)
 			require.NoError(t, err)
-			f.modifyRequest(r, backendUrl)
+			f.modifyRequest(r, backendURL)
 			require.Equal(t, test.ExpectedXForwardedHost, r.Header.Get(XForwardedHost))
 		})
 	}
 }
 
-// Makes sure hop-by-hop headers are removed
+// Makes sure hop-by-hop headers are removed.
 func TestForwardedHeaders(t *testing.T) {
 	var outHeaders http.Header
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		outHeaders = req.Header
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -192,7 +191,7 @@ func TestCustomRewriter(t *testing.T) {
 	var outHeaders http.Header
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		outHeaders = req.Header
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -219,14 +218,14 @@ func TestCustomRewriter(t *testing.T) {
 
 func TestCustomTransportTimeout(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		time.Sleep(20 * time.Millisecond)
-		w.Write([]byte("hello"))
+		clock.Sleep(20 * clock.Millisecond)
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
 	f, err := New(RoundTripper(
 		&http.Transport{
-			ResponseHeaderTimeout: 5 * time.Millisecond,
+			ResponseHeaderTimeout: 5 * clock.Millisecond,
 		}))
 	require.NoError(t, err)
 
@@ -243,7 +242,7 @@ func TestCustomTransportTimeout(t *testing.T) {
 
 func TestCustomLogger(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -265,7 +264,7 @@ func TestRouteForwarding(t *testing.T) {
 	var outPath string
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		outPath = req.RequestURI
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -310,7 +309,7 @@ func TestForwardedProto(t *testing.T) {
 	var proto string
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		proto = req.Header.Get(XForwardedProto)
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -331,38 +330,15 @@ func TestForwardedProto(t *testing.T) {
 	assert.Equal(t, "https", proto)
 }
 
-func TestChunkedResponseConversion(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		h := w.(http.Hijacker)
-		conn, _, _ := h.Hijack()
-		fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
-		conn.Close()
-	})
-	defer srv.Close()
-
-	f, err := New()
-	require.NoError(t, err)
-
-	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
-		f.ServeHTTP(w, req)
-	})
-	defer proxy.Close()
-
-	re, body, err := testutils.Get(proxy.URL)
-	require.NoError(t, err)
-	assert.Equal(t, "testtest1test2", string(body))
-	assert.Equal(t, http.StatusOK, re.StatusCode)
-	assert.Equal(t, fmt.Sprintf("%d", len("testtest1test2")), re.Header.Get("Content-Length"))
-}
-
 func TestContextWithValueInErrHandler(t *testing.T) {
-	var originalPBool *bool
 	originalBool := false
-	originalPBool = &originalBool
+	originalPBool := &originalBool
+
+	type MyKey string
+	const key MyKey = "test"
 
 	f, err := New(ErrorHandler(utils.ErrorHandlerFunc(func(rw http.ResponseWriter, req *http.Request, err error) {
-		test, isBool := req.Context().Value("test").(*bool)
+		test, isBool := req.Context().Value(key).(*bool)
 		if isBool {
 			*test = true
 		}
@@ -375,13 +351,15 @@ func TestContextWithValueInErrHandler(t *testing.T) {
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		// We need a network error
 		req.URL = testutils.ParseURI("http://localhost:63450")
-		newReq := req.WithContext(context.WithValue(req.Context(), "test", originalPBool))
+		newReq := req.WithContext(context.WithValue(req.Context(), key, originalPBool))
+
 		f.ServeHTTP(w, newReq)
 	})
 	defer proxy.Close()
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
+
 	assert.Equal(t, http.StatusBadGateway, re.StatusCode)
 	assert.True(t, *originalPBool)
 }
@@ -390,7 +368,7 @@ func TestTeTrailer(t *testing.T) {
 	var teHeader string
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		teHeader = req.Header.Get(Te)
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -420,7 +398,7 @@ func TestUnannouncedTrailer(t *testing.T) {
 	}))
 
 	proxy, err := New()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	proxySrv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
@@ -428,7 +406,8 @@ func TestUnannouncedTrailer(t *testing.T) {
 	}))
 
 	resp, _ := http.Get(proxySrv.URL)
-	ioutil.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
 
 	require.Equal(t, resp.Trailer.Get("X-Trailer"), "foo")
 }

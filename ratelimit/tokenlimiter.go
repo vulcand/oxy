@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
-	"github.com/mailgun/ttlmap"
 	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/internal/holsterv4/collections"
 	"github.com/vulcand/oxy/utils"
 )
 
-// DefaultCapacity default capacity
+// DefaultCapacity default capacity.
 const DefaultCapacity = 65536
 
 // RateSet maintains a set of rates. It can contain only one rate per period at a time.
@@ -48,15 +48,15 @@ func (rs *RateSet) String() string {
 	return fmt.Sprint(rs.m)
 }
 
-// RateExtractor rate extractor
+// RateExtractor rate extractor.
 type RateExtractor interface {
 	Extract(r *http.Request) (*RateSet, error)
 }
 
-// RateExtractorFunc rate extractor function type
+// RateExtractorFunc rate extractor function type.
 type RateExtractorFunc func(r *http.Request) (*RateSet, error)
 
-// Extract extract from request
+// Extract extract from request.
 func (e RateExtractorFunc) Extract(r *http.Request) (*RateSet, error) {
 	return e(r)
 }
@@ -66,9 +66,8 @@ type TokenLimiter struct {
 	defaultRates *RateSet
 	extract      utils.SourceExtractor
 	extractRates RateExtractor
-	clock        timetools.TimeProvider
 	mutex        sync.Mutex
-	bucketSets   *ttlmap.TtlMap
+	bucketSets   *collections.TTLMap
 	errHandler   utils.ErrorHandler
 	capacity     int
 	next         http.Handler
@@ -98,11 +97,7 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		}
 	}
 	setDefaults(tl)
-	bucketSets, err := ttlmap.NewMapWithProvider(tl.capacity, tl.clock)
-	if err != nil {
-		return nil, err
-	}
-	tl.bucketSets = bucketSets
+	tl.bucketSets = collections.NewTTLMap(tl.capacity)
 	return tl, nil
 }
 
@@ -149,10 +144,13 @@ func (tl *TokenLimiter) consumeRates(req *http.Request, source string, amount in
 		bucketSet = bucketSetI.(*TokenBucketSet)
 		bucketSet.Update(effectiveRates)
 	} else {
-		bucketSet = NewTokenBucketSet(effectiveRates, tl.clock)
+		bucketSet = NewTokenBucketSet(effectiveRates)
 		// We set ttl as 10 times rate period. E.g. if rate is 100 requests/second per client ip
 		// the counters for this ip will expire after 10 seconds of inactivity
-		tl.bucketSets.Set(source, bucketSet, int(bucketSet.maxPeriod/time.Second)*10+1)
+		err := tl.bucketSets.Set(source, bucketSet, int(bucketSet.maxPeriod/clock.Second)*10+1)
+		if err != nil {
+			return err
+		}
 	}
 	delay, err := bucketSet.Consume(amount)
 	if err != nil {
@@ -186,7 +184,7 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 	return rates
 }
 
-// MaxRateError max rate error
+// MaxRateError max rate error.
 type MaxRateError struct {
 	Delay time.Duration
 }
@@ -195,7 +193,7 @@ func (m *MaxRateError) Error() string {
 	return fmt.Sprintf("max rate reached: retry-in %v", m.Delay)
 }
 
-// RateErrHandler error handler
+// RateErrHandler error handler.
 type RateErrHandler struct{}
 
 func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
@@ -203,16 +201,16 @@ func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 		w.Header().Set("Retry-After", fmt.Sprintf("%.0f", rerr.Delay.Seconds()))
 		w.Header().Set("X-Retry-In", rerr.Delay.String())
 		w.WriteHeader(http.StatusTooManyRequests)
-		w.Write([]byte(err.Error()))
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }
 
-// TokenLimiterOption token limiter option type
+// TokenLimiterOption token limiter option type.
 type TokenLimiterOption func(l *TokenLimiter) error
 
-// ErrorHandler sets error handler of the server
+// ErrorHandler sets error handler of the server.
 func ErrorHandler(h utils.ErrorHandler) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.errHandler = h
@@ -220,7 +218,7 @@ func ErrorHandler(h utils.ErrorHandler) TokenLimiterOption {
 	}
 }
 
-// ExtractRates sets the rate extractor
+// ExtractRates sets the rate extractor.
 func ExtractRates(e RateExtractor) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.extractRates = e
@@ -228,21 +226,13 @@ func ExtractRates(e RateExtractor) TokenLimiterOption {
 	}
 }
 
-// Clock sets the clock
-func Clock(clock timetools.TimeProvider) TokenLimiterOption {
+// Capacity sets the capacity.
+func Capacity(capacity int) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
-		cl.clock = clock
-		return nil
-	}
-}
-
-// Capacity sets the capacity
-func Capacity(cap int) TokenLimiterOption {
-	return func(cl *TokenLimiter) error {
-		if cap <= 0 {
-			return fmt.Errorf("bad capacity: %v", cap)
+		if capacity <= 0 {
+			return fmt.Errorf("bad capacity: %v", capacity)
 		}
-		cl.capacity = cap
+		cl.capacity = capacity
 		return nil
 	}
 }
@@ -252,9 +242,6 @@ var defaultErrHandler = &RateErrHandler{}
 func setDefaults(tl *TokenLimiter) {
 	if tl.capacity <= 0 {
 		tl.capacity = DefaultCapacity
-	}
-	if tl.clock == nil {
-		tl.clock = &timetools.RealTime{}
 	}
 	if tl.errHandler == nil {
 		tl.errHandler = defaultErrHandler

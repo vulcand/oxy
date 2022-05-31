@@ -39,7 +39,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"reflect"
@@ -50,18 +49,118 @@ import (
 )
 
 const (
-	// DefaultMemBodyBytes Store up to 1MB in RAM
+	// DefaultMemBodyBytes Store up to 1MB in RAM.
 	DefaultMemBodyBytes = 1048576
-	// DefaultMaxBodyBytes No limit by default
+	// DefaultMaxBodyBytes No limit by default.
 	DefaultMaxBodyBytes = -1
-	// DefaultMaxRetryAttempts Maximum retry attempts
+	// DefaultMaxRetryAttempts Maximum retry attempts.
 	DefaultMaxRetryAttempts = 10
 )
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
 
+type optSetter func(b *Buffer) error
+
+// Logger defines the logger the buffer will use.
+//
+// It defaults to logrus.StandardLogger(), the global logger used by logrus.
+func Logger(l *log.Logger) optSetter {
+	return func(b *Buffer) error {
+		b.log = l
+		return nil
+	}
+}
+
+// CondSetter Conditional setter.
+// ex: Cond(a > 4, MemRequestBodyBytes(a))
+func CondSetter(condition bool, setter optSetter) optSetter {
+	if !condition {
+		// NoOp setter
+		return func(*Buffer) error {
+			return nil
+		}
+	}
+	return setter
+}
+
+// Retry provides a predicate that allows buffer middleware to replay the request
+// if it matches certain condition, e.g. returns special error code. Available functions are:
+//
+// Attempts() - limits the amount of retry attempts
+// ResponseCode() - returns http response code
+// IsNetworkError() - tests if response code is related to networking error
+//
+// Example of the predicate:
+//
+// `Attempts() <= 2 && ResponseCode() == 502`.
+//
+func Retry(predicate string) optSetter {
+	return func(b *Buffer) error {
+		p, err := parseExpression(predicate)
+		if err != nil {
+			return err
+		}
+		b.retryPredicate = p
+		return nil
+	}
+}
+
+// ErrorHandler sets error handler of the server.
+func ErrorHandler(h utils.ErrorHandler) optSetter {
+	return func(b *Buffer) error {
+		b.errHandler = h
+		return nil
+	}
+}
+
+// MaxRequestBodyBytes sets the maximum request body size in bytes.
+func MaxRequestBodyBytes(m int64) optSetter {
+	return func(b *Buffer) error {
+		if m < 0 {
+			return fmt.Errorf("max bytes should be >= 0 got %d", m)
+		}
+		b.maxRequestBodyBytes = m
+		return nil
+	}
+}
+
+// MemRequestBodyBytes bytes sets the maximum request body to be stored in memory
+// buffer middleware will serialize the excess to disk.
+func MemRequestBodyBytes(m int64) optSetter {
+	return func(b *Buffer) error {
+		if m < 0 {
+			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
+		}
+		b.memRequestBodyBytes = m
+		return nil
+	}
+}
+
+// MaxResponseBodyBytes sets the maximum response body size in bytes.
+func MaxResponseBodyBytes(m int64) optSetter {
+	return func(b *Buffer) error {
+		if m < 0 {
+			return fmt.Errorf("max bytes should be >= 0 got %d", m)
+		}
+		b.maxResponseBodyBytes = m
+		return nil
+	}
+}
+
+// MemResponseBodyBytes sets the maximum response body to be stored in memory
+// buffer middleware will serialize the excess to disk.
+func MemResponseBodyBytes(m int64) optSetter {
+	return func(b *Buffer) error {
+		if m < 0 {
+			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
+		}
+		b.memResponseBodyBytes = m
+		return nil
+	}
+}
+
 // Buffer is responsible for buffering requests and responses
-// It buffers large requests and responses to disk,
+// It buffers large requests and responses to disk,.
 type Buffer struct {
 	maxRequestBodyBytes int64
 	memRequestBodyBytes int64
@@ -77,7 +176,7 @@ type Buffer struct {
 	log *log.Logger
 }
 
-// New returns a new buffer middleware. New() function supports optional functional arguments
+// New returns a new buffer middleware. New() function supports optional functional arguments.
 func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 	strm := &Buffer{
 		next: next,
@@ -102,106 +201,6 @@ func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
 	return strm, nil
 }
 
-// Logger defines the logger the buffer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) optSetter {
-	return func(b *Buffer) error {
-		b.log = l
-		return nil
-	}
-}
-
-type optSetter func(b *Buffer) error
-
-// CondSetter Conditional setter.
-// ex: Cond(a > 4, MemRequestBodyBytes(a))
-func CondSetter(condition bool, setter optSetter) optSetter {
-	if !condition {
-		// NoOp setter
-		return func(*Buffer) error {
-			return nil
-		}
-	}
-	return setter
-}
-
-// Retry provides a predicate that allows buffer middleware to replay the request
-// if it matches certain condition, e.g. returns special error code. Available functions are:
-//
-// Attempts() - limits the amount of retry attempts
-// ResponseCode() - returns http response code
-// IsNetworkError() - tests if response code is related to networking error
-//
-// Example of the predicate:
-//
-// `Attempts() <= 2 && ResponseCode() == 502`
-//
-func Retry(predicate string) optSetter {
-	return func(b *Buffer) error {
-		p, err := parseExpression(predicate)
-		if err != nil {
-			return err
-		}
-		b.retryPredicate = p
-		return nil
-	}
-}
-
-// ErrorHandler sets error handler of the server
-func ErrorHandler(h utils.ErrorHandler) optSetter {
-	return func(b *Buffer) error {
-		b.errHandler = h
-		return nil
-	}
-}
-
-// MaxRequestBodyBytes sets the maximum request body size in bytes
-func MaxRequestBodyBytes(m int64) optSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("max bytes should be >= 0 got %d", m)
-		}
-		b.maxRequestBodyBytes = m
-		return nil
-	}
-}
-
-// MemRequestBodyBytes bytes sets the maximum request body to be stored in memory
-// buffer middleware will serialize the excess to disk.
-func MemRequestBodyBytes(m int64) optSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
-		}
-		b.memRequestBodyBytes = m
-		return nil
-	}
-}
-
-// MaxResponseBodyBytes sets the maximum response body size in bytes
-func MaxResponseBodyBytes(m int64) optSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("max bytes should be >= 0 got %d", m)
-		}
-		b.maxResponseBodyBytes = m
-		return nil
-	}
-}
-
-// MemResponseBodyBytes sets the maximum response body to be stored in memory
-// buffer middleware will serialize the excess to disk.
-func MemResponseBodyBytes(m int64) optSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
-		}
-		b.memResponseBodyBytes = m
-		return nil
-	}
-}
-
 // Wrap sets the next handler to be called by buffer handler.
 func (b *Buffer) Wrap(next http.Handler) error {
 	b.next = next
@@ -210,7 +209,7 @@ func (b *Buffer) Wrap(next http.Handler) error {
 
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if b.log.Level >= log.DebugLevel {
-		logEntry := b.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := b.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/buffer: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/buffer: completed ServeHttp on request")
 	}
@@ -234,7 +233,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Set request body to buffered reader that can replay the read and execute Seek
 	// Note that we don't change the original request body as it's handled by the http server
-	// and we don'w want to mess with standard library
+	// and we don't want to mess with standard library
 	defer func() {
 		if body != nil {
 			errClose := body.Close()
@@ -301,7 +300,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			utils.CopyHeaders(w.Header(), bw.Header())
 			w.WriteHeader(bw.code)
 			if reader != nil {
-				io.Copy(w, reader)
+				_, _ = io.Copy(w, reader)
 			}
 			return
 		}
@@ -330,9 +329,9 @@ func (b *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int
 	o.TransferEncoding = []string{}
 	// http.Transport will close the request body on any error, we are controlling the close process ourselves, so we override the closer here
 	if body == nil {
-		o.Body = ioutil.NopCloser(req.Body)
+		o.Body = io.NopCloser(req.Body)
 	} else {
-		o.Body = ioutil.NopCloser(body.(io.Reader))
+		o.Body = io.NopCloser(body.(io.Reader))
 	}
 	return &o
 }
@@ -356,7 +355,7 @@ type bufferWriter struct {
 	log            *log.Logger
 }
 
-// RFC2616 #4.4
+// RFC2616 #4.4.
 func (b *bufferWriter) expectBody(r *http.Request) bool {
 	if r.Method == "HEAD" {
 		return false
@@ -398,7 +397,7 @@ func (b *bufferWriter) WriteHeader(code int) {
 	b.code = code
 }
 
-// CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
+// CloseNotify CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
 func (b *bufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.responseWriter.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
@@ -420,13 +419,13 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("the response writer wrapped in this proxy does not implement http.Hijacker. Its type is: %v", reflect.TypeOf(b.responseWriter))
 }
 
-// SizeErrHandler Size error handler
+// SizeErrHandler Size error handler.
 type SizeErrHandler struct{}
 
 func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
-		w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
+		_, _ = w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
 		return
 	}
 	utils.DefaultHandler.ServeHTTP(w, req, err)

@@ -12,19 +12,19 @@ import (
 	"github.com/vulcand/oxy/utils"
 )
 
-// We've hit the limit and were able to proceed once the request has completed
+// We've hit the limit and were able to proceed once the request has completed.
 func TestHitLimitAndRelease(t *testing.T) {
 	wait := make(chan bool)
 	proceed := make(chan bool)
 	finish := make(chan bool)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		fmt.Println(req.Header)
+		t.Logf("%v", req.Header)
 		if req.Header.Get("Wait") != "" {
 			proceed <- true
 			<-wait
 		}
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	cl, err := New(handler, headerLimit, 1)
@@ -60,15 +60,15 @@ func TestHitLimitAndRelease(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
-// We've hit the limit and were able to proceed once the request has completed
+// We've hit the limit and were able to proceed once the request has completed.
 func TestCustomHandlers(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
 		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte(http.StatusText(http.StatusTeapot)))
+		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
 	l, err := New(handler, headerLimit, 0, ErrorHandler(errHandler))
@@ -82,10 +82,10 @@ func TestCustomHandlers(t *testing.T) {
 	assert.Equal(t, http.StatusTeapot, re.StatusCode)
 }
 
-// We've hit the limit and were able to proceed once the request has completed
+// We've hit the limit and were able to proceed once the request has completed.
 func TestFaultyExtract(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 
 	l, err := New(handler, faultyExtract, 1)
@@ -108,4 +108,5 @@ func faultyExtractor(_ *http.Request) (string, int64, error) {
 }
 
 var headerLimit = utils.ExtractorFunc(headerLimiter)
+
 var faultyExtract = utils.ExtractorFunc(faultyExtractor)

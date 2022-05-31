@@ -9,11 +9,11 @@ import (
 	"net/http/httptest"
 	"runtime"
 	"testing"
-	"time"
 
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/testutils"
 	"golang.org/x/net/websocket"
 )
@@ -29,7 +29,7 @@ func TestWebSocketTCPClose(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer c.Close()
+		defer func(c *gorillawebsocket.Conn) { _ = c.Close() }(c)
 		for {
 			_, _, err := c.ReadMessage()
 			if err != nil {
@@ -48,7 +48,7 @@ func TestWebSocketTCPClose(t *testing.T) {
 		withPath("/ws"),
 	).open()
 	require.NoError(t, err)
-	conn.Close()
+	_ = conn.Close()
 
 	serverErr := <-errChan
 
@@ -67,9 +67,9 @@ func TestWebsocketConnectionClosedHook(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
 		msg := make([]byte, 4)
-		conn.Read(msg)
-		conn.Write(msg)
-		conn.Close()
+		_, _ = conn.Read(msg)
+		_, _ = conn.Write(msg)
+		_ = conn.Close()
 	}))
 
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -92,16 +92,15 @@ func TestWebsocketConnectionClosedHook(t *testing.T) {
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
 	require.NoError(t, err, "Error during Dial with response: %+v", resp)
 
-	conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
-	fmt.Println(conn.ReadMessage())
+	_ = conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
+	t.Log(conn.ReadMessage())
 
-	conn.Close()
+	_ = conn.Close()
 
 	select {
-	case <-time.After(time.Second):
+	case <-clock.After(clock.Second):
 		t.Errorf("Websocket Hook not called")
 	case <-closed:
-
 	}
 }
 
@@ -109,8 +108,8 @@ func TestWebSocketPingPong(t *testing.T) {
 	f, err := New()
 	require.NoError(t, err)
 
-	var upgrader = gorillawebsocket.Upgrader{
-		HandshakeTimeout: 10 * time.Second,
+	upgrader := gorillawebsocket.Upgrader{
+		HandshakeTimeout: 10 * clock.Second,
 		CheckOrigin: func(*http.Request) bool {
 			return true
 		},
@@ -122,11 +121,11 @@ func TestWebSocketPingPong(t *testing.T) {
 		require.NoError(t, err)
 
 		ws.SetPingHandler(func(appData string) error {
-			ws.WriteMessage(gorillawebsocket.PongMessage, []byte(appData+"Pong"))
+			_ = ws.WriteMessage(gorillawebsocket.PongMessage, []byte(appData+"Pong"))
 			return nil
 		})
 
-		ws.ReadMessage()
+		_, _, _ = ws.ReadMessage()
 	})
 
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -159,7 +158,7 @@ func TestWebSocketPingPong(t *testing.T) {
 		return badErr
 	})
 
-	conn.WriteControl(gorillawebsocket.PingMessage, []byte("Ping"), time.Now().Add(time.Second))
+	_ = conn.WriteControl(gorillawebsocket.PingMessage, []byte("Ping"), clock.Now().Add(clock.Second))
 	_, _, err = conn.ReadMessage()
 
 	if err != goodErr {
@@ -174,10 +173,10 @@ func TestWebSocketEcho(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
 		msg := make([]byte, 4)
-		conn.Read(msg)
-		fmt.Println(string(msg))
-		conn.Write(msg)
-		conn.Close()
+		_, _ = conn.Read(msg)
+		t.Log(string(msg))
+		_, _ = conn.Write(msg)
+		_ = conn.Close()
 	}))
 
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -200,10 +199,10 @@ func TestWebSocketEcho(t *testing.T) {
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
 	require.NoError(t, err, "Error during Dial with response: %+v", resp)
 
-	conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
-	fmt.Println(conn.ReadMessage())
+	_ = conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
+	t.Log(conn.ReadMessage())
 
-	conn.Close()
+	_ = conn.Close()
 }
 
 func TestWebSocketPassHost(t *testing.T) {
@@ -241,10 +240,10 @@ func TestWebSocketPassHost(t *testing.T) {
 				}
 
 				msg := make([]byte, 4)
-				conn.Read(msg)
-				fmt.Println(string(msg))
-				conn.Write(msg)
-				conn.Close()
+				_, _ = conn.Read(msg)
+				t.Log(string(msg))
+				_, _ = conn.Write(msg)
+				_ = conn.Close()
 			}))
 
 			srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -268,10 +267,10 @@ func TestWebSocketPassHost(t *testing.T) {
 			conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
 			require.NoError(t, err, "Error during Dial with response: %+v", resp)
 
-			conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
-			fmt.Println(conn.ReadMessage())
+			_ = conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
+			t.Log(conn.ReadMessage())
 
-			conn.Close()
+			_ = conn.Close()
 		})
 	}
 }
@@ -284,10 +283,10 @@ func TestWebSocketNumGoRoutine(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
 		msg := make([]byte, 4)
-		conn.Read(msg)
-		fmt.Println(string(msg))
-		conn.Write(msg)
-		conn.Close()
+		_, _ = conn.Read(msg)
+		t.Log(string(msg))
+		_, _ = conn.Write(msg)
+		_ = conn.Close()
 	}))
 
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -312,12 +311,12 @@ func TestWebSocketNumGoRoutine(t *testing.T) {
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
 	require.NoError(t, err, "Error during Dial with response: %+v", resp)
 
-	conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
-	fmt.Println(conn.ReadMessage())
+	_ = conn.WriteMessage(gorillawebsocket.TextMessage, []byte("OK"))
+	t.Log(conn.ReadMessage())
 
-	conn.Close()
+	_ = conn.Close()
 
-	time.Sleep(time.Second)
+	clock.Sleep(clock.Second)
 	assert.Equal(t, num, runtime.NumGoroutine())
 }
 
@@ -454,7 +453,7 @@ func TestWebSocketRequestWithHeadersInResponseWriter(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
-		conn.Close()
+		_ = conn.Close()
 	}))
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		mux.ServeHTTP(w, req)
@@ -523,8 +522,8 @@ func TestWebSocketRequestWithEncodedChar(t *testing.T) {
 func TestDetectsWebSocketRequest(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
-		conn.Write([]byte("ok"))
-		conn.Close()
+		_, _ = conn.Write([]byte("ok"))
+		_ = conn.Close()
 	}))
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		websocketRequest := IsWebsocketRequest(req)
@@ -586,7 +585,7 @@ func TestWebSocketUpgradeFailed(t *testing.T) {
 	req.Header.Add("upgrade", "websocket")
 	req.Header.Add("Connection", "upgrade")
 
-	req.Write(conn)
+	_ = req.Write(conn)
 
 	// First request works with 400
 	br := bufio.NewReader(conn)
@@ -602,8 +601,8 @@ func TestForwardsWebsocketTraffic(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
-		conn.Write([]byte("ok"))
-		conn.Close()
+		_, _ = conn.Write([]byte("ok"))
+		_ = conn.Close()
 	}))
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		mux.ServeHTTP(w, req)
@@ -646,11 +645,11 @@ func createTLSWebsocketServer() *httptest.Server {
 	return srv
 }
 
-func createProxyWithForwarder(forwarder *Forwarder, URL string) *httptest.Server {
+func createProxyWithForwarder(forwarder *Forwarder, uri string) *httptest.Server {
 	return testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		path := req.URL.Path // keep the original path
 		// Set new backend URL
-		req.URL = testutils.ParseURI(URL)
+		req.URL = testutils.ParseURI(uri)
 		req.URL.Path = path
 
 		forwarder.ServeHTTP(w, req)
@@ -717,7 +716,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 	assert.Equal(t, "ok", resp)
 }
 
-const dialTimeout = time.Second
+const dialTimeout = clock.Second
 
 type websocketRequestOpt func(w *websocketRequest)
 
@@ -776,7 +775,8 @@ func (w *websocketRequest) send() (string, error) {
 	if _, err := conn.Write([]byte(w.Data)); err != nil {
 		return "", err
 	}
-	var msg = make([]byte, 512)
+
+	msg := make([]byte, 512)
 	var n int
 	n, err = conn.Read(msg)
 	if err != nil {

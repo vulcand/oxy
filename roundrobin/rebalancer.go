@@ -7,23 +7,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mailgun/timetools"
 	log "github.com/sirupsen/logrus"
+	"github.com/vulcand/oxy/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/memmetrics"
 	"github.com/vulcand/oxy/utils"
 )
 
-// RebalancerOption - functional option setter for rebalancer
+// RebalancerOption - functional option setter for rebalancer.
 type RebalancerOption func(*Rebalancer) error
 
-// Meter measures server performance and returns it's relative value via rating
+// Meter measures server performance and returns it's relative value via rating.
 type Meter interface {
 	Rating() float64
 	Record(int, time.Duration)
 	IsReady() bool
 }
 
-// NewMeterFn type of functions to create new Meter
+// NewMeterFn type of functions to create new Meter.
 type NewMeterFn func() (Meter, error)
 
 // Rebalancer increases weights on servers that perform better than others. It also rolls back to original weights
@@ -31,12 +31,10 @@ type NewMeterFn func() (Meter, error)
 type Rebalancer struct {
 	// mutex
 	mtx *sync.Mutex
-	// As usual, control time in tests
-	clock timetools.TimeProvider
 	// Time that freezes state machine to accumulate stats after updating the weights
 	backoffDuration time.Duration
 	// Timer is set to give probing some time to take place
-	timer time.Time
+	timer clock.Time
 	// server records that remember original weights
 	servers []*rbServer
 	// next is  internal load balancer next in chain
@@ -57,15 +55,7 @@ type Rebalancer struct {
 	log *log.Logger
 }
 
-// RebalancerClock sets a clock
-func RebalancerClock(clock timetools.TimeProvider) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.clock = clock
-		return nil
-	}
-}
-
-// RebalancerBackoff sets a beck off duration
+// RebalancerBackoff sets a beck off duration.
 func RebalancerBackoff(d time.Duration) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.backoffDuration = d
@@ -73,7 +63,7 @@ func RebalancerBackoff(d time.Duration) RebalancerOption {
 	}
 }
 
-// RebalancerMeter sets a Meter builder function
+// RebalancerMeter sets a Meter builder function.
 func RebalancerMeter(newMeter NewMeterFn) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.newMeter = newMeter
@@ -81,7 +71,7 @@ func RebalancerMeter(newMeter NewMeterFn) RebalancerOption {
 	}
 }
 
-// RebalancerErrorHandler is a functional argument that sets error handler of the server
+// RebalancerErrorHandler is a functional argument that sets error handler of the server.
 func RebalancerErrorHandler(h utils.ErrorHandler) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.errHandler = h
@@ -89,7 +79,7 @@ func RebalancerErrorHandler(h utils.ErrorHandler) RebalancerOption {
 	}
 }
 
-// RebalancerStickySession sets a sticky session
+// RebalancerStickySession sets a sticky session.
 func RebalancerStickySession(stickySession *StickySession) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.stickySession = stickySession
@@ -97,7 +87,7 @@ func RebalancerStickySession(stickySession *StickySession) RebalancerOption {
 	}
 }
 
-// RebalancerRequestRewriteListener is a functional argument that sets error handler of the server
+// RebalancerRequestRewriteListener is a functional argument that sets error handler of the server.
 func RebalancerRequestRewriteListener(rrl RequestRewriteListener) RebalancerOption {
 	return func(r *Rebalancer) error {
 		r.requestRewriteListener = rrl
@@ -105,7 +95,7 @@ func RebalancerRequestRewriteListener(rrl RequestRewriteListener) RebalancerOpti
 	}
 }
 
-// NewRebalancer creates a new Rebalancer
+// NewRebalancer creates a new Rebalancer.
 func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalancer, error) {
 	rb := &Rebalancer{
 		mtx:           &sync.Mutex{},
@@ -119,15 +109,12 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 			return nil, err
 		}
 	}
-	if rb.clock == nil {
-		rb.clock = &timetools.RealTime{}
-	}
 	if rb.backoffDuration == 0 {
-		rb.backoffDuration = 10 * time.Second
+		rb.backoffDuration = 10 * clock.Second
 	}
 	if rb.newMeter == nil {
 		rb.newMeter = func() (Meter, error) {
-			rc, err := memmetrics.NewRatioCounter(10, time.Second, memmetrics.RatioClock(rb.clock))
+			rc, err := memmetrics.NewRatioCounter(10, clock.Second)
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +141,7 @@ func RebalancerLogger(l *log.Logger) RebalancerOption {
 	}
 }
 
-// Servers gets all servers
+// Servers gets all servers.
 func (rb *Rebalancer) Servers() []*url.URL {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -164,27 +151,26 @@ func (rb *Rebalancer) Servers() []*url.URL {
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if rb.log.Level >= log.DebugLevel {
-		logEntry := rb.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := rb.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request")
 	}
 
 	pw := utils.NewProxyWriter(w)
-	start := rb.clock.UtcNow()
+	start := clock.Now().UTC()
 
 	// make shallow copy of request before changing anything to avoid side effects
 	newReq := *req
 	stuck := false
 
 	if rb.stickySession != nil {
-		cookieUrl, present, err := rb.stickySession.GetBackend(&newReq, rb.Servers())
-
+		cookieURL, present, err := rb.stickySession.GetBackend(&newReq, rb.Servers())
 		if err != nil {
 			log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
 		}
 
 		if present {
-			newReq.URL = cookieUrl
+			newReq.URL = cookieURL
 			stuck = true
 		}
 	}
@@ -198,11 +184,11 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		if log.GetLevel() >= log.DebugLevel {
 			// log which backend URL we're sending this request to
-			log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": fwdURL}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
+			log.WithFields(log.Fields{"Request": utils.DumpHTTPRequest(req), "ForwardURL": fwdURL}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 		}
 
 		if rb.stickySession != nil {
-			rb.stickySession.StickBackend(fwdURL, &w)
+			rb.stickySession.StickBackend(fwdURL, w)
 		}
 
 		newReq.URL = fwdURL
@@ -215,7 +201,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	rb.next.Next().ServeHTTP(pw, &newReq)
 
-	rb.recordMetrics(newReq.URL, pw.StatusCode(), rb.clock.UtcNow().Sub(start))
+	rb.recordMetrics(newReq.URL, pw.StatusCode(), clock.Now().UTC().Sub(start))
 	rb.adjustWeights()
 }
 
@@ -230,9 +216,9 @@ func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency time.Duration)
 func (rb *Rebalancer) reset() {
 	for _, s := range rb.servers {
 		s.curWeight = s.origWeight
-		rb.next.UpsertServer(s.url, Weight(s.origWeight))
+		_ = rb.next.UpsertServer(s.url, Weight(s.origWeight))
 	}
-	rb.timer = rb.clock.UtcNow().Add(-1 * time.Second)
+	rb.timer = clock.Now().UTC().Add(-1 * clock.Second)
 	rb.ratings = make([]float64, len(rb.servers))
 }
 
@@ -245,7 +231,7 @@ func (rb *Rebalancer) Wrap(next balancerHandler) error {
 	return nil
 }
 
-// UpsertServer upsert a server
+// UpsertServer upsert a server.
 func (rb *Rebalancer) UpsertServer(u *url.URL, options ...ServerOption) error {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -255,14 +241,14 @@ func (rb *Rebalancer) UpsertServer(u *url.URL, options ...ServerOption) error {
 	}
 	weight, _ := rb.next.ServerWeight(u)
 	if err := rb.upsertServer(u, weight); err != nil {
-		rb.next.RemoveServer(u)
+		_ = rb.next.RemoveServer(u)
 		return err
 	}
 	rb.reset()
 	return nil
 }
 
-// RemoveServer remove a server
+// RemoveServer remove a server.
 func (rb *Rebalancer) RemoveServer(u *url.URL) error {
 	rb.mtx.Lock()
 	defer rb.mtx.Unlock()
@@ -344,7 +330,7 @@ func (rb *Rebalancer) adjustWeights() {
 func (rb *Rebalancer) applyWeights() {
 	for _, srv := range rb.servers {
 		rb.log.Debugf("upsert server %v, weight %v", srv.url, srv.curWeight)
-		rb.next.UpsertServer(srv.url, Weight(srv.curWeight))
+		_ = rb.next.UpsertServer(srv.url, Weight(srv.curWeight))
 	}
 }
 
@@ -370,11 +356,11 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 }
 
 func (rb *Rebalancer) setTimer() {
-	rb.timer = rb.clock.UtcNow().Add(rb.backoffDuration)
+	rb.timer = clock.Now().UTC().Add(rb.backoffDuration)
 }
 
 func (rb *Rebalancer) timerExpired() bool {
-	return rb.timer.Before(rb.clock.UtcNow())
+	return rb.timer.Before(clock.Now().UTC())
 }
 
 func (rb *Rebalancer) metricsReady() bool {
@@ -445,7 +431,7 @@ func (rb *Rebalancer) normalizeWeights() {
 		return
 	}
 	for _, s := range rb.servers {
-		s.curWeight = s.curWeight / gcd
+		s.curWeight /= gcd
 	}
 }
 
@@ -461,7 +447,7 @@ func decrease(target, current int) int {
 	return adjusted
 }
 
-// rebalancer server record that keeps track of the original weight supplied by user
+// rebalancer server record that keeps track of the original weight supplied by user.
 type rbServer struct {
 	url        *url.URL
 	origWeight int // original weight supplied by user
@@ -471,9 +457,9 @@ type rbServer struct {
 }
 
 const (
-	// FSMMaxWeight is the maximum weight that handler will set for the server
+	// FSMMaxWeight is the maximum weight that handler will set for the server.
 	FSMMaxWeight = 4096
-	// FSMGrowFactor Multiplier for the server weight
+	// FSMGrowFactor Multiplier for the server weight.
 	FSMGrowFactor = 4
 )
 
@@ -483,12 +469,12 @@ type codeMeter struct {
 	codeE int
 }
 
-// Rating gets ratio
+// Rating gets ratio.
 func (n *codeMeter) Rating() float64 {
 	return n.r.Ratio()
 }
 
-// Record records a meter
+// Record records a meter.
 func (n *codeMeter) Record(code int, d time.Duration) {
 	if code >= n.codeS && code < n.codeE {
 		n.r.IncA(1)
@@ -497,10 +483,10 @@ func (n *codeMeter) Record(code int, d time.Duration) {
 	}
 }
 
-// IsReady returns true if the counter is ready
+// IsReady returns true if the counter is ready.
 func (n *codeMeter) IsReady() bool {
 	return n.r.IsReady()
 }
 
-// splitThreshold tells how far the value should go from the median + median absolute deviation before it is considered an outlier
+// splitThreshold tells how far the value should go from the median + median absolute deviation before it is considered an outlier.
 const splitThreshold = 1.5

@@ -1,0 +1,146 @@
+run:
+  deadline: 5m
+  skip-files: [ ]
+  skip-dirs: ["internal/holsterv4"]
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+      - shadow
+  gocyclo:
+    min-complexity: 15
+  maligned:
+    suggest-new: true
+  goconst:
+    min-len: 5
+    min-occurrences: 3
+  misspell:
+    locale: US
+  funlen:
+    lines: -1
+    statements: 50
+  godox:
+    keywords:
+      - FIXME
+  gofumpt:
+    extra-rules: false
+  depguard:
+    list-type: blacklist
+    include-go-root: false
+    packages:
+      - github.com/pkg/errors
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - sloppyReassign
+      - rangeValCopy
+      - octalLiteral
+      - paramTypeCombine # already handle by gofumpt.extra-rules
+      - httpNoBody
+      - unnamedResult
+      - deferInLoop # TODO(ldez) should be use on the project
+    settings:
+      hugeParam:
+        sizeThreshold: 100
+
+linters:
+  enable-all: true
+  disable:
+    - maligned # deprecated
+    - interfacer # deprecated
+    - scopelint # deprecated
+    - golint # deprecated
+    - sqlclosecheck # not relevant (SQL)
+    - rowserrcheck # not relevant (SQL)
+    - cyclop # duplicate of gocyclo
+    - lll
+    - dupl
+    - wsl
+    - nlreturn
+    - gomnd
+    - goerr113
+    - wrapcheck
+    - exhaustive
+    - exhaustivestruct
+    - testpackage
+    - tparallel
+    - paralleltest
+    - prealloc
+    - ifshort
+    - forcetypeassert
+    - bodyclose # Too many false positives: https://github.com/timakin/bodyclose/issues/30
+    - varnamelen
+    - noctx
+    - tagliatelle
+    - nilnil
+    - ireturn
+    - gochecknoglobals # TODO(ldez) should be use on the project
+    - errorlint # TODO(ldez) should be use on the project
+    - nestif # TODO(ldez) should be use on the project
+
+issues:
+  exclude-use-default: false
+  max-per-linter: 0
+  max-same-issues: 0
+  exclude:
+    - 'Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked'
+    - 'SA1019: http.CloseNotifier has been deprecated'
+    - 'string `https` has 3 occurrences, make it a constant'
+
+    - 'ST1003: method ToJson should be ToJSON' # TODO(ldez) must be fixed
+    - 'ST1003: type SerializableHttpRequest should be SerializableHTTPRequest' # TODO(ldez) must be fixed
+    - 'ST1003: func DumpHttpRequest should be DumpHTTPRequest' # TODO(ldez) must be fixed
+    - 'ST1003: const XRealIp should be XRealIP' # TODO(ldez) must be fixed
+    - 'ST1003: type UrlForwardingStateListener should be URLForwardingStateListener' # TODO(ldez) must be fixed
+    - 'var-naming: type UrlForwardingStateListener should be URLForwardingStateListener' # TODO(ldez) must be fixed
+    - 'var-naming: const XRealIp should be XRealIP' # TODO(ldez) must be fixed
+    - 'var-naming: method ToJson should be ToJSON' # TODO(ldez) must be fixed
+    - 'var-naming: type SerializableHttpRequest should be SerializableHTTPRequest' # TODO(ldez) must be fixed
+    - 'var-naming: func DumpHttpRequest should be DumpHTTPRequest' # TODO(ldez) must be fixed
+
+    - 'exported: func name will be used as roundrobin.RoundRobinLogger by other packages'# TODO(ldez) must be fixed
+    - 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'# TODO(ldez) must be fixed
+    - 'exported: type name will be used as connlimit.ConnLimitOption by other packages'# TODO(ldez) must be fixed
+
+    - 'ST1000: at least one file in a package should have a package comment' # TODO(ldez) must be fixed
+    - 'SA1019: tls.VersionSSL30 has been deprecated' # TODO(ldez) must be fixed
+    - 'Error return value of `resp.Body.Close` is not checked' # TODO(ldez) must be fixed
+    - '`marshalling` is a misspelling of `marshaling`' # TODO(ldez) must be fixed
+
+    - 'ST1005: error strings should not be capitalized'# TODO(ldez) must be fixed
+    - 'ST1005: error strings should not end with punctuation or a newline' # TODO(ldez) must be fixed
+    - 'error-strings: error strings should not be capitalized or end with punctuation or a newline' # TODO(ldez) must be fixed
+
+    - 'unexported-return: exported func ([^ ]+) returns unexported type stream.optSetter, which can be annoying to use' # TODO(ldez) must be fixed
+    - 'unexported-return: exported func ([^ ]+) returns unexported type buffer.optSetter, which can be annoying to use' # TODO(ldez) must be fixed
+    - 'unexported-return: exported func ([^ ]+) returns unexported type forward.optSetter, which can be annoying to use' # TODO(ldez) must be fixed
+    - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.rrOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
+    - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.rcOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
+    - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.rhOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
+    - 'unexported-return: exported func ([^ ]+) returns unexported type memmetrics.ratioOptSetter, which can be annoying to use' # TODO(ldez) must be fixed
+
+  exclude-rules:
+    - path: .*_test.go
+      linters:
+        - funlen
+        - gosec
+    - path: testutils/.+
+      linters:
+        - gosec
+    - path: cbreaker/cbreaker_test.go
+      text: "`statsNetErrors` - `threshold` always receives `0.6`" # TODO(ldez) must be fixed
+    - path: buffer/buffer.go
+      text: "(cognitive|cyclomatic) complexity \\d+ of func `\\(\\*Buffer\\)\\.ServeHTTP` is high" # TODO(ldez) must be fixed
+    - path: buffer/buffer.go
+      text: "Function 'ServeHTTP' has too many statements" # TODO(ldez) must be fixed
+    - path: forward/fwd.go
+      text: "(cognitive|cyclomatic) complexity \\d+ of func `\\(\\*httpForwarder\\)\\.serveWebSocket` is high" # TODO(ldez) must be fixed
+    - path: forward/fwd.go
+      text: "Function 'serveWebSocket' has too many statements" # TODO(ldez) must be fixed
+    - path: utils/handler.go
+      text: "ifElseChain: rewrite if-else to switch statement" # TODO(ldez) must be fixed

@@ -14,7 +14,7 @@ import (
 
 func TestSuccess(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -33,7 +33,7 @@ func TestSuccess(t *testing.T) {
 
 func TestRetryOnError(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -53,7 +53,7 @@ func TestRetryOnError(t *testing.T) {
 
 func TestRetryExceedAttempts(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello"))
 	})
 	defer srv.Close()
 
@@ -73,6 +73,8 @@ func TestRetryExceedAttempts(t *testing.T) {
 }
 
 func newBufferMiddleware(t *testing.T, p string) (*roundrobin.RoundRobin, *Buffer) {
+	t.Helper()
+
 	// forwarder will proxy the request to whatever destination
 	fwd, err := forward.New()
 	require.NoError(t, err)

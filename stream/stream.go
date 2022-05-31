@@ -39,26 +39,23 @@ import (
 )
 
 const (
-	// DefaultMaxBodyBytes No limit by default
+	// DefaultMaxBodyBytes No limit by default.
 	DefaultMaxBodyBytes = -1
 )
 
 // Stream is responsible for buffering requests and responses
-// It buffers large requests and responses to disk,
+// It buffers large requests and responses to disk,.
 type Stream struct {
 	maxRequestBodyBytes int64
 
 	maxResponseBodyBytes int64
 
-	retryPredicate hpredicate
-
-	next       http.Handler
-	errHandler utils.ErrorHandler
+	next http.Handler
 
 	log *log.Logger
 }
 
-// New returns a new streamer middleware. New() function supports optional functional arguments
+// New returns a new streamer middleware. New() function supports optional functional arguments.
 func New(next http.Handler, setters ...optSetter) (*Stream, error) {
 	strm := &Stream{
 		next: next,
@@ -97,7 +94,7 @@ func (s *Stream) Wrap(next http.Handler) error {
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if s.log.Level >= log.DebugLevel {
-		logEntry := s.log.WithField("Request", utils.DumpHttpRequest(req))
+		logEntry := s.log.WithField("Request", utils.DumpHTTPRequest(req))
 		logEntry.Debug("vulcand/oxy/stream: begin ServeHttp on request")
 		defer logEntry.Debug("vulcand/oxy/stream: completed ServeHttp on request")
 	}
