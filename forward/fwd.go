@@ -69,7 +69,15 @@ func Rewriter(r ReqRewriter) optSetter {
 	}
 }
 
-// WebsocketTLSClientConfig define the websocker client TLS configuration.
+// WebsocketDialer sets a custom websocket dialer to use.
+func WebsocketDialer(dialer *websocket.Dialer) optSetter {
+	return func(f *Forwarder) error {
+		f.websocketDialer = dialer
+		return nil
+	}
+}
+
+// WebsocketTLSClientConfig define the websocket client TLS configuration.
 func WebsocketTLSClientConfig(tcc *tls.Config) optSetter {
 	return func(f *Forwarder) error {
 		f.httpForwarder.tlsClientConfig = tcc
@@ -180,6 +188,7 @@ type httpForwarder struct {
 
 	bufferPool                    httputil.BufferPool
 	websocketConnectionClosedHook func(req *http.Request, conn net.Conn)
+	websocketDialer               *websocket.Dialer
 }
 
 const defaultFlushInterval = 100 * clock.Millisecond
@@ -315,7 +324,13 @@ func (f *httpForwarder) serveWebSocket(w http.ResponseWriter, req *http.Request,
 
 	outReq := f.copyWebSocketRequest(req)
 
-	dialer := websocket.DefaultDialer
+	var dialer *websocket.Dialer
+	if f.websocketDialer != nil {
+		dialer = f.websocketDialer
+	} else {
+		dialer = websocket.DefaultDialer
+	}
+
 	if outReq.URL.Scheme == "wss" && f.tlsClientConfig != nil {
 		dialer.TLSClientConfig = f.tlsClientConfig.Clone()
 		// WebSocket is only in http/1.1

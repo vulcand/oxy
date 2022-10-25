@@ -623,6 +623,51 @@ func TestForwardsWebsocketTraffic(t *testing.T) {
 	assert.Equal(t, "ok", resp)
 }
 
+func TestWebSocketOverrideDialer(t *testing.T) {
+	customDialerCalled := false
+	websocketDialer := &gorillawebsocket.Dialer{}
+	websocketDialer.NetDial = func(network, addr string) (net.Conn, error) {
+		customDialerCalled = true
+		return net.Dial(network, addr)
+	}
+
+	f, err := New(WebsocketDialer(websocketDialer))
+	require.NoError(t, err)
+
+	mux := http.NewServeMux()
+	mux.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
+		msg := make([]byte, 4)
+		_, _ = conn.Read(msg)
+		t.Log(string(msg))
+		_, _ = conn.Write(msg)
+		_ = conn.Close()
+	}))
+
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		mux.ServeHTTP(w, req)
+	})
+	defer srv.Close()
+
+	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		f.ServeHTTP(w, req)
+	})
+	defer proxy.Close()
+
+	serverAddr := proxy.Listener.Addr().String()
+
+	headers := http.Header{}
+	webSocketURL := "ws://" + serverAddr + "/ws"
+	headers.Add("Origin", webSocketURL)
+
+	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
+	require.NoError(t, err, "Error during Dial with response: %+v", resp)
+
+	require.True(t, customDialerCalled)
+
+	_ = conn.Close()
+}
+
 func createTLSWebsocketServer() *httptest.Server {
 	upgrader := gorillawebsocket.Upgrader{}
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
