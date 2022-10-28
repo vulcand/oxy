@@ -3,6 +3,7 @@ package forward
 import (
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/vulcand/oxy/utils"
@@ -12,6 +13,15 @@ import (
 type HeaderRewriter struct {
 	TrustForwardHeader bool
 	Hostname           string
+}
+
+// NewHeaderRewriter creates a new header rewriter with sane defaults.
+func NewHeaderRewriter(trustForwardHeader bool) *HeaderRewriter {
+	h, err := os.Hostname()
+	if err != nil {
+		h = "localhost"
+	}
+	return &HeaderRewriter{TrustForwardHeader: trustForwardHeader, Hostname: h}
 }
 
 // clean up IP in case if it is ipv6 address and it has {zone} information in it, like "[fe80::d806:a55d:eb1b:49cc%vEthernet (vmxnet3 Ethernet Adapter - Virtual Switch)]:64692".

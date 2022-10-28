@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -216,11 +215,7 @@ func New(setters ...optSetter) (*Forwarder, error) {
 	}
 
 	if f.httpForwarder.rewriter == nil {
-		h, err := os.Hostname()
-		if err != nil {
-			h = "localhost"
-		}
-		f.httpForwarder.rewriter = &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
+		f.httpForwarder.rewriter = NewHeaderRewriter(true)
 	}
 
 	if f.httpForwarder.roundTripper == nil {
