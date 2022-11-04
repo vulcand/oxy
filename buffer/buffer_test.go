@@ -25,8 +25,7 @@ func TestSimple(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -60,8 +59,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -95,8 +93,7 @@ func TestChunkedEncodingLimitReached(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -129,8 +126,7 @@ func TestChunkedResponse(t *testing.T) {
 	})
 	defer srv.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
@@ -156,8 +152,7 @@ func TestRequestLimitReached(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -184,8 +179,7 @@ func TestResponseLimitReached(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -212,8 +206,7 @@ func TestFileStreamingResponse(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -241,8 +234,7 @@ func TestCustomErrorHandler(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -273,8 +265,7 @@ func TestNotModified(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -301,8 +292,7 @@ func TestNoBody(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -331,8 +321,7 @@ func TestPreservesTLS(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	var cs *tls.ConnectionState
 	// this is our redirect to server
@@ -363,8 +352,7 @@ func TestNotNilBody(t *testing.T) {
 	defer srv.Close()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

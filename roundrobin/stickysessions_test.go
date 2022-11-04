@@ -23,8 +23,7 @@ func TestBasic(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
@@ -65,8 +64,7 @@ func TestBasicWithHashValue(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
@@ -119,8 +117,7 @@ func TestBasicWithAESValue(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
@@ -175,8 +172,7 @@ func TestStickyCookie(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
@@ -327,8 +323,7 @@ func TestStickyCookieWithOptions(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.desc, func(t *testing.T) {
-			fwd, err := forward.New()
-			require.NoError(t, err)
+			fwd := forward.New(false)
 
 			sticky := NewStickySessionWithOptions(test.name, test.options)
 			require.NotNil(t, sticky)
@@ -360,8 +355,7 @@ func TestRemoveRespondingServer(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
@@ -430,8 +424,7 @@ func TestRemoveAllServers(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
@@ -483,8 +476,7 @@ func TestBadCookieVal(t *testing.T) {
 
 	defer a.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)

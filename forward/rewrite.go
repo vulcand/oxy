@@ -3,10 +3,20 @@ package forward
 import (
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/vulcand/oxy/utils"
 )
+
+// NewHeaderRewriter creates a new HeaderRewriter middleware.
+func NewHeaderRewriter() *HeaderRewriter {
+	h, err := os.Hostname()
+	if err != nil {
+		h = "localhost"
+	}
+	return &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
+}
 
 // HeaderRewriter is responsible for removing hop-by-hop headers and setting forwarding headers.
 type HeaderRewriter struct {
@@ -19,7 +29,7 @@ func ipv6fix(clientIP string) string {
 	return strings.Split(clientIP, "%")[0]
 }
 
-// Rewrite rewrite request headers.
+// Rewrite request headers.
 func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 	if !rw.TrustForwardHeader {
 		utils.RemoveHeaders(req.Header, XHeaders...)
@@ -27,14 +37,6 @@ func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 
 	if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
 		clientIP = ipv6fix(clientIP)
-		// If not websocket, done in http.ReverseProxy
-		if IsWebsocketRequest(req) {
-			if prior, ok := req.Header[XForwardedFor]; ok {
-				req.Header.Set(XForwardedFor, strings.Join(prior, ", ")+", "+clientIP)
-			} else {
-				req.Header.Set(XForwardedFor, clientIP)
-			}
-		}
 
 		if req.Header.Get(XRealIp) == "" {
 			req.Header.Set(XRealIp, clientIP)
@@ -47,14 +49,6 @@ func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 			req.Header.Set(XForwardedProto, "https")
 		} else {
 			req.Header.Set(XForwardedProto, "http")
-		}
-	}
-
-	if IsWebsocketRequest(req) {
-		if req.Header.Get(XForwardedProto) == "https" {
-			req.Header.Set(XForwardedProto, "wss")
-		} else {
-			req.Header.Set(XForwardedProto, "ws")
 		}
 	}
 

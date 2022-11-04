@@ -13,8 +13,7 @@ import (
 )
 
 func TestNoServers(t *testing.T) {
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -40,8 +39,7 @@ func TestCustomErrHandler(t *testing.T) {
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd, ErrorHandler(errHandler))
 	require.NoError(t, err)
@@ -58,8 +56,7 @@ func TestOneServer(t *testing.T) {
 	a := testutils.NewResponder("a")
 	defer a.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -79,8 +76,7 @@ func TestSimple(t *testing.T) {
 	b := testutils.NewResponder("b")
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -101,8 +97,7 @@ func TestRemoveServer(t *testing.T) {
 	b := testutils.NewResponder("b")
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -125,8 +120,7 @@ func TestUpsertSame(t *testing.T) {
 	a := testutils.NewResponder("a")
 	defer a.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -147,8 +141,7 @@ func TestUpsertWeight(t *testing.T) {
 	b := testutils.NewResponder("b")
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -179,8 +172,7 @@ func TestWeighted(t *testing.T) {
 	z := testutils.NewResponder("z")
 	defer z.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -218,8 +210,7 @@ func TestRequestRewriteListener(t *testing.T) {
 	b := testutils.NewResponder("b")
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd,
 		RoundRobinRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {}))

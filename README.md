@@ -38,7 +38,7 @@ import (
   )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
-fwd, _ := forward.New()
+fwd := forward.New(false)
 
 redirect := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
     // let us forward this request to another server
@@ -66,7 +66,7 @@ import (
   )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
-fwd, _ := forward.New()
+fwd := forward.New(false)
 lb, _ := roundrobin.New(fwd)
 
 lb.UpsertServer(url1)
@@ -93,7 +93,7 @@ import (
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
 
-fwd, _ := forward.New()
+fwd := forward.New(false)
 lb, _ := roundrobin.New(fwd)
 
 // buffer will read the request body and will replay the request again in case if forward returned status
