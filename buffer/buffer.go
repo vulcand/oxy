@@ -410,12 +410,12 @@ func (b *bufferWriter) CloseNotify() <-chan bool {
 func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := b.responseWriter.(http.Hijacker); ok {
 		conn, rw, err := hi.Hijack()
-		if err != nil {
+		if err == nil {
 			b.hijacked = true
 		}
 		return conn, rw, err
 	}
-	b.log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
+	b.log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker.", reflect.TypeOf(b.responseWriter))
 	return nil, nil, fmt.Errorf("the response writer wrapped in this proxy does not implement http.Hijacker. Its type is: %v", reflect.TypeOf(b.responseWriter))
 }
 
