@@ -38,8 +38,8 @@ func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 	if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
 		clientIP = ipv6fix(clientIP)
 
-		if req.Header.Get(XRealIp) == "" {
-			req.Header.Set(XRealIp, clientIP)
+		if req.Header.Get(XRealIP) == "" {
+			req.Header.Set(XRealIP, clientIP)
 		}
 	}
 

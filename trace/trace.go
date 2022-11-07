@@ -175,8 +175,6 @@ type TLS struct {
 
 func versionToString(v uint16) string {
 	switch v {
-	case tls.VersionSSL30:
-		return "SSL30"
 	case tls.VersionTLS10:
 		return "TLS10"
 	case tls.VersionTLS11:

@@ -35,7 +35,7 @@ func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptS
 	return rc, nil
 }
 
-// Reset reset the counter.
+// Reset resets the counter.
 func (r *RatioCounter) Reset() {
 	r.a.Reset()
 	r.b.Reset()
@@ -87,12 +87,12 @@ func (r *RatioCounter) Ratio() float64 {
 	return float64(a) / float64(a+b)
 }
 
-// IncA increment counter A.
+// IncA increments counter A.
 func (r *RatioCounter) IncA(v int) {
 	r.a.Inc(v)
 }
 
-// IncB increment counter B.
+// IncB increments counter B.
 func (r *RatioCounter) IncB(v int) {
 	r.b.Inc(v)
 }

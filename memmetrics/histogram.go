@@ -35,7 +35,7 @@ func NewHDRHistogram(low, high int64, sigfigs int) (h *HDRHistogram, err error) 
 	}, nil
 }
 
-// Export export a HDRHistogram.
+// Export exports a HDRHistogram.
 func (h *HDRHistogram) Export() *HDRHistogram {
 	var hist *hdrhistogram.Histogram
 	if h.h != nil {
@@ -55,7 +55,7 @@ func (h *HDRHistogram) RecordLatencies(d time.Duration, n int64) error {
 	return h.RecordValues(int64(d/clock.Microsecond), n)
 }
 
-// Reset reset a HDRHistogram.
+// Reset resets a HDRHistogram.
 func (h *HDRHistogram) Reset() {
 	h.h.Reset()
 }
@@ -70,7 +70,7 @@ func (h *HDRHistogram) RecordValues(v, n int64) error {
 	return h.h.RecordValues(v, n)
 }
 
-// Merge merge a HDRHistogram.
+// Merge merges a HDRHistogram.
 func (h *HDRHistogram) Merge(other *HDRHistogram) error {
 	if other == nil {
 		return fmt.Errorf("other is nil")
@@ -122,7 +122,7 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 	return rh, nil
 }
 
-// Export export a RollingHDRHistogram.
+// Export exports a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
 	export := &RollingHDRHistogram{}
 	export.idx = r.idx
@@ -142,7 +142,7 @@ func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
 	return export
 }
 
-// Append append a RollingHDRHistogram.
+// Append appends a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 	if r.bucketCount != o.bucketCount || r.period != o.period || r.low != o.low || r.high != o.high || r.sigfigs != o.sigfigs {
 		return fmt.Errorf("can't merge")
@@ -156,7 +156,7 @@ func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 	return nil
 }
 
-// Reset reset a RollingHDRHistogram.
+// Reset resets a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
 	r.lastRoll = clock.Now().UTC()
@@ -197,7 +197,7 @@ func (r *RollingHDRHistogram) RecordLatencies(v time.Duration, n int64) error {
 	return r.getHist().RecordLatencies(v, n)
 }
 
-// RecordValues set record values.
+// RecordValues sets record values.
 func (r *RollingHDRHistogram) RecordValues(v, n int64) error {
 	return r.getHist().RecordValues(v, n)
 }

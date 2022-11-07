@@ -27,7 +27,7 @@ type ConnLimiter struct {
 // New creates a new ConnLimiter.
 func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64, options ...Option) (*ConnLimiter, error) {
 	if extract == nil {
-		return nil, fmt.Errorf("Extract function can not be nil")
+		return nil, fmt.Errorf("extract function can not be nil")
 	}
 	cl := &ConnLimiter{
 		mutex:          &sync.Mutex{},
@@ -122,6 +122,7 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 		defer logEntry.Debug("vulcand/oxy/connlimit: completed ServeHttp on request")
 	}
 
+	//nolint:errorlint // must be changed
 	if _, ok := err.(*MaxConnError); ok {
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte(err.Error()))
@@ -139,10 +140,6 @@ func Logger(l *log.Logger) Option {
 		return nil
 	}
 }
-
-// ConnLimitOption connection limit option type.
-// Deprecated: use Option instead.
-type ConnLimitOption = Option
 
 // Option connection limit option type.
 type Option func(l *ConnLimiter) error

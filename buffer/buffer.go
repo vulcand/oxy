@@ -58,12 +58,13 @@ const (
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
 
-type optSetter func(b *Buffer) error
+// OptSetter the option setter type.
+type OptSetter func(b *Buffer) error
 
 // Logger defines the logger the buffer will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) optSetter {
+func Logger(l *log.Logger) OptSetter {
 	return func(b *Buffer) error {
 		b.log = l
 		return nil
@@ -72,7 +73,7 @@ func Logger(l *log.Logger) optSetter {
 
 // CondSetter Conditional setter.
 // ex: Cond(a > 4, MemRequestBodyBytes(a))
-func CondSetter(condition bool, setter optSetter) optSetter {
+func CondSetter(condition bool, setter OptSetter) OptSetter {
 	if !condition {
 		// NoOp setter
 		return func(*Buffer) error {
@@ -92,7 +93,7 @@ func CondSetter(condition bool, setter optSetter) optSetter {
 // Example of the predicate:
 //
 // `Attempts() <= 2 && ResponseCode() == 502`.
-func Retry(predicate string) optSetter {
+func Retry(predicate string) OptSetter {
 	return func(b *Buffer) error {
 		p, err := parseExpression(predicate)
 		if err != nil {
@@ -104,7 +105,7 @@ func Retry(predicate string) optSetter {
 }
 
 // ErrorHandler sets error handler of the server.
-func ErrorHandler(h utils.ErrorHandler) optSetter {
+func ErrorHandler(h utils.ErrorHandler) OptSetter {
 	return func(b *Buffer) error {
 		b.errHandler = h
 		return nil
@@ -112,7 +113,7 @@ func ErrorHandler(h utils.ErrorHandler) optSetter {
 }
 
 // MaxRequestBodyBytes sets the maximum request body size in bytes.
-func MaxRequestBodyBytes(m int64) optSetter {
+func MaxRequestBodyBytes(m int64) OptSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
 			return fmt.Errorf("max bytes should be >= 0 got %d", m)
@@ -124,7 +125,7 @@ func MaxRequestBodyBytes(m int64) optSetter {
 
 // MemRequestBodyBytes bytes sets the maximum request body to be stored in memory
 // buffer middleware will serialize the excess to disk.
-func MemRequestBodyBytes(m int64) optSetter {
+func MemRequestBodyBytes(m int64) OptSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
 			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
@@ -135,7 +136,7 @@ func MemRequestBodyBytes(m int64) optSetter {
 }
 
 // MaxResponseBodyBytes sets the maximum response body size in bytes.
-func MaxResponseBodyBytes(m int64) optSetter {
+func MaxResponseBodyBytes(m int64) OptSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
 			return fmt.Errorf("max bytes should be >= 0 got %d", m)
@@ -147,7 +148,7 @@ func MaxResponseBodyBytes(m int64) optSetter {
 
 // MemResponseBodyBytes sets the maximum response body to be stored in memory
 // buffer middleware will serialize the excess to disk.
-func MemResponseBodyBytes(m int64) optSetter {
+func MemResponseBodyBytes(m int64) OptSetter {
 	return func(b *Buffer) error {
 		if m < 0 {
 			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
@@ -175,7 +176,7 @@ type Buffer struct {
 }
 
 // New returns a new buffer middleware. New() function supports optional functional arguments.
-func New(next http.Handler, setters ...optSetter) (*Buffer, error) {
+func New(next http.Handler, setters ...OptSetter) (*Buffer, error) {
 	strm := &Buffer{
 		next: next,
 
@@ -254,7 +255,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		body = nil
 	}
 
-	outreq := b.copyRequest(req, body, totalSize)
+	outReq := b.copyRequest(req, body, totalSize)
 
 	attempt := 1
 	for {
@@ -275,14 +276,14 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		defer bw.Close()
 
-		b.next.ServeHTTP(bw, outreq)
+		b.next.ServeHTTP(bw, outReq)
 		if bw.hijacked {
 			b.log.Debugf("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
 			return
 		}
 
 		var reader multibuf.MultiReader
-		if bw.expectBody(outreq) {
+		if bw.expectBody(outReq) {
 			rdr, err := writer.Reader()
 			if err != nil {
 				b.log.Errorf("vulcand/oxy/buffer: failed to read response, err: %v", err)
@@ -312,7 +313,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 
-		outreq = b.copyRequest(req, body, totalSize)
+		outReq = b.copyRequest(req, body, totalSize)
 		b.log.Debugf("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
 	}
 }
@@ -421,6 +422,7 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 type SizeErrHandler struct{}
 
 func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
+	//nolint:errorlint // must be changed
 	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))

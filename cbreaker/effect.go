@@ -36,7 +36,7 @@ type WebhookSideEffect struct {
 // NewWebhookSideEffectsWithLogger creates a new WebhookSideEffect.
 func NewWebhookSideEffectsWithLogger(w Webhook, l *log.Logger) (*WebhookSideEffect, error) {
 	if w.Method == "" {
-		return nil, fmt.Errorf("Supply method")
+		return nil, fmt.Errorf("supply method")
 	}
 	_, err := url.Parse(w.URL)
 	if err != nil {

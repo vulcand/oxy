@@ -7,7 +7,7 @@ const (
 	XForwardedHost   = "X-Forwarded-Host"
 	XForwardedPort   = "X-Forwarded-Port"
 	XForwardedServer = "X-Forwarded-Server"
-	XRealIp          = "X-Real-Ip"
+	XRealIP          = "X-Real-Ip"
 )
 
 // XHeaders X-* headers.
@@ -17,5 +17,5 @@ var XHeaders = []string{
 	XForwardedHost,
 	XForwardedPort,
 	XForwardedServer,
-	XRealIp,
+	XRealIP,
 }

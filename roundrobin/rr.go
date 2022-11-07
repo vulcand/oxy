@@ -46,14 +46,6 @@ func RoundRobinRequestRewriteListener(rrl RequestRewriteListener) LBOption {
 	}
 }
 
-// RoundRobinLogger defines the logger the round robin load balancer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-// Deprecated: use Logger instead.
-func RoundRobinLogger(l *log.Logger) LBOption {
-	return Logger(l)
-}
-
 // Logger defines the logger the round robin load balancer will use.
 //
 // It defaults to logrus.StandardLogger(), the global logger used by logrus.
@@ -64,7 +56,7 @@ func Logger(l *log.Logger) LBOption {
 	}
 }
 
-// RoundRobin implements dynamic weighted round robin load balancer http handler.
+// RoundRobin implements dynamic weighted round-robin load balancer http handler.
 type RoundRobin struct {
 	mutex      *sync.Mutex
 	next       http.Handler

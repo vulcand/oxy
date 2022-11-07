@@ -9,10 +9,6 @@ import (
 	"net/url"
 )
 
-// SerializableHttpRequest alias on SerializableHTTPRequest.
-// Deprecated: use SerializableHTTPRequest instead.
-type SerializableHttpRequest = SerializableHTTPRequest
-
 // SerializableHTTPRequest serializable HTTP request.
 type SerializableHTTPRequest struct {
 	Method           string
@@ -53,25 +49,13 @@ func Clone(r *http.Request) *SerializableHTTPRequest {
 	return rc
 }
 
-// ToJson serializes to JSON.
-// Deprecated: use ToJSON instead.
-func (s *SerializableHTTPRequest) ToJson() string {
-	return s.ToJSON()
-}
-
 // ToJSON serializes to JSON.
 func (s *SerializableHTTPRequest) ToJSON() string {
 	jsonVal, err := json.Marshal(s)
 	if err != nil || jsonVal == nil {
-		return fmt.Sprintf("Error marshalling SerializableHTTPRequest to json: %s", err)
+		return fmt.Sprintf("error marshaling SerializableHTTPRequest to json: %s", err)
 	}
 	return string(jsonVal)
-}
-
-// DumpHttpRequest dump a HTTP request to JSON.
-// Deprecated: use DumpHTTPRequest instead.
-func DumpHttpRequest(req *http.Request) string {
-	return DumpHTTPRequest(req)
 }
 
 // DumpHTTPRequest dump a HTTP request to JSON.

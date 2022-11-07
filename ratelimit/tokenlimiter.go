@@ -197,6 +197,7 @@ func (m *MaxRateError) Error() string {
 type RateErrHandler struct{}
 
 func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
+	//nolint:errorlint // must be changed
 	if rerr, ok := err.(*MaxRateError); ok {
 		w.Header().Set("Retry-After", fmt.Sprintf("%.0f", rerr.Delay.Seconds()))
 		w.Header().Set("X-Retry-In", rerr.Delay.String())

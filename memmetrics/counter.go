@@ -19,14 +19,14 @@ type RollingCounter struct {
 }
 
 // NewCounter creates a counter with fixed amount of buckets that are rotated every resolution period.
-// E.g. 10 buckets with 1 second means that every new second the bucket is refreshed, so it maintains 10 second rolling window.
-// By default creates a bucket with 10 buckets and 1 second resolution.
+// E.g. 10 buckets with 1 second means that every new second the bucket is refreshed, so it maintains 10 seconds rolling window.
+// By default, creates a bucket with 10 buckets and 1 second resolution.
 func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (*RollingCounter, error) {
 	if buckets <= 0 {
-		return nil, fmt.Errorf("Buckets should be >= 0")
+		return nil, fmt.Errorf("buckets should be >= 0")
 	}
 	if resolution < clock.Second {
-		return nil, fmt.Errorf("Resolution should be larger than a second")
+		return nil, fmt.Errorf("resolution should be larger than a second")
 	}
 
 	rc := &RollingCounter{
@@ -45,13 +45,13 @@ func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (
 	return rc, nil
 }
 
-// Append append a counter.
+// Append appends a counter.
 func (c *RollingCounter) Append(o *RollingCounter) error {
 	c.Inc(int(o.Count()))
 	return nil
 }
 
-// Clone clone a counter.
+// Clone clones a counter.
 func (c *RollingCounter) Clone() *RollingCounter {
 	c.cleanup()
 	other := &RollingCounter{
@@ -64,7 +64,7 @@ func (c *RollingCounter) Clone() *RollingCounter {
 	return other
 }
 
-// Reset reset a counter.
+// Reset resets a counter.
 func (c *RollingCounter) Reset() {
 	c.lastBucket = -1
 	c.countedBuckets = 0
@@ -100,7 +100,7 @@ func (c *RollingCounter) WindowSize() time.Duration {
 	return time.Duration(len(c.values)) * c.resolution
 }
 
-// Inc increment counter.
+// Inc increments counter.
 func (c *RollingCounter) Inc(v int) {
 	c.cleanup()
 	c.incBucketValue(v)

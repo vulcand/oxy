@@ -26,7 +26,8 @@ type RTMetrics struct {
 	newHist    NewRollingHistogramFn
 }
 
-type rrOptSetter func(r *RTMetrics) error
+// OptSetter the option setter type.
+type OptSetter func(r *RTMetrics) error
 
 // NewRTMetricsFn builder function type.
 type NewRTMetricsFn func() (*RTMetrics, error)
@@ -38,7 +39,7 @@ type NewCounterFn func() (*RollingCounter, error)
 type NewRollingHistogramFn func() (*RollingHDRHistogram, error)
 
 // RTCounter set a builder function for Counter.
-func RTCounter(fn NewCounterFn) rrOptSetter {
+func RTCounter(fn NewCounterFn) OptSetter {
 	return func(r *RTMetrics) error {
 		r.newCounter = fn
 		return nil
@@ -46,7 +47,7 @@ func RTCounter(fn NewCounterFn) rrOptSetter {
 }
 
 // RTHistogram set a builder function for RollingHistogram.
-func RTHistogram(fn NewRollingHistogramFn) rrOptSetter {
+func RTHistogram(fn NewRollingHistogramFn) OptSetter {
 	return func(r *RTMetrics) error {
 		r.newHist = fn
 		return nil
@@ -54,7 +55,7 @@ func RTHistogram(fn NewRollingHistogramFn) rrOptSetter {
 }
 
 // NewRTMetrics returns new instance of metrics collector.
-func NewRTMetrics(settings ...rrOptSetter) (*RTMetrics, error) {
+func NewRTMetrics(settings ...OptSetter) (*RTMetrics, error) {
 	m := &RTMetrics{
 		statusCodes:     make(map[int]*RollingCounter),
 		statusCodesLock: sync.RWMutex{},

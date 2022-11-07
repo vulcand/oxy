@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -29,15 +30,16 @@ type StdHandler struct{}
 func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	statusCode := http.StatusInternalServerError
 
+	//nolint:errorlint // must be changed
 	if e, ok := err.(net.Error); ok {
 		if e.Timeout() {
 			statusCode = http.StatusGatewayTimeout
 		} else {
 			statusCode = http.StatusBadGateway
 		}
-	} else if err == io.EOF {
+	} else if errors.Is(err, io.EOF) {
 		statusCode = http.StatusBadGateway
-	} else if err == context.Canceled {
+	} else if errors.Is(err, context.Canceled) {
 		statusCode = StatusClientClosedRequest
 	}
 
