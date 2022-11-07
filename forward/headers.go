@@ -8,9 +8,6 @@ const (
 	XForwardedPort   = "X-Forwarded-Port"
 	XForwardedServer = "X-Forwarded-Server"
 	XRealIp          = "X-Real-Ip"
-	Connection       = "Connection"
-	KeepAlive        = "Keep-Alive"
-	Te               = "Te" // canonicalized version of "TE"
 )
 
 // XHeaders X-* headers.

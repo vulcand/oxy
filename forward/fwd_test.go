@@ -20,9 +20,9 @@ func TestDefaultErrHandler(t *testing.T) {
 	}))
 	defer proxy.Close()
 
-	re, _, err := testutils.Get(proxy.URL)
+	resp, err := http.Get(proxy.URL)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusBadGateway, re.StatusCode)
+	assert.Equal(t, http.StatusBadGateway, resp.StatusCode)
 }
 
 func TestXForwardedHostHeader(t *testing.T) {
@@ -58,9 +58,11 @@ func TestXForwardedHostHeader(t *testing.T) {
 
 			r, err := http.NewRequest(http.MethodGet, test.TargetURL, nil)
 			require.NoError(t, err)
+
 			backendURL, err := url.Parse(test.ProxyfiedURL)
-			r.URL = backendURL
 			require.NoError(t, err)
+			r.URL = backendURL
+
 			f.Director(r)
 			require.Equal(t, test.ExpectedXForwardedHost, r.Header.Get(XForwardedHost))
 		})
@@ -77,16 +79,16 @@ func TestForwardedProto(t *testing.T) {
 
 	f := New(true)
 
-	proxy := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	proxy := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.ParseURI(srv.URL)
 		f.ServeHTTP(w, req)
-	})
-	tproxy := httptest.NewUnstartedServer(proxy)
-	tproxy.StartTLS()
-	defer tproxy.Close()
+	}))
+	proxy.StartTLS()
+	defer proxy.Close()
 
-	re, _, err := testutils.Get(tproxy.URL)
+	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
+
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 	assert.Equal(t, "https", proto)
 }

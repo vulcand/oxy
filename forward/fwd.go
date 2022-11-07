@@ -12,6 +12,7 @@ import (
 // New creates a new ReverseProxy.
 func New(passHostHeader bool) *httputil.ReverseProxy {
 	h := NewHeaderRewriter()
+
 	return &httputil.ReverseProxy{
 		Director: func(request *http.Request) {
 			modifyRequest(request)
@@ -41,9 +42,10 @@ func modifyRequest(outReq *http.Request) {
 }
 
 func getURLFromRequest(req *http.Request) *url.URL {
-	// If the Request was created by Go via a real HTTP request,  RequestURI will
-	// contain the original query string. If the Request was created in code, RequestURI
-	// will be empty, and we will use the URL object instead
+	// If the Request was created by Go via a real HTTP request,
+	// RequestURI will contain the original query string.
+	// If the Request was created in code,
+	// RequestURI will be empty, and we will use the URL object instead
 	u := req.URL
 	if req.RequestURI != "" {
 		parsedURL, err := url.ParseRequestURI(req.RequestURI)

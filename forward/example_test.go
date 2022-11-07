@@ -127,6 +127,7 @@ func ExampleNewStateListener() {
 	stateLn := NewStateListener(f, func(u *url.URL, i int) {
 		fmt.Println(u.Hostname(), i)
 	})
+
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		req.URL, _ = url.ParseRequestURI(srv.URL)
 		stateLn.ServeHTTP(w, req)
