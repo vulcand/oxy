@@ -19,8 +19,7 @@ func TestRebalancerNormalOperation(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -40,8 +39,7 @@ func TestRebalancerNormalOperation(t *testing.T) {
 }
 
 func TestRebalancerNoServers(t *testing.T) {
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -62,8 +60,7 @@ func TestRebalancerRemoveServer(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -90,8 +87,7 @@ func TestRebalancerRecovery(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -156,8 +152,7 @@ func TestRebalancerCascading(t *testing.T) {
 	defer b.Close()
 	defer d.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -223,8 +218,7 @@ func TestRebalancerAllBad(t *testing.T) {
 	defer b.Close()
 	defer d.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -274,8 +268,7 @@ func TestRebalancerReset(t *testing.T) {
 	defer b.Close()
 	defer d.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -330,8 +323,7 @@ func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -371,8 +363,7 @@ func TestRebalancerRequestRewriteListener(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
@@ -394,8 +385,7 @@ func TestRebalancerStickySession(t *testing.T) {
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
 
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)

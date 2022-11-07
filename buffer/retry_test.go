@@ -76,8 +76,7 @@ func newBufferMiddleware(t *testing.T, p string) (*roundrobin.RoundRobin, *Buffe
 	t.Helper()
 
 	// forwarder will proxy the request to whatever destination
-	fwd, err := forward.New()
-	require.NoError(t, err)
+	fwd := forward.New(false)
 
 	// load balancer will round robin request
 	lb, err := roundrobin.New(fwd)
