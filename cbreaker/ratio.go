@@ -11,8 +11,7 @@ import (
 // ratioController allows passing portions traffic back to the endpoints,
 // increasing the amount of passed requests using linear function:
 //
-//   allowedRequestsRatio = 0.5 * (Now() - Start())/Duration
-//
+//	allowedRequestsRatio = 0.5 * (Now() - Start())/Duration
 type ratioController struct {
 	duration time.Duration
 	start    clock.Time
@@ -58,9 +57,9 @@ func (r *ratioController) computeRatio(allowed, denied int) float64 {
 
 func (r *ratioController) targetRatio() float64 {
 	// Here's why it's 0.5:
-	// We are watching the following ratio
+	// We are watching the following ratio:
 	// ratio = a / (a + d)
-	// We can notice, that once we get to 0.5
+	// We can notice, that once we get to 0.5:
 	// 0.5 = a / (a + d)
 	// we can evaluate that a = d
 	// that means equilibrium, where we would allow all the requests

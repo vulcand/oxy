@@ -7,31 +7,30 @@ Changes request content-transfer-encoding from chunked and provides total size t
 
 Examples of a buffering middleware:
 
-  // sample HTTP handler
-  handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-    w.Write([]byte("hello"))
-  })
+	// sample HTTP handler.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	  w.Write([]byte("hello"))
+	})
 
-  // Buffer will read the body in buffer before passing the request to the handler
-  // calculate total size of the request and transform it from chunked encoding
-  // before passing to the server
-  buffer.New(handler)
+	// Buffer will read the body in buffer before passing the request to the handler
+	// calculate total size of the request and transform it from chunked encoding
+	// before passing to the server
+	buffer.New(handler)
 
-  // This version will buffer up to 2MB in memory and will serialize any extra
-  // to a temporary file, if the request size exceeds 10MB it will reject the request
-  buffer.New(handler,
-    buffer.MemRequestBodyBytes(2 * 1024 * 1024),
-    buffer.MaxRequestBodyBytes(10 * 1024 * 1024))
+	// This version will buffer up to 2MB in memory and will serialize any extra
+	// to a temporary file, if the request size exceeds 10MB it will reject the request
+	buffer.New(handler,
+	  buffer.MemRequestBodyBytes(2 * 1024 * 1024),
+	  buffer.MaxRequestBodyBytes(10 * 1024 * 1024))
 
-  // Will do the same as above, but with responses
-  buffer.New(handler,
-    buffer.MemResponseBodyBytes(2 * 1024 * 1024),
-    buffer.MaxResponseBodyBytes(10 * 1024 * 1024))
+	// Will do the same as above, but with responses
+	buffer.New(handler,
+	  buffer.MemResponseBodyBytes(2 * 1024 * 1024),
+	  buffer.MaxResponseBodyBytes(10 * 1024 * 1024))
 
-  // Buffer will replay the request if the handler returns error at least 3 times
-  // before returning the response
-  buffer.New(handler, buffer.Retry(`IsNetworkError() && Attempts() <= 2`))
-
+	// Buffer will replay the request if the handler returns error at least 3 times
+	// before returning the response
+	buffer.New(handler, buffer.Retry(`IsNetworkError() && Attempts() <= 2`))
 */
 package buffer
 
@@ -93,7 +92,6 @@ func CondSetter(condition bool, setter optSetter) optSetter {
 // Example of the predicate:
 //
 // `Attempts() <= 2 && ResponseCode() == 502`.
-//
 func Retry(predicate string) optSetter {
 	return func(b *Buffer) error {
 		p, err := parseExpression(predicate)
@@ -357,7 +355,7 @@ type bufferWriter struct {
 
 // RFC2616 #4.4.
 func (b *bufferWriter) expectBody(r *http.Request) bool {
-	if r.Method == "HEAD" {
+	if r.Method == http.MethodHead {
 		return false
 	}
 	if (b.code >= 100 && b.code < 200) || b.code == 204 || b.code == 304 {

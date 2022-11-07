@@ -65,7 +65,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 		reqBody = string(body)
 		contentLength = req.ContentLength
 
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			panic("expected http.ResponseWriter to be an http.Flusher")

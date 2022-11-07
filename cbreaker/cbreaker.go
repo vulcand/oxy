@@ -12,7 +12,7 @@
 // After FallbackDuration time period passes, Circuit breaker enters "Recovering" state, during that state it will
 // start passing some traffic back to the endpoints, increasing the amount of passed requests using linear function:
 //
-//    allowedRequestsRatio = 0.5 * (Now() - StartRecovery())/RecoveryDuration
+//	allowedRequestsRatio = 0.5 * (Now() - StartRecovery())/RecoveryDuration
 //
 // Two scenarios are possible in the "Recovering" state:
 // 1. Condition matches again, this will reset the state to "Tripped" and reset the timer.
@@ -22,7 +22,6 @@
 //
 // * OnTripped action is called on transition (Standby -> Tripped)
 // * OnStandby action is called on transition (Recovering -> Standby)
-//
 package cbreaker
 
 import (
@@ -239,7 +238,7 @@ func (c *CircuitBreaker) checkAndSet() {
 	defer c.m.Unlock()
 
 	// Other goroutine could have updated the lastCheck variable before we grabbed mutex
-	if !clock.Now().UTC().After(c.lastCheck) {
+	if clock.Now().UTC().Before(c.lastCheck) {
 		return
 	}
 	c.lastCheck = clock.Now().UTC().Add(c.checkPeriod)

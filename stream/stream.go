@@ -19,15 +19,14 @@ Risks:
 
 Examples of a streaming middleware:
 
-  // sample HTTP handler
-  handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-    w.Write([]byte("hello"))
-  })
+	// sample HTTP handler.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	  w.Write([]byte("hello"))
+	})
 
-  // Stream will literally pass through to the next handler without ANY buffering
-  // or validation of the data.
-  stream.New(handler)
-
+	// Stream will literally pass through to the next handler without ANY buffering
+	// or validation of the data.
+	stream.New(handler)
 */
 package stream
 

@@ -130,7 +130,7 @@ func (v *AESValue) fromValue(obfuscatedStr string) (string, error) {
 
 		if clock.Now().UTC().After(clock.Unix(i, 0).UTC()) {
 			strTime := clock.Unix(i, 0).UTC().String()
-			return "", fmt.Errorf("TTL expired: '%s' (%s)\n", raw, strTime)
+			return "", fmt.Errorf("TTL expired: '%s' (%s)", raw, strTime)
 		}
 
 		raw = []byte(rawParts[0])

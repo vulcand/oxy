@@ -123,7 +123,7 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 	}
 
 	if _, ok := err.(*MaxConnError); ok {
-		w.WriteHeader(429)
+		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
