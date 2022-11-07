@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/internal/holsterv4/clock"
-	"github.com/vulcand/oxy/memmetrics"
+	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/v2/memmetrics"
 )
 
 func TestTripped(t *testing.T) {

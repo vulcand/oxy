@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // NewHeaderRewriter creates a new HeaderRewriter middleware.

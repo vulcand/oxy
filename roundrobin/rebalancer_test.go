@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/internal/holsterv4/clock"
-	"github.com/vulcand/oxy/testutils"
+	"github.com/vulcand/oxy/v2/forward"
+	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/v2/testutils"
 )
 
 func TestRebalancerNormalOperation(t *testing.T) {

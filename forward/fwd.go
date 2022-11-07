@@ -6,7 +6,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // New creates a new ReverseProxy.

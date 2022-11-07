@@ -8,9 +8,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/internal/holsterv4/clock"
-	"github.com/vulcand/oxy/internal/holsterv4/collections"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/v2/internal/holsterv4/collections"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // DefaultCapacity default capacity.

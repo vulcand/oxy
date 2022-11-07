@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/vulcand/oxy/utils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // SideEffect a side effect.

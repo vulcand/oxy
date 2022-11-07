@@ -33,8 +33,8 @@ Simple reverse proxy
 
 import (
   "net/http"
-  "github.com/vulcand/oxy/forward"
-  "github.com/vulcand/oxy/testutils"
+  "github.com/vulcand/oxy/v2/forward"
+  "github.com/vulcand/oxy/v2/testutils"
   )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
@@ -61,8 +61,8 @@ As a next step, let us add a round robin load-balancer:
 
 import (
   "net/http"
-  "github.com/vulcand/oxy/forward"
-  "github.com/vulcand/oxy/roundrobin"
+  "github.com/vulcand/oxy/v2/forward"
+  "github.com/vulcand/oxy/v2/roundrobin"
   )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers
@@ -86,9 +86,9 @@ What if we want to handle retries and replay the request in case of errors? `buf
 
 import (
   "net/http"
-  "github.com/vulcand/oxy/forward"
-  "github.com/vulcand/oxy/buffer"
-  "github.com/vulcand/oxy/roundrobin"
+  "github.com/vulcand/oxy/v2/forward"
+  "github.com/vulcand/oxy/v2/buffer"
+  "github.com/vulcand/oxy/v2/roundrobin"
   )
 
 // Forwards incoming requests to whatever location URL points to, adds proper forwarding headers

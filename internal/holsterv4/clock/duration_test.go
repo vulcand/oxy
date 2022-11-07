@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/vulcand/oxy/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 )
 
 type DurationSuite struct {
