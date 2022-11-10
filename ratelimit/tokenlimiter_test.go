@@ -50,7 +50,7 @@ func TestHitLimit(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestExpiration(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestExtractRates(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(tl)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// When/Then: The configured rate is applied, which 2 req/second
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
@@ -236,7 +236,7 @@ func TestBadRateExtractor(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// When/Then: The default rate is applied, which 1 req/second
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
@@ -275,7 +275,7 @@ func TestExtractorEmpty(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// When/Then: The default rate is applied, which 1 req/second
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
@@ -334,7 +334,7 @@ func TestOptions(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)

@@ -2,8 +2,6 @@ package memmetrics
 
 import "time"
 
-type ratioOptSetter func(r *RatioCounter) error
-
 // RatioCounter calculates a ratio of a/a+b over a rolling window of predefined buckets.
 type RatioCounter struct {
 	a *RollingCounter
@@ -11,7 +9,7 @@ type RatioCounter struct {
 }
 
 // NewRatioCounter creates a new RatioCounter.
-func NewRatioCounter(buckets int, resolution time.Duration, options ...ratioOptSetter) (*RatioCounter, error) {
+func NewRatioCounter(buckets int, resolution time.Duration, options ...RatioOption) (*RatioCounter, error) {
 	rc := &RatioCounter{}
 
 	for _, o := range options {

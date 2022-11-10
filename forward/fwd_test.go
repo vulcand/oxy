@@ -18,7 +18,7 @@ func TestDefaultErrHandler(t *testing.T) {
 		req.URL = testutils.ParseURI("http://localhost:63450")
 		f.ServeHTTP(w, req)
 	}))
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	resp, err := http.Get(proxy.URL)
 	require.NoError(t, err)
@@ -75,7 +75,7 @@ func TestForwardedProto(t *testing.T) {
 		proto = req.Header.Get(XForwardedProto)
 		_, _ = w.Write([]byte("hello"))
 	}))
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	f := New(true)
 
@@ -84,7 +84,7 @@ func TestForwardedProto(t *testing.T) {
 		f.ServeHTTP(w, req)
 	}))
 	proxy.StartTLS()
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)

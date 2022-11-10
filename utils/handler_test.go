@@ -17,14 +17,14 @@ func TestDefaultHandlerErrors(t *testing.T) {
 		conn, _, _ := h.Hijack()
 		conn.Close()
 	}))
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	request, err := http.NewRequest(http.MethodGet, srv.URL, strings.NewReader(""))
 	require.NoError(t, err)
 
 	_, err = http.DefaultTransport.RoundTrip(request)
 
-	w := NewBufferWriter(NopWriteCloser(&bytes.Buffer{}))
+	w := NewBufferWriter(NopWriteCloser(&bytes.Buffer{}), &NoopLogger{})
 
 	DefaultHandler.ServeHTTP(w, nil, err)
 

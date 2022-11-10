@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 // ratioController allows passing portions traffic back to the endpoints,
@@ -18,10 +18,10 @@ type ratioController struct {
 	allowed  int
 	denied   int
 
-	log *logrus.Logger
+	log utils.Logger
 }
 
-func newRatioController(rampUp time.Duration, log *logrus.Logger) *ratioController {
+func newRatioController(rampUp time.Duration, log utils.Logger) *ratioController {
 	return &ratioController{
 		duration: rampUp,
 		start:    clock.Now().UTC(),

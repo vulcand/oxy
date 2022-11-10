@@ -9,6 +9,15 @@ import (
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 )
 
+// NewRTMetricsFn builder function type.
+type NewRTMetricsFn func() (*RTMetrics, error)
+
+// NewCounterFn builder function type.
+type NewCounterFn func() (*RollingCounter, error)
+
+// NewRollingHistogramFn builder function type.
+type NewRollingHistogramFn func() (*RollingHDRHistogram, error)
+
 // RTMetrics provides aggregated performance metrics for HTTP requests processing
 // such as round trip latency, response codes counters network error and total requests.
 // all counters are collected as rolling window counters with defined precision, histograms
@@ -26,36 +35,8 @@ type RTMetrics struct {
 	newHist    NewRollingHistogramFn
 }
 
-// OptSetter the option setter type.
-type OptSetter func(r *RTMetrics) error
-
-// NewRTMetricsFn builder function type.
-type NewRTMetricsFn func() (*RTMetrics, error)
-
-// NewCounterFn builder function type.
-type NewCounterFn func() (*RollingCounter, error)
-
-// NewRollingHistogramFn builder function type.
-type NewRollingHistogramFn func() (*RollingHDRHistogram, error)
-
-// RTCounter set a builder function for Counter.
-func RTCounter(fn NewCounterFn) OptSetter {
-	return func(r *RTMetrics) error {
-		r.newCounter = fn
-		return nil
-	}
-}
-
-// RTHistogram set a builder function for RollingHistogram.
-func RTHistogram(fn NewRollingHistogramFn) OptSetter {
-	return func(r *RTMetrics) error {
-		r.newHist = fn
-		return nil
-	}
-}
-
 // NewRTMetrics returns new instance of metrics collector.
-func NewRTMetrics(settings ...OptSetter) (*RTMetrics, error) {
+func NewRTMetrics(settings ...RTOption) (*RTMetrics, error) {
 	m := &RTMetrics{
 		statusCodes:     make(map[int]*RollingCounter),
 		statusCodesLock: sync.RWMutex{},

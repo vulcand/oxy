@@ -7,7 +7,7 @@ import (
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 )
 
-type rcOptSetter func(*RollingCounter) error
+type rcOption func(*RollingCounter) error
 
 // RollingCounter Calculates in memory failure rate of an endpoint using rolling window of a predefined size.
 type RollingCounter struct {
@@ -21,7 +21,7 @@ type RollingCounter struct {
 // NewCounter creates a counter with fixed amount of buckets that are rotated every resolution period.
 // E.g. 10 buckets with 1 second means that every new second the bucket is refreshed, so it maintains 10 seconds rolling window.
 // By default, creates a bucket with 10 buckets and 1 second resolution.
-func NewCounter(buckets int, resolution time.Duration, options ...rcOptSetter) (*RollingCounter, error) {
+func NewCounter(buckets int, resolution time.Duration, options ...rcOption) (*RollingCounter, error) {
 	if buckets <= 0 {
 		return nil, fmt.Errorf("buckets should be >= 0")
 	}

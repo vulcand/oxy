@@ -16,12 +16,12 @@ func TestSuccess(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
 
 	proxy := httptest.NewServer(rt)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(srv.URL)))
 
@@ -35,12 +35,12 @@ func TestRetryOnError(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
 
 	proxy := httptest.NewServer(rt)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64321")))
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(srv.URL)))
@@ -55,12 +55,12 @@ func TestRetryExceedAttempts(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
 
 	proxy := httptest.NewServer(rt)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64321")))
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64322")))

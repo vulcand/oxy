@@ -10,37 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/v2/utils"
 )
-
-// Option is a functional option setter for Tracer.
-type Option func(*Tracer) error
-
-// ErrorHandler is a functional argument that sets error handler of the server.
-func ErrorHandler(h utils.ErrorHandler) Option {
-	return func(t *Tracer) error {
-		t.errHandler = h
-		return nil
-	}
-}
-
-// RequestHeaders adds request headers to capture.
-func RequestHeaders(headers ...string) Option {
-	return func(t *Tracer) error {
-		t.reqHeaders = append(t.reqHeaders, headers...)
-		return nil
-	}
-}
-
-// ResponseHeaders adds response headers to capture.
-func ResponseHeaders(headers ...string) Option {
-	return func(t *Tracer) error {
-		t.respHeaders = append(t.respHeaders, headers...)
-		return nil
-	}
-}
 
 // Tracer records request and response emitting JSON structured data to the output.
 type Tracer struct {
@@ -50,7 +22,7 @@ type Tracer struct {
 	respHeaders []string
 	writer      io.Writer
 
-	log *log.Logger
+	log utils.Logger
 }
 
 // New creates a new Tracer middleware that emits all the request/response information in structured format
@@ -61,7 +33,7 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 		writer: writer,
 		next:   next,
 
-		log: log.StandardLogger(),
+		log: &utils.NoopLogger{},
 	}
 	for _, o := range opts {
 		if err := o(t); err != nil {
@@ -72,16 +44,6 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 		t.errHandler = utils.DefaultHandler
 	}
 	return t, nil
-}
-
-// Logger defines the logger the tracer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) Option {
-	return func(t *Tracer) error {
-		t.log = l
-		return nil
-	}
 }
 
 func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -110,18 +72,6 @@ func (t *Tracer) newRecord(req *http.Request, pw *utils.ProxyWriter, diff time.D
 			Roundtrip: float64(diff) / float64(clock.Millisecond),
 			Headers:   captureHeaders(pw.Header(), t.respHeaders),
 		},
-	}
-}
-
-func newTLS(req *http.Request) *TLS {
-	if req.TLS == nil {
-		return nil
-	}
-	return &TLS{
-		Version:     versionToString(req.TLS.Version),
-		Resume:      req.TLS.DidResume,
-		CipherSuite: csToString(req.TLS.CipherSuite),
-		Server:      req.TLS.ServerName,
 	}
 }
 
@@ -171,6 +121,18 @@ type TLS struct {
 	Resume      bool   `json:"resume"`       // Resume tells if the session has been re-used (session tickets)
 	CipherSuite string `json:"cipher_suite"` // CipherSuite contains cipher suite used for this connection
 	Server      string `json:"server"`       // Server contains server name used in SNI
+}
+
+func newTLS(req *http.Request) *TLS {
+	if req.TLS == nil {
+		return nil
+	}
+	return &TLS{
+		Version:     versionToString(req.TLS.Version),
+		Resume:      req.TLS.DidResume,
+		CipherSuite: csToString(req.TLS.CipherSuite),
+		Server:      req.TLS.ServerName,
+	}
 }
 
 func versionToString(v uint16) string {

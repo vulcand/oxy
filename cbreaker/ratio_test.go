@@ -4,17 +4,17 @@ import (
 	"math"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/v2/testutils"
+	"github.com/vulcand/oxy/v2/utils"
 )
 
 func TestRampUp(t *testing.T) {
 	done := testutils.FreezeTime()
 	defer done()
 	duration := 10 * clock.Second
-	rc := newRatioController(duration, log.StandardLogger())
+	rc := newRatioController(duration, &utils.NoopLogger{})
 
 	allowed, denied := 0, 0
 	for i := 0; i < int(duration/clock.Millisecond); i++ {

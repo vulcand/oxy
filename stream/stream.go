@@ -33,14 +33,11 @@ package stream
 import (
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-const (
-	// DefaultMaxBodyBytes No limit by default.
-	DefaultMaxBodyBytes = -1
-)
+// DefaultMaxBodyBytes No limit by default.
+const DefaultMaxBodyBytes = -1
 
 // Stream is responsible for buffering requests and responses
 // It buffers large requests and responses to disk,.
@@ -51,11 +48,12 @@ type Stream struct {
 
 	next http.Handler
 
-	log *log.Logger
+	debug bool
+	log   utils.Logger
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments.
-func New(next http.Handler, setters ...OptSetter) (*Stream, error) {
+func New(next http.Handler, setters ...Option) (*Stream, error) {
 	strm := &Stream{
 		next: next,
 
@@ -63,7 +61,7 @@ func New(next http.Handler, setters ...OptSetter) (*Stream, error) {
 
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
 
-		log: log.StandardLogger(),
+		log: &utils.NoopLogger{},
 	}
 	for _, s := range setters {
 		if err := s(strm); err != nil {
@@ -73,19 +71,6 @@ func New(next http.Handler, setters ...OptSetter) (*Stream, error) {
 	return strm, nil
 }
 
-// Logger defines the logger the streamer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) OptSetter {
-	return func(s *Stream) error {
-		s.log = l
-		return nil
-	}
-}
-
-// OptSetter the option setter type.
-type OptSetter func(s *Stream) error
-
 // Wrap sets the next handler to be called by stream handler.
 func (s *Stream) Wrap(next http.Handler) error {
 	s.next = next
@@ -93,10 +78,10 @@ func (s *Stream) Wrap(next http.Handler) error {
 }
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if s.log.Level >= log.DebugLevel {
-		logEntry := s.log.WithField("Request", utils.DumpHTTPRequest(req))
-		logEntry.Debug("vulcand/oxy/stream: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/stream: completed ServeHttp on request")
+	if s.debug {
+		dump := utils.DumpHTTPRequest(req)
+		s.log.Debugf("vulcand/oxy/stream: begin ServeHttp on request: %s", dump)
+		defer s.log.Debugf("vulcand/oxy/stream: completed ServeHttp on request: %s", dump)
 	}
 
 	s.next.ServeHTTP(w, req)

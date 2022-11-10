@@ -30,7 +30,6 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/v2/memmetrics"
 	"github.com/vulcand/oxy/v2/utils"
@@ -60,11 +59,12 @@ type CircuitBreaker struct {
 	fallback http.Handler
 	next     http.Handler
 
-	log *log.Logger
+	debug bool
+	log   utils.Logger
 }
 
 // New creates a new CircuitBreaker middleware.
-func New(next http.Handler, expression string, options ...CircuitBreakerOption) (*CircuitBreaker, error) {
+func New(next http.Handler, expression string, options ...Option) (*CircuitBreaker, error) {
 	cb := &CircuitBreaker{
 		m:    &sync.RWMutex{},
 		next: next,
@@ -73,7 +73,7 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 		fallbackDuration: defaultFallbackDuration,
 		recoveryDuration: defaultRecoveryDuration,
 		fallback:         defaultFallback,
-		log:              log.StandardLogger(),
+		log:              &utils.NoopLogger{},
 	}
 
 	for _, s := range options {
@@ -97,26 +97,18 @@ func New(next http.Handler, expression string, options ...CircuitBreakerOption) 
 	return cb, nil
 }
 
-// Logger defines the logger the circuit breaker will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.log = l
-		return nil
-	}
-}
-
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if c.log.Level >= log.DebugLevel {
-		logEntry := c.log.WithField("Request", utils.DumpHTTPRequest(req))
-		logEntry.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/circuitbreaker: completed ServeHttp on request")
+	if c.debug {
+		dump := utils.DumpHTTPRequest(req)
+		c.log.Debugf("vulcand/oxy/circuitbreaker: begin ServeHttp on request: %s", dump)
+		defer c.log.Debugf("vulcand/oxy/circuitbreaker: completed ServeHttp on request: %s", dump)
 	}
+
 	if c.activateFallback(w, req) {
 		c.fallback.ServeHTTP(w, req)
 		return
 	}
+
 	c.serve(w, req)
 }
 
@@ -259,64 +251,6 @@ func (c *CircuitBreaker) checkAndSet() {
 func (c *CircuitBreaker) setRecovering() {
 	c.setState(stateRecovering, clock.Now().UTC().Add(c.recoveryDuration))
 	c.rc = newRatioController(c.recoveryDuration, c.log)
-}
-
-// CircuitBreakerOption represents an option you can pass to New.
-// See the documentation for the individual options below.
-type CircuitBreakerOption func(*CircuitBreaker) error
-
-// FallbackDuration is how long the CircuitBreaker will remain in the Tripped
-// state before trying to recover.
-func FallbackDuration(d time.Duration) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.fallbackDuration = d
-		return nil
-	}
-}
-
-// RecoveryDuration is how long the CircuitBreaker will take to ramp up
-// requests during the Recovering state.
-func RecoveryDuration(d time.Duration) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.recoveryDuration = d
-		return nil
-	}
-}
-
-// CheckPeriod is how long the CircuitBreaker will wait between successive
-// checks of the breaker condition.
-func CheckPeriod(d time.Duration) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.checkPeriod = d
-		return nil
-	}
-}
-
-// OnTripped sets a SideEffect to run when entering the Tripped state.
-// Only one SideEffect can be set for this hook.
-func OnTripped(s SideEffect) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.onTripped = s
-		return nil
-	}
-}
-
-// OnStandby sets a SideEffect to run when entering the Standby state.
-// Only one SideEffect can be set for this hook.
-func OnStandby(s SideEffect) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.onStandby = s
-		return nil
-	}
-}
-
-// Fallback defines the http.Handler that the CircuitBreaker should route
-// requests to when it prevents a request from taking its normal path.
-func Fallback(h http.Handler) CircuitBreakerOption {
-	return func(c *CircuitBreaker) error {
-		c.fallback = h
-		return nil
-	}
 }
 
 // cbState is the state of the circuit breaker.

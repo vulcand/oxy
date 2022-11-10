@@ -33,7 +33,7 @@ func TestRebalancerNormalOperation(t *testing.T) {
 	assert.Equal(t, a.URL, rb.Servers()[0].String())
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
 }
@@ -48,7 +48,7 @@ func TestRebalancerNoServers(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -74,7 +74,7 @@ func TestRebalancerRemoveServer(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 	require.NoError(t, rb.RemoveServer(testutils.ParseURI(a.URL)))
@@ -110,7 +110,7 @@ func TestRebalancerRecovery(t *testing.T) {
 	rb.servers[0].meter.(*testMeter).rating = 0.3
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	for i := 0; i < 6; i++ {
 		_, _, err = testutils.Get(proxy.URL)
@@ -177,7 +177,7 @@ func TestRebalancerCascading(t *testing.T) {
 	rb.servers[0].meter.(*testMeter).rating = 0.3
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	for i := 0; i < 6; i++ {
 		_, _, err = testutils.Get(proxy.URL)
@@ -245,7 +245,7 @@ func TestRebalancerAllBad(t *testing.T) {
 	rb.servers[2].meter.(*testMeter).rating = 0.11
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	for i := 0; i < 6; i++ {
 		_, _, err = testutils.Get(proxy.URL)
@@ -295,7 +295,7 @@ func TestRebalancerReset(t *testing.T) {
 	rb.servers[2].meter.(*testMeter).rating = 0
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	for i := 0; i < 6; i++ {
 		_, _, err = testutils.Get(proxy.URL)
@@ -342,7 +342,7 @@ func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	for i := 0; i < 1000; i++ {
 		_, _, err = testutils.Get(proxy.URL)
@@ -401,7 +401,7 @@ func TestRebalancerStickySession(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(rb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	for i := 0; i < 10; i++ {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)

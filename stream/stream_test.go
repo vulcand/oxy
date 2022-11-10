@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/v2/forward"
@@ -18,21 +17,11 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-type noOpNextHTTPHandler struct{}
-
-func (n noOpNextHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {}
-
-type noOpIoWriter struct{}
-
-func (n noOpIoWriter) Write(bytes []byte) (int, error) {
-	return len(bytes), nil
-}
-
 func TestSimple(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -48,7 +37,7 @@ func TestSimple(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, body, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -79,7 +68,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 		_, _ = fmt.Fprint(w, "Chunks")
 		flusher.Flush()
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -95,7 +84,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
 	require.NoError(t, err)
@@ -122,7 +111,7 @@ func TestRequestLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -138,7 +127,7 @@ func TestRequestLimitReached(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL, testutils.Body("this request is too long"))
 	require.NoError(t, err)
@@ -149,7 +138,7 @@ func TestResponseLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -165,7 +154,7 @@ func TestResponseLimitReached(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -176,7 +165,7 @@ func TestFileStreamingResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -192,7 +181,7 @@ func TestFileStreamingResponse(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, body, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -204,7 +193,7 @@ func TestCustomErrorHandler(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -219,7 +208,7 @@ func TestCustomErrorHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -230,7 +219,7 @@ func TestNotModified(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -246,7 +235,7 @@ func TestNotModified(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -257,7 +246,7 @@ func TestNoBody(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -273,7 +262,7 @@ func TestNoBody(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -286,7 +275,7 @@ func TestPreservesTLS(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -305,39 +294,11 @@ func TestPreservesTLS(t *testing.T) {
 
 	proxy := httptest.NewUnstartedServer(st)
 	proxy.StartTLS()
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 
 	assert.NotNil(t, cs)
-}
-
-func BenchmarkLoggingDebugLevel(b *testing.B) {
-	streamer, _ := New(noOpNextHTTPHandler{})
-
-	log.SetLevel(log.DebugLevel)
-	log.SetOutput(&noOpIoWriter{}) // Make sure we don't emit a bunch of stuff on screen
-
-	for i := 0; i < b.N; i++ {
-		heavyServeHTTPLoad(streamer)
-	}
-}
-
-func BenchmarkLoggingInfoLevel(b *testing.B) {
-	streamer, _ := New(noOpNextHTTPHandler{})
-
-	log.SetLevel(log.InfoLevel)
-	log.SetOutput(&noOpIoWriter{}) // Make sure we don't emit a bunch of stuff on screen
-
-	for i := 0; i < b.N; i++ {
-		heavyServeHTTPLoad(streamer)
-	}
-}
-
-func heavyServeHTTPLoad(handler http.Handler) {
-	w := httptest.NewRecorder()
-	r := &http.Request{}
-	handler.ServeHTTP(w, r)
 }

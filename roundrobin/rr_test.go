@@ -19,7 +19,7 @@ func TestNoServers(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestCustomErrHandler(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestOneServer(t *testing.T) {
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
 }
@@ -85,7 +85,7 @@ func TestSimple(t *testing.T) {
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 }
@@ -106,7 +106,7 @@ func TestRemoveServer(t *testing.T) {
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 
@@ -129,7 +129,7 @@ func TestUpsertSame(t *testing.T) {
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
 }
@@ -150,7 +150,7 @@ func TestUpsertWeight(t *testing.T) {
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 
@@ -182,7 +182,7 @@ func TestWeighted(t *testing.T) {
 	require.NoError(t, lb.UpsertServer(testutils.ParseURI(z.URL), Weight(0)))
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "a", "b", "a", "b", "a"}, seq(t, proxy.URL, 6))
 

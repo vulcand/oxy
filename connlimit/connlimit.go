@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/utils"
 )
 
@@ -21,7 +20,9 @@ type ConnLimiter struct {
 	next             http.Handler
 
 	errHandler utils.ErrorHandler
-	log        *log.Logger
+
+	debug bool
+	log   utils.Logger
 }
 
 // New creates a new ConnLimiter.
@@ -29,13 +30,14 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 	if extract == nil {
 		return nil, fmt.Errorf("extract function can not be nil")
 	}
+
 	cl := &ConnLimiter{
 		mutex:          &sync.Mutex{},
 		extract:        extract,
 		maxConnections: maxConnections,
 		connections:    make(map[string]int64),
 		next:           next,
-		log:            log.StandardLogger(),
+		log:            &utils.NoopLogger{},
 	}
 
 	for _, o := range options {
@@ -43,11 +45,14 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 			return nil, err
 		}
 	}
+
 	if cl.errHandler == nil {
 		cl.errHandler = &ConnErrHandler{
-			log: cl.log,
+			debug: cl.debug,
+			log:   cl.log,
 		}
 	}
+
 	return cl, nil
 }
 
@@ -112,14 +117,15 @@ func (m *MaxConnError) Error() string {
 
 // ConnErrHandler connection limiter error handler.
 type ConnErrHandler struct {
-	log *log.Logger
+	debug bool
+	log   utils.Logger
 }
 
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	if e.log.Level >= log.DebugLevel {
-		logEntry := e.log.WithField("Request", utils.DumpHTTPRequest(req))
-		logEntry.Debug("vulcand/oxy/connlimit: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/connlimit: completed ServeHttp on request")
+	if e.debug {
+		dump := utils.DumpHTTPRequest(req)
+		e.log.Debugf("vulcand/oxy/connlimit: begin ServeHttp on request: %s", dump)
+		defer e.log.Debugf("vulcand/oxy/connlimit: completed ServeHttp on request: %s", dump)
 	}
 
 	//nolint:errorlint // must be changed
@@ -129,25 +135,4 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 		return
 	}
 	utils.DefaultHandler.ServeHTTP(w, req, err)
-}
-
-// Logger defines the logger the connection limiter will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) Option {
-	return func(cl *ConnLimiter) error {
-		cl.log = l
-		return nil
-	}
-}
-
-// Option connection limit option type.
-type Option func(l *ConnLimiter) error
-
-// ErrorHandler sets error handler of the server.
-func ErrorHandler(h utils.ErrorHandler) Option {
-	return func(cl *ConnLimiter) error {
-		cl.errHandler = h
-		return nil
-	}
 }

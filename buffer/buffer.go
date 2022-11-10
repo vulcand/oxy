@@ -43,7 +43,6 @@ import (
 	"reflect"
 
 	"github.com/mailgun/multibuf"
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/utils"
 )
 
@@ -57,106 +56,6 @@ const (
 )
 
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
-
-// OptSetter the option setter type.
-type OptSetter func(b *Buffer) error
-
-// Logger defines the logger the buffer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) OptSetter {
-	return func(b *Buffer) error {
-		b.log = l
-		return nil
-	}
-}
-
-// CondSetter Conditional setter.
-// ex: Cond(a > 4, MemRequestBodyBytes(a))
-func CondSetter(condition bool, setter OptSetter) OptSetter {
-	if !condition {
-		// NoOp setter
-		return func(*Buffer) error {
-			return nil
-		}
-	}
-	return setter
-}
-
-// Retry provides a predicate that allows buffer middleware to replay the request
-// if it matches certain condition, e.g. returns special error code. Available functions are:
-//
-// Attempts() - limits the amount of retry attempts
-// ResponseCode() - returns http response code
-// IsNetworkError() - tests if response code is related to networking error
-//
-// Example of the predicate:
-//
-// `Attempts() <= 2 && ResponseCode() == 502`.
-func Retry(predicate string) OptSetter {
-	return func(b *Buffer) error {
-		p, err := parseExpression(predicate)
-		if err != nil {
-			return err
-		}
-		b.retryPredicate = p
-		return nil
-	}
-}
-
-// ErrorHandler sets error handler of the server.
-func ErrorHandler(h utils.ErrorHandler) OptSetter {
-	return func(b *Buffer) error {
-		b.errHandler = h
-		return nil
-	}
-}
-
-// MaxRequestBodyBytes sets the maximum request body size in bytes.
-func MaxRequestBodyBytes(m int64) OptSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("max bytes should be >= 0 got %d", m)
-		}
-		b.maxRequestBodyBytes = m
-		return nil
-	}
-}
-
-// MemRequestBodyBytes bytes sets the maximum request body to be stored in memory
-// buffer middleware will serialize the excess to disk.
-func MemRequestBodyBytes(m int64) OptSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
-		}
-		b.memRequestBodyBytes = m
-		return nil
-	}
-}
-
-// MaxResponseBodyBytes sets the maximum response body size in bytes.
-func MaxResponseBodyBytes(m int64) OptSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("max bytes should be >= 0 got %d", m)
-		}
-		b.maxResponseBodyBytes = m
-		return nil
-	}
-}
-
-// MemResponseBodyBytes sets the maximum response body to be stored in memory
-// buffer middleware will serialize the excess to disk.
-func MemResponseBodyBytes(m int64) OptSetter {
-	return func(b *Buffer) error {
-		if m < 0 {
-			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
-		}
-		b.memResponseBodyBytes = m
-		return nil
-	}
-}
 
 // Buffer is responsible for buffering requests and responses
 // It buffers large requests and responses to disk,.
@@ -172,11 +71,12 @@ type Buffer struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 
-	log *log.Logger
+	debug bool
+	log   utils.Logger
 }
 
 // New returns a new buffer middleware. New() function supports optional functional arguments.
-func New(next http.Handler, setters ...OptSetter) (*Buffer, error) {
+func New(next http.Handler, setters ...Option) (*Buffer, error) {
 	strm := &Buffer{
 		next: next,
 
@@ -186,8 +86,9 @@ func New(next http.Handler, setters ...OptSetter) (*Buffer, error) {
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
 		memResponseBodyBytes: DefaultMemBodyBytes,
 
-		log: log.StandardLogger(),
+		log: &utils.NoopLogger{},
 	}
+
 	for _, s := range setters {
 		if err := s(strm); err != nil {
 			return nil, err
@@ -207,10 +108,10 @@ func (b *Buffer) Wrap(next http.Handler) error {
 }
 
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if b.log.Level >= log.DebugLevel {
-		logEntry := b.log.WithField("Request", utils.DumpHTTPRequest(req))
-		logEntry.Debug("vulcand/oxy/buffer: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/buffer: completed ServeHttp on request")
+	if b.debug {
+		dump := utils.DumpHTTPRequest(req)
+		b.log.Debugf("vulcand/oxy/buffer: begin ServeHttp on request: %s", dump)
+		defer b.log.Debugf("vulcand/oxy/buffer: completed ServeHttp on request: %s", dump)
 	}
 
 	if err := b.checkLimit(req); err != nil {
@@ -351,7 +252,7 @@ type bufferWriter struct {
 	buffer         multibuf.WriterOnce
 	responseWriter http.ResponseWriter
 	hijacked       bool
-	log            *log.Logger
+	log            utils.Logger
 }
 
 // RFC2616 #4.4.
@@ -385,7 +286,7 @@ func (b *bufferWriter) Write(buf []byte) (int, error) {
 	if err != nil {
 		// Since go1.11 (https://github.com/golang/go/commit/8f38f28222abccc505b9a1992deecfe3e2cb85de)
 		// if the writer returns an error, the reverse proxy panics
-		b.log.Error(err)
+		b.log.Errorf("write: %v", err)
 		length = len(buf)
 	}
 	return length, nil
@@ -401,7 +302,7 @@ func (b *bufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.responseWriter.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
-	b.log.Warningf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
+	b.log.Warnf("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
 	return make(<-chan bool)
 }
 
@@ -414,7 +315,7 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		}
 		return conn, rw, err
 	}
-	b.log.Warningf("Upstream ResponseWriter of type %v does not implement http.Hijacker.", reflect.TypeOf(b.responseWriter))
+	b.log.Warnf("Upstream ResponseWriter of type %v does not implement http.Hijacker.", reflect.TypeOf(b.responseWriter))
 	return nil, nil, fmt.Errorf("the response writer wrapped in this proxy does not implement http.Hijacker. Its type is: %v", reflect.TypeOf(b.responseWriter))
 }
 

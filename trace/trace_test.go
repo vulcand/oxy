@@ -28,7 +28,7 @@ func TestTraceSimple(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(tr)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.MakeRequest(srv.URL+"/hello", testutils.Method(http.MethodPost), testutils.Body("123456"))
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestTraceCaptureHeaders(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(tr)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	reqHeaders := http.Header{"X-Req-A": []string{"1", "2"}, "X-Req-B": []string{"3", "4"}}
 	re, _, err := testutils.Get(srv.URL+"/hello", testutils.Headers(reqHeaders))
@@ -86,7 +86,7 @@ func TestTraceTLS(t *testing.T) {
 
 	srv := httptest.NewUnstartedServer(tr)
 	srv.StartTLS()
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	config := &tls.Config{
 		InsecureSkipVerify: true,

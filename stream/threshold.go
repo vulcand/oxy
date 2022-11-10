@@ -7,19 +7,13 @@ import (
 	"github.com/vulcand/predicate"
 )
 
+type hpredicate func(*context) bool
+
 // IsValidExpression check if it's a valid expression.
 func IsValidExpression(expr string) bool {
 	_, err := parseExpression(expr)
 	return err == nil
 }
-
-type context struct {
-	r            *http.Request
-	attempt      int
-	responseCode int
-}
-
-type hpredicate func(*context) bool
 
 // Parses expression in the go language into Failover predicates.
 func parseExpression(in string) (hpredicate, error) {
@@ -53,31 +47,6 @@ func parseExpression(in string) (hpredicate, error) {
 		return nil, fmt.Errorf("expected predicate, got %T", out)
 	}
 	return pr, nil
-}
-
-type toString func(c *context) string
-
-type toInt func(c *context) int
-
-// RequestMethod returns mapper of the request to its method e.g. POST.
-func requestMethod() toString {
-	return func(c *context) string {
-		return c.r.Method
-	}
-}
-
-// Attempts returns mapper of the request to the number of proxy attempts.
-func attempts() toInt {
-	return func(c *context) int {
-		return c.attempt
-	}
-}
-
-// ResponseCode returns mapper of the request to the last response code, returns 0 if there was no response code.
-func responseCode() toInt {
-	return func(c *context) int {
-		return c.responseCode
-	}
 }
 
 // IsNetworkError returns a predicate that returns true if last attempt ended with network error.
@@ -226,4 +195,35 @@ func intGT(m toInt, val interface{}) (hpredicate, error) {
 	return func(c *context) bool {
 		return m(c) > value
 	}, nil
+}
+
+type context struct {
+	r            *http.Request
+	attempt      int
+	responseCode int
+}
+
+type toString func(c *context) string
+
+type toInt func(c *context) int
+
+// RequestMethod returns mapper of the request to its method e.g. POST.
+func requestMethod() toString {
+	return func(c *context) string {
+		return c.r.Method
+	}
+}
+
+// Attempts returns mapper of the request to the number of proxy attempts.
+func attempts() toInt {
+	return func(c *context) int {
+		return c.attempt
+	}
+}
+
+// ResponseCode returns mapper of the request to the last response code, returns 0 if there was no response code.
+func responseCode() toInt {
+	return func(c *context) int {
+		return c.responseCode
+	}
 }

@@ -6,8 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // StatusClientClosedRequest non-standard HTTP status code for client disconnection.
@@ -22,12 +20,14 @@ type ErrorHandler interface {
 }
 
 // DefaultHandler default error handler.
-var DefaultHandler ErrorHandler = &StdHandler{}
+var DefaultHandler ErrorHandler = &StdHandler{log: &NoopLogger{}}
 
 // StdHandler Standard error handler.
-type StdHandler struct{}
+type StdHandler struct {
+	log Logger
+}
 
-func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
+func (e *StdHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request, err error) {
 	statusCode := http.StatusInternalServerError
 
 	//nolint:errorlint // must be changed
@@ -45,7 +45,8 @@ func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err err
 
 	w.WriteHeader(statusCode)
 	_, _ = w.Write([]byte(statusText(statusCode)))
-	log.Debugf("'%d %s' caused by: %v", statusCode, statusText(statusCode), err)
+
+	e.log.Debugf("'%d %s' caused by: %v", statusCode, statusText(statusCode), err)
 }
 
 func statusText(statusCode int) string {

@@ -27,7 +27,7 @@ func TestStandbyCycle(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, body, err := testutils.Get(srv.URL)
 	require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestFullCycle(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL)
 	require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestRedirectWithPath(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	cb.metrics = statsNetErrors(0.6)
 	_, _, err = testutils.Get(srv.URL)
@@ -137,7 +137,7 @@ func TestRedirect(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	cb.metrics = statsNetErrors(0.6)
 	_, _, err = testutils.Get(srv.URL)
@@ -167,7 +167,7 @@ func TestTriggerDuringRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	cb.metrics = statsNetErrors(0.6)
 	_, _, err = testutils.Get(srv.URL)
@@ -244,7 +244,7 @@ func TestSideEffects(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cb)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	cb.metrics = statsNetErrors(0.6)
 

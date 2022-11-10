@@ -31,7 +31,7 @@ func TestHitLimitAndRelease(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(cl)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	go func() {
 		re, _, errGet := testutils.Get(srv.URL, testutils.Header("Limit", "a"), testutils.Header("wait", "yes"))
@@ -75,7 +75,7 @@ func TestCustomHandlers(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL, testutils.Header("Limit", "a"))
 	require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestFaultyExtract(t *testing.T) {
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(l)
-	defer srv.Close()
+	t.Cleanup(srv.Close)
 
 	re, _, err := testutils.Get(srv.URL)
 	require.NoError(t, err)

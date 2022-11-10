@@ -7,16 +7,33 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/v2/memmetrics"
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-// RebalancerOption - functional option setter for rebalancer.
-type RebalancerOption func(*Rebalancer) error
+const (
+	// FSMMaxWeight is the maximum weight that handler will set for the server.
+	FSMMaxWeight = 4096
+	// FSMGrowFactor Multiplier for the server weight.
+	FSMGrowFactor = 4
+)
 
-// Meter measures server performance and returns it's relative value via rating.
+// splitThreshold tells how far the value should go from the median + median absolute deviation before it is considered an outlier.
+const splitThreshold = 1.5
+
+// BalancerHandler the balancer/handler interface.
+type BalancerHandler interface {
+	Servers() []*url.URL
+	ServeHTTP(w http.ResponseWriter, req *http.Request)
+	ServerWeight(u *url.URL) (int, bool)
+	RemoveServer(u *url.URL) error
+	UpsertServer(u *url.URL, options ...ServerOption) error
+	NextServer() (*url.URL, error)
+	Next() http.Handler
+}
+
+// Meter measures server performance and returns its relative value via rating.
 type Meter interface {
 	Rating() float64
 	Record(int, time.Duration)
@@ -27,7 +44,7 @@ type Meter interface {
 type NewMeterFn func() (Meter, error)
 
 // Rebalancer increases weights on servers that perform better than others. It also rolls back to original weights
-// if the servers have changed. It is designed as a wrapper on top of the roundrobin.
+// if the servers have changed. It is designed as a wrapper on top of the round-robin.
 type Rebalancer struct {
 	// mutex
 	mtx *sync.Mutex
@@ -38,7 +55,7 @@ type Rebalancer struct {
 	// server records that remember original weights
 	servers []*rbServer
 	// next is  internal load balancer next in chain
-	next balancerHandler
+	next BalancerHandler
 	// errHandler is HTTP handler called in case of errors
 	errHandler utils.ErrorHandler
 
@@ -52,57 +69,18 @@ type Rebalancer struct {
 
 	requestRewriteListener RequestRewriteListener
 
-	log *log.Logger
-}
-
-// RebalancerBackoff sets a beck off duration.
-func RebalancerBackoff(d time.Duration) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.backoffDuration = d
-		return nil
-	}
-}
-
-// RebalancerMeter sets a Meter builder function.
-func RebalancerMeter(newMeter NewMeterFn) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.newMeter = newMeter
-		return nil
-	}
-}
-
-// RebalancerErrorHandler is a functional argument that sets error handler of the server.
-func RebalancerErrorHandler(h utils.ErrorHandler) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.errHandler = h
-		return nil
-	}
-}
-
-// RebalancerStickySession sets a sticky session.
-func RebalancerStickySession(stickySession *StickySession) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.stickySession = stickySession
-		return nil
-	}
-}
-
-// RebalancerRequestRewriteListener is a functional argument that sets error handler of the server.
-func RebalancerRequestRewriteListener(rrl RequestRewriteListener) RebalancerOption {
-	return func(r *Rebalancer) error {
-		r.requestRewriteListener = rrl
-		return nil
-	}
+	debug bool
+	log   utils.Logger
 }
 
 // NewRebalancer creates a new Rebalancer.
-func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalancer, error) {
+func NewRebalancer(handler BalancerHandler, opts ...RebalancerOption) (*Rebalancer, error) {
 	rb := &Rebalancer{
 		mtx:           &sync.Mutex{},
 		next:          handler,
 		stickySession: nil,
 
-		log: log.StandardLogger(),
+		log: &utils.NoopLogger{},
 	}
 	for _, o := range opts {
 		if err := o(rb); err != nil {
@@ -131,16 +109,6 @@ func NewRebalancer(handler balancerHandler, opts ...RebalancerOption) (*Rebalanc
 	return rb, nil
 }
 
-// RebalancerLogger defines the logger the rebalancer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func RebalancerLogger(l *log.Logger) RebalancerOption {
-	return func(rb *Rebalancer) error {
-		rb.log = l
-		return nil
-	}
-}
-
 // Servers gets all servers.
 func (rb *Rebalancer) Servers() []*url.URL {
 	rb.mtx.Lock()
@@ -150,10 +118,10 @@ func (rb *Rebalancer) Servers() []*url.URL {
 }
 
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if rb.log.Level >= log.DebugLevel {
-		logEntry := rb.log.WithField("Request", utils.DumpHTTPRequest(req))
-		logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request")
+	if rb.debug {
+		dump := utils.DumpHTTPRequest(req)
+		rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dump)
+		defer rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dump)
 	}
 
 	pw := utils.NewProxyWriter(w)
@@ -166,7 +134,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if rb.stickySession != nil {
 		cookieURL, present, err := rb.stickySession.GetBackend(&newReq, rb.Servers())
 		if err != nil {
-			log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
+			rb.log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
 		}
 
 		if present {
@@ -182,9 +150,9 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if log.GetLevel() >= log.DebugLevel {
+		if rb.debug {
 			// log which backend URL we're sending this request to
-			log.WithFields(log.Fields{"Request": utils.DumpHTTPRequest(req), "ForwardURL": fwdURL}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
+			rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL (%s) :%s", fwdURL, utils.DumpHTTPRequest(req))
 		}
 
 		if rb.stickySession != nil {
@@ -223,7 +191,7 @@ func (rb *Rebalancer) reset() {
 }
 
 // Wrap sets the next handler to be called by rebalancer handler.
-func (rb *Rebalancer) Wrap(next balancerHandler) error {
+func (rb *Rebalancer) Wrap(next BalancerHandler) error {
 	if rb.next != nil {
 		return fmt.Errorf("already bound to %T", rb.next)
 	}
@@ -402,7 +370,7 @@ func (rb *Rebalancer) convergeWeights() bool {
 		}
 		changed = true
 		newWeight := decrease(s.origWeight, s.curWeight)
-		log.Debugf("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
+		rb.log.Debugf("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
 		s.curWeight = newWeight
 	}
 	if !changed {
@@ -456,13 +424,6 @@ type rbServer struct {
 	meter      Meter
 }
 
-const (
-	// FSMMaxWeight is the maximum weight that handler will set for the server.
-	FSMMaxWeight = 4096
-	// FSMGrowFactor Multiplier for the server weight.
-	FSMGrowFactor = 4
-)
-
 type codeMeter struct {
 	r     *memmetrics.RatioCounter
 	codeS int
@@ -475,7 +436,7 @@ func (n *codeMeter) Rating() float64 {
 }
 
 // Record records a meter.
-func (n *codeMeter) Record(code int, d time.Duration) {
+func (n *codeMeter) Record(code int, _ time.Duration) {
 	if code >= n.codeS && code < n.codeE {
 		n.r.IncA(1)
 	} else {
@@ -487,6 +448,3 @@ func (n *codeMeter) Record(code int, d time.Duration) {
 func (n *codeMeter) IsReady() bool {
 	return n.r.IsReady()
 }
-
-// splitThreshold tells how far the value should go from the median + median absolute deviation before it is considered an outlier.
-const splitThreshold = 1.5

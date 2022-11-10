@@ -37,7 +37,7 @@ func TestBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
 
@@ -81,7 +81,7 @@ func TestBasicWithHashValue(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
 	var cookie *http.Cookie
@@ -137,7 +137,7 @@ func TestBasicWithAESValue(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
 	var cookie *http.Cookie
@@ -186,7 +186,7 @@ func TestStickyCookie(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	resp, err := http.Get(proxy.URL)
 	require.NoError(t, err)
@@ -337,7 +337,7 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			require.NoError(t, err)
 
 			proxy := httptest.NewServer(lb)
-			defer proxy.Close()
+			t.Cleanup(proxy.Close)
 
 			resp, err := http.Get(proxy.URL)
 			require.NoError(t, err)
@@ -369,7 +369,7 @@ func TestRemoveRespondingServer(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
 
@@ -438,7 +438,7 @@ func TestRemoveAllServers(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
 
@@ -488,7 +488,7 @@ func TestBadCookieVal(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
-	defer proxy.Close()
+	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
 

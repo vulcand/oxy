@@ -7,54 +7,8 @@ import (
 	"net/url"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/utils"
 )
-
-// Weight is an optional functional argument that sets weight of the server.
-func Weight(w int) ServerOption {
-	return func(s *server) error {
-		if w < 0 {
-			return fmt.Errorf("Weight should be >= 0")
-		}
-		s.weight = w
-		return nil
-	}
-}
-
-// ErrorHandler is a functional argument that sets error handler of the server.
-func ErrorHandler(h utils.ErrorHandler) LBOption {
-	return func(s *RoundRobin) error {
-		s.errHandler = h
-		return nil
-	}
-}
-
-// EnableStickySession enable sticky session.
-func EnableStickySession(stickySession *StickySession) LBOption {
-	return func(s *RoundRobin) error {
-		s.stickySession = stickySession
-		return nil
-	}
-}
-
-// RoundRobinRequestRewriteListener is a functional argument that sets error handler of the server.
-func RoundRobinRequestRewriteListener(rrl RequestRewriteListener) LBOption {
-	return func(s *RoundRobin) error {
-		s.requestRewriteListener = rrl
-		return nil
-	}
-}
-
-// Logger defines the logger the round robin load balancer will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) LBOption {
-	return func(r *RoundRobin) error {
-		r.log = l
-		return nil
-	}
-}
 
 // RoundRobin implements dynamic weighted round-robin load balancer http handler.
 type RoundRobin struct {
@@ -68,7 +22,8 @@ type RoundRobin struct {
 	stickySession          *StickySession
 	requestRewriteListener RequestRewriteListener
 
-	log *log.Logger
+	debug bool
+	log   utils.Logger
 }
 
 // New created a new RoundRobin.
@@ -80,7 +35,7 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 		servers:       []*server{},
 		stickySession: nil,
 
-		log: log.StandardLogger(),
+		log: &utils.NoopLogger{},
 	}
 	for _, o := range opts {
 		if err := o(rr); err != nil {
@@ -99,10 +54,10 @@ func (r *RoundRobin) Next() http.Handler {
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if r.log.Level >= log.DebugLevel {
-		logEntry := r.log.WithField("Request", utils.DumpHTTPRequest(req))
-		logEntry.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request")
-		defer logEntry.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request")
+	if r.debug {
+		dump := utils.DumpHTTPRequest(req)
+		r.log.Debugf("vulcand/oxy/roundrobin/rr: begin ServeHttp on request: %s", dump)
+		defer r.log.Debugf("vulcand/oxy/roundrobin/rr: completed ServeHttp on request: %s", dump)
 	}
 
 	// make shallow copy of request before chaning anything to avoid side effects
@@ -111,7 +66,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.stickySession != nil {
 		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
 		if err != nil {
-			log.Warnf("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
+			r.log.Warnf("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
 		}
 
 		if present {
@@ -133,9 +88,10 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		newReq.URL = uri
 	}
 
-	if r.log.Level >= log.DebugLevel {
+	if r.debug {
 		// log which backend URL we're sending this request to
-		r.log.WithFields(log.Fields{"Request": utils.DumpHTTPRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
+		dump := utils.DumpHTTPRequest(req)
+		r.log.Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL (%s): %s", newReq.URL, dump)
 	}
 
 	// Emit event to a listener if one exists
@@ -312,12 +268,6 @@ func gcd(a, b int) int {
 	return a
 }
 
-// ServerOption provides various options for server, e.g. weight.
-type ServerOption func(*server) error
-
-// LBOption provides options for load balancer.
-type LBOption func(*RoundRobin) error
-
 // Set additional parameters for the server can be supplied when adding server.
 type server struct {
 	url *url.URL
@@ -338,14 +288,4 @@ func SetDefaultWeight(weight int) error {
 
 func sameURL(a, b *url.URL) bool {
 	return a.Path == b.Path && a.Host == b.Host && a.Scheme == b.Scheme
-}
-
-type balancerHandler interface {
-	Servers() []*url.URL
-	ServeHTTP(w http.ResponseWriter, req *http.Request)
-	ServerWeight(u *url.URL) (int, bool)
-	RemoveServer(u *url.URL) error
-	UpsertServer(u *url.URL, options ...ServerOption) error
-	NextServer() (*url.URL, error)
-	Next() http.Handler
 }

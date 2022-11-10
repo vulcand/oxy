@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/collections"
 	"github.com/vulcand/oxy/v2/utils"
@@ -72,7 +71,7 @@ type TokenLimiter struct {
 	capacity     int
 	next         http.Handler
 
-	log *log.Logger
+	log utils.Logger
 }
 
 // New constructs a `TokenLimiter` middleware instance.
@@ -88,7 +87,7 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 		defaultRates: defaultRates,
 		extract:      extract,
 
-		log: log.StandardLogger(),
+		log: &utils.NoopLogger{},
 	}
 
 	for _, o := range opts {
@@ -99,16 +98,6 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 	setDefaults(tl)
 	tl.bucketSets = collections.NewTTLMap(tl.capacity)
 	return tl, nil
-}
-
-// Logger defines the logger the token limiter will use.
-//
-// It defaults to logrus.StandardLogger(), the global logger used by logrus.
-func Logger(l *log.Logger) TokenLimiterOption {
-	return func(tl *TokenLimiter) error {
-		tl.log = l
-		return nil
-	}
 }
 
 // Wrap sets the next handler to be called by token limiter handler.
@@ -206,36 +195,6 @@ func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 		return
 	}
 	utils.DefaultHandler.ServeHTTP(w, req, err)
-}
-
-// TokenLimiterOption token limiter option type.
-type TokenLimiterOption func(l *TokenLimiter) error
-
-// ErrorHandler sets error handler of the server.
-func ErrorHandler(h utils.ErrorHandler) TokenLimiterOption {
-	return func(cl *TokenLimiter) error {
-		cl.errHandler = h
-		return nil
-	}
-}
-
-// ExtractRates sets the rate extractor.
-func ExtractRates(e RateExtractor) TokenLimiterOption {
-	return func(cl *TokenLimiter) error {
-		cl.extractRates = e
-		return nil
-	}
-}
-
-// Capacity sets the capacity.
-func Capacity(capacity int) TokenLimiterOption {
-	return func(cl *TokenLimiter) error {
-		if capacity <= 0 {
-			return fmt.Errorf("bad capacity: %v", capacity)
-		}
-		cl.capacity = capacity
-		return nil
-	}
 }
 
 var defaultErrHandler = &RateErrHandler{}

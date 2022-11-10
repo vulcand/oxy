@@ -79,7 +79,7 @@ func (h *HDRHistogram) Merge(other *HDRHistogram) error {
 	return nil
 }
 
-type rhOptSetter func(r *RollingHDRHistogram) error
+type rhOption func(r *RollingHDRHistogram) error
 
 // RollingHDRHistogram holds multiple histograms and rotates every period.
 // It provides resulting histogram as a result of a call of 'Merged' function.
@@ -95,7 +95,7 @@ type RollingHDRHistogram struct {
 }
 
 // NewRollingHDRHistogram created a new RollingHDRHistogram.
-func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, bucketCount int, options ...rhOptSetter) (*RollingHDRHistogram, error) {
+func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, bucketCount int, options ...rhOption) (*RollingHDRHistogram, error) {
 	rh := &RollingHDRHistogram{
 		bucketCount: bucketCount,
 		period:      period,
