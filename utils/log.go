@@ -2,27 +2,23 @@ package utils
 
 // Logger the logger interface.
 type Logger interface {
-	Debugf(string, ...interface{})
-	Infof(string, ...interface{})
-	Warnf(string, ...interface{})
-	Errorf(string, ...interface{})
-	Fatalf(string, ...interface{})
+	Debug(msg string, args ...any)
+	Info(msg string, args ...any)
+	Warn(msg string, args ...any)
+	Error(msg string, args ...any)
 }
 
 // NoopLogger a noop logger.
 type NoopLogger struct{}
 
-// Debugf noop.
-func (*NoopLogger) Debugf(string, ...interface{}) {}
+// Debug noop.
+func (*NoopLogger) Debug(string, ...interface{}) {}
 
-// Infof noop.
-func (*NoopLogger) Infof(string, ...interface{}) {}
+// Info noop.
+func (*NoopLogger) Info(string, ...interface{}) {}
 
-// Warnf noop.
-func (*NoopLogger) Warnf(string, ...interface{}) {}
+// Warn noop.
+func (*NoopLogger) Warn(string, ...interface{}) {}
 
-// Errorf noop.
-func (*NoopLogger) Errorf(string, ...interface{}) {}
-
-// Fatalf noop.
-func (*NoopLogger) Fatalf(string, ...interface{}) {}
+// Error noop.
+func (*NoopLogger) Error(string, ...interface{}) {}

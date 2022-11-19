@@ -100,8 +100,8 @@ func New(next http.Handler, expression string, options ...Option) (*CircuitBreak
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.debug {
 		dump := utils.DumpHTTPRequest(req)
-		c.log.Debugf("vulcand/oxy/circuitbreaker: begin ServeHttp on request: %s", dump)
-		defer c.log.Debugf("vulcand/oxy/circuitbreaker: completed ServeHttp on request: %s", dump)
+		c.log.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request: %s", dump)
+		defer c.log.Debug("vulcand/oxy/circuitbreaker: completed ServeHttp on request: %s", dump)
 	}
 
 	if c.activateFallback(w, req) {
@@ -132,7 +132,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 	c.m.Lock()
 	defer c.m.Unlock()
 
-	c.log.Warnf("%v is in error state", c)
+	c.log.Warn("%v is in error state", c)
 
 	switch c.state {
 	case stateStandby:
@@ -197,13 +197,13 @@ func (c *CircuitBreaker) exec(s SideEffect) {
 	}
 	go func() {
 		if err := s.Exec(); err != nil {
-			c.log.Errorf("%v side effect failure: %v", c, err)
+			c.log.Error("%v side effect failure: %v", c, err)
 		}
 	}()
 }
 
 func (c *CircuitBreaker) setState(state cbState, until time.Time) {
-	c.log.Debugf("%v setting state to %v, until %v", c, state, until)
+	c.log.Debug("%v setting state to %v, until %v", c, state, until)
 	c.state = state
 	c.until = until
 	switch state {
@@ -236,7 +236,7 @@ func (c *CircuitBreaker) checkAndSet() {
 	c.lastCheck = clock.Now().UTC().Add(c.checkPeriod)
 
 	if c.state == stateTripped {
-		c.log.Debugf("%v skip set tripped", c)
+		c.log.Debug("%v skip set tripped", c)
 		return
 	}
 

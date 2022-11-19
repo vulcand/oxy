@@ -56,8 +56,8 @@ func (r *RoundRobin) Next() http.Handler {
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.debug {
 		dump := utils.DumpHTTPRequest(req)
-		r.log.Debugf("vulcand/oxy/roundrobin/rr: begin ServeHttp on request: %s", dump)
-		defer r.log.Debugf("vulcand/oxy/roundrobin/rr: completed ServeHttp on request: %s", dump)
+		r.log.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request: %s", dump)
+		defer r.log.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request: %s", dump)
 	}
 
 	// make shallow copy of request before chaning anything to avoid side effects
@@ -66,7 +66,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.stickySession != nil {
 		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
 		if err != nil {
-			r.log.Warnf("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
+			r.log.Warn("vulcand/oxy/roundrobin/rr: error using server from cookie: %v", err)
 		}
 
 		if present {
@@ -91,7 +91,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.debug {
 		// log which backend URL we're sending this request to
 		dump := utils.DumpHTTPRequest(req)
-		r.log.Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL (%s): %s", newReq.URL, dump)
+		r.log.Debug("vulcand/oxy/roundrobin/rr: Forwarding this request to URL (%s): %s", newReq.URL, dump)
 	}
 
 	// Emit event to a listener if one exists

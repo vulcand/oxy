@@ -46,7 +46,7 @@ func (e *StdHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request, err error
 	w.WriteHeader(statusCode)
 	_, _ = w.Write([]byte(statusText(statusCode)))
 
-	e.log.Debugf("'%d %s' caused by: %v", statusCode, statusText(statusCode), err)
+	e.log.Debug("'%d %s' caused by: %v", statusCode, statusText(statusCode), err)
 }
 
 func statusText(statusCode int) string {

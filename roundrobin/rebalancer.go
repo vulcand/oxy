@@ -120,8 +120,8 @@ func (rb *Rebalancer) Servers() []*url.URL {
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if rb.debug {
 		dump := utils.DumpHTTPRequest(req)
-		rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dump)
-		defer rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dump)
+		rb.log.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dump)
+		defer rb.log.Debug("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dump)
 	}
 
 	pw := utils.NewProxyWriter(w)
@@ -134,7 +134,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if rb.stickySession != nil {
 		cookieURL, present, err := rb.stickySession.GetBackend(&newReq, rb.Servers())
 		if err != nil {
-			rb.log.Warnf("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
+			rb.log.Warn("vulcand/oxy/roundrobin/rebalancer: error using server from cookie: %v", err)
 		}
 
 		if present {
@@ -152,7 +152,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		if rb.debug {
 			// log which backend URL we're sending this request to
-			rb.log.Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL (%s) :%s", fwdURL, utils.DumpHTTPRequest(req))
+			rb.log.Debug("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL (%s) :%s", fwdURL, utils.DumpHTTPRequest(req))
 		}
 
 		if rb.stickySession != nil {
@@ -297,7 +297,7 @@ func (rb *Rebalancer) adjustWeights() {
 
 func (rb *Rebalancer) applyWeights() {
 	for _, srv := range rb.servers {
-		rb.log.Debugf("upsert server %v, weight %v", srv.url, srv.curWeight)
+		rb.log.Debug("upsert server %v, weight %v", srv.url, srv.curWeight)
 		_ = rb.next.UpsertServer(srv.url, Weight(srv.curWeight))
 	}
 }
@@ -309,7 +309,7 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 		if srv.good {
 			weight := increase(srv.curWeight)
 			if weight <= FSMMaxWeight {
-				rb.log.Debugf("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
+				rb.log.Debug("increasing weight of %v from %v to %v", srv.url, srv.curWeight, weight)
 				srv.curWeight = weight
 				changed = true
 			}
@@ -356,7 +356,7 @@ func (rb *Rebalancer) markServers() bool {
 		}
 	}
 	if len(g) != 0 && len(b) != 0 {
-		rb.log.Debugf("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
+		rb.log.Debug("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
 	}
 	return len(g) != 0 && len(b) != 0
 }
@@ -370,7 +370,7 @@ func (rb *Rebalancer) convergeWeights() bool {
 		}
 		changed = true
 		newWeight := decrease(s.origWeight, s.curWeight)
-		rb.log.Debugf("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
+		rb.log.Debug("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
 		s.curWeight = newWeight
 	}
 	if !changed {

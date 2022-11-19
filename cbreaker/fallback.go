@@ -39,8 +39,8 @@ func NewResponseFallback(r Response, options ...ResponseFallbackOption) (*Respon
 func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.debug {
 		dump := utils.DumpHTTPRequest(req)
-		f.log.Debugf("vulcand/oxy/fallback/response: begin ServeHttp on request: %s", dump)
-		defer f.log.Debugf("vulcand/oxy/fallback/response: completed ServeHttp on request: %s", dump)
+		f.log.Debug("vulcand/oxy/fallback/response: begin ServeHttp on request: %s", dump)
+		defer f.log.Debug("vulcand/oxy/fallback/response: completed ServeHttp on request: %s", dump)
 	}
 
 	if f.r.ContentType != "" {
@@ -50,7 +50,7 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(f.r.StatusCode)
 	_, err := w.Write(f.r.Body)
 	if err != nil {
-		f.log.Errorf("vulcand/oxy/fallback/response: failed to write response, err: %v", err)
+		f.log.Error("vulcand/oxy/fallback/response: failed to write response, err: %v", err)
 	}
 }
 
@@ -91,8 +91,8 @@ func NewRedirectFallback(r Redirect, options ...RedirectFallbackOption) (*Redire
 func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if f.debug {
 		dump := utils.DumpHTTPRequest(req)
-		f.log.Debugf("vulcand/oxy/fallback/redirect: begin ServeHttp on request: %s", dump)
-		defer f.log.Debugf("vulcand/oxy/fallback/redirect: completed ServeHttp on request: %s", dump)
+		f.log.Debug("vulcand/oxy/fallback/redirect: begin ServeHttp on request: %s", dump)
+		defer f.log.Debug("vulcand/oxy/fallback/redirect: completed ServeHttp on request: %s", dump)
 	}
 
 	location := f.u.String()
@@ -104,6 +104,6 @@ func (f *RedirectFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusFound)
 	_, err := w.Write([]byte(http.StatusText(http.StatusFound)))
 	if err != nil {
-		f.log.Errorf("vulcand/oxy/fallback/redirect: failed to write response, err: %v", err)
+		f.log.Error("vulcand/oxy/fallback/redirect: failed to write response, err: %v", err)
 	}
 }

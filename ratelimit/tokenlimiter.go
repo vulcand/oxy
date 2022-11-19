@@ -113,7 +113,7 @@ func (tl *TokenLimiter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := tl.consumeRates(req, source, amount); err != nil {
-		tl.log.Warnf("limiting request %v %v, limit: %v", req.Method, req.URL, err)
+		tl.log.Warn("limiting request %v %v, limit: %v", req.Method, req.URL, err)
 		tl.errHandler.ServeHTTP(w, req, err)
 		return
 	}
@@ -161,7 +161,7 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 
 	rates, err := tl.extractRates.Extract(req)
 	if err != nil {
-		tl.log.Errorf("Failed to retrieve rates: %v", err)
+		tl.log.Error("Failed to retrieve rates: %v", err)
 		return tl.defaultRates
 	}
 

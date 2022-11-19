@@ -64,12 +64,12 @@ func (cl *ConnLimiter) Wrap(h http.Handler) {
 func (cl *ConnLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	token, amount, err := cl.extract.Extract(r)
 	if err != nil {
-		cl.log.Errorf("failed to extract source of the connection: %v", err)
+		cl.log.Error("failed to extract source of the connection: %v", err)
 		cl.errHandler.ServeHTTP(w, r, err)
 		return
 	}
 	if err := cl.acquire(token, amount); err != nil {
-		cl.log.Debugf("limiting request source %s: %v", token, err)
+		cl.log.Debug("limiting request source %s: %v", token, err)
 		cl.errHandler.ServeHTTP(w, r, err)
 		return
 	}
@@ -124,8 +124,8 @@ type ConnErrHandler struct {
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if e.debug {
 		dump := utils.DumpHTTPRequest(req)
-		e.log.Debugf("vulcand/oxy/connlimit: begin ServeHttp on request: %s", dump)
-		defer e.log.Debugf("vulcand/oxy/connlimit: completed ServeHttp on request: %s", dump)
+		e.log.Debug("vulcand/oxy/connlimit: begin ServeHttp on request: %s", dump)
+		defer e.log.Debug("vulcand/oxy/connlimit: completed ServeHttp on request: %s", dump)
 	}
 
 	//nolint:errorlint // must be changed

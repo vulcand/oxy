@@ -53,7 +53,7 @@ func (t *Tracer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	l := t.newRecord(req, pw, clock.Since(start))
 	if err := json.NewEncoder(t.writer).Encode(l); err != nil {
-		t.log.Errorf("Failed to marshal request: %v", err)
+		t.log.Error("Failed to marshal request: %v", err)
 	}
 }
 
