@@ -71,8 +71,8 @@ type Buffer struct {
 	next       http.Handler
 	errHandler utils.ErrorHandler
 
-	debug bool
-	log   utils.Logger
+	verbose bool
+	log     utils.Logger
 }
 
 // New returns a new buffer middleware. New() function supports optional functional arguments.
@@ -108,7 +108,7 @@ func (b *Buffer) Wrap(next http.Handler) error {
 }
 
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if b.debug {
+	if b.verbose {
 		dump := utils.DumpHTTPRequest(req)
 		b.log.Debug("vulcand/oxy/buffer: begin ServeHttp on request: %s", dump)
 		defer b.log.Debug("vulcand/oxy/buffer: completed ServeHttp on request: %s", dump)

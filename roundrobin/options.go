@@ -115,10 +115,10 @@ func Logger(l utils.Logger) LBOption {
 	}
 }
 
-// Debug additional debug information.
-func Debug(debug bool) LBOption {
+// Verbose additional debug information.
+func Verbose(verbose bool) LBOption {
 	return func(r *RoundRobin) error {
-		r.debug = debug
+		r.verbose = verbose
 		return nil
 	}
 }

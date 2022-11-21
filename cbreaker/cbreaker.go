@@ -59,8 +59,8 @@ type CircuitBreaker struct {
 	fallback http.Handler
 	next     http.Handler
 
-	debug bool
-	log   utils.Logger
+	verbose bool
+	log     utils.Logger
 }
 
 // New creates a new CircuitBreaker middleware.
@@ -98,7 +98,7 @@ func New(next http.Handler, expression string, options ...Option) (*CircuitBreak
 }
 
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if c.debug {
+	if c.verbose {
 		dump := utils.DumpHTTPRequest(req)
 		c.log.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request: %s", dump)
 		defer c.log.Debug("vulcand/oxy/circuitbreaker: completed ServeHttp on request: %s", dump)

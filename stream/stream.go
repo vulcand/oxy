@@ -48,8 +48,8 @@ type Stream struct {
 
 	next http.Handler
 
-	debug bool
-	log   utils.Logger
+	verbose bool
+	log     utils.Logger
 }
 
 // New returns a new streamer middleware. New() function supports optional functional arguments.
@@ -78,7 +78,7 @@ func (s *Stream) Wrap(next http.Handler) error {
 }
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if s.debug {
+	if s.verbose {
 		dump := utils.DumpHTTPRequest(req)
 		s.log.Debug("vulcand/oxy/stream: begin ServeHttp on request: %s", dump)
 		defer s.log.Debug("vulcand/oxy/stream: completed ServeHttp on request: %s", dump)

@@ -15,10 +15,10 @@ func Logger(l utils.Logger) Option {
 	}
 }
 
-// Debug additional debug information.
-func Debug(debug bool) Option {
+// Verbose additional debug information.
+func Verbose(verbose bool) Option {
 	return func(cl *ConnLimiter) error {
-		cl.debug = debug
+		cl.verbose = verbose
 		return nil
 	}
 }

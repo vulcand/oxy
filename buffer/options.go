@@ -17,10 +17,10 @@ func Logger(l utils.Logger) Option {
 	}
 }
 
-// Debug additional debug information.
-func Debug(debug bool) Option {
+// Verbose additional debug information.
+func Verbose(verbose bool) Option {
 	return func(b *Buffer) error {
-		b.debug = debug
+		b.verbose = verbose
 		return nil
 	}
 }

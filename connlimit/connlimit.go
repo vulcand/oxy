@@ -21,8 +21,8 @@ type ConnLimiter struct {
 
 	errHandler utils.ErrorHandler
 
-	debug bool
-	log   utils.Logger
+	verbose bool
+	log     utils.Logger
 }
 
 // New creates a new ConnLimiter.
@@ -48,7 +48,7 @@ func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64,
 
 	if cl.errHandler == nil {
 		cl.errHandler = &ConnErrHandler{
-			debug: cl.debug,
+			debug: cl.verbose,
 			log:   cl.log,
 		}
 	}

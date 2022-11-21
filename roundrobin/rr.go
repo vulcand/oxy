@@ -22,8 +22,8 @@ type RoundRobin struct {
 	stickySession          *StickySession
 	requestRewriteListener RequestRewriteListener
 
-	debug bool
-	log   utils.Logger
+	verbose bool
+	log     utils.Logger
 }
 
 // New created a new RoundRobin.
@@ -54,7 +54,7 @@ func (r *RoundRobin) Next() http.Handler {
 }
 
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	if r.debug {
+	if r.verbose {
 		dump := utils.DumpHTTPRequest(req)
 		r.log.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request: %s", dump)
 		defer r.log.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request: %s", dump)
@@ -88,7 +88,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		newReq.URL = uri
 	}
 
-	if r.debug {
+	if r.verbose {
 		// log which backend URL we're sending this request to
 		dump := utils.DumpHTTPRequest(req)
 		r.log.Debug("vulcand/oxy/roundrobin/rr: Forwarding this request to URL (%s): %s", newReq.URL, dump)
