@@ -106,9 +106,8 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // NextServer gets the next server.
 func (r *RoundRobin) NextServer(w http.ResponseWriter, req *http.Request, neq *http.Request) (*url.URL, error) {
 	// Use extension balance server, if extension return multiple servers, choose anyone.
-	if ss := Strategy().Next(w, req, neq, r.servers); len(ss) > 0 {
-		srv := ss[rand.Intn(len(ss))]
-		return utils.CopyURL(srv.URL()), nil
+	if ss := Strategy().Next(w, req, neq, r.servers); len(ss) > 0 && (len(ss) < len(r.servers) || len(r.servers) < 1) {
+		return Strategy().Strip(w, req, neq, utils.CopyURL(ss[rand.Intn(len(ss))].URL())), nil
 	}
 	srv, err := r.nextServer(w, req)
 	if err != nil {

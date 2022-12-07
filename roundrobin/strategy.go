@@ -42,6 +42,9 @@ type LBStrategy interface {
 	// Next servers
 	// Load balancer extension for custom rules filter.
 	Next(w http.ResponseWriter, req *http.Request, neq *http.Request, servers []Server) []Server
+
+	// Strip filter the server URL
+	Strip(w http.ResponseWriter, req *http.Request, neq *http.Request, uri *url.URL) *url.URL
 }
 
 type CompositeStrategy struct {
@@ -67,4 +70,11 @@ func (that *CompositeStrategy) Next(w http.ResponseWriter, req *http.Request, ne
 		servers = strategy.Next(w, req, neq, servers)
 	}
 	return servers
+}
+
+func (that *CompositeStrategy) Strip(w http.ResponseWriter, req *http.Request, neq *http.Request, uri *url.URL) *url.URL {
+	for _, strategy := range that.strategies {
+		uri = strategy.Strip(w, req, neq, uri)
+	}
+	return uri
 }
