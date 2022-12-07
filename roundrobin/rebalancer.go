@@ -29,7 +29,7 @@ type BalancerHandler interface {
 	ServerWeight(u *url.URL) (int, bool)
 	RemoveServer(u *url.URL) error
 	UpsertServer(u *url.URL, options ...ServerOption) error
-	NextServer() (*url.URL, error)
+	NextServer(w http.ResponseWriter, req *http.Request, neq *http.Request) (*url.URL, error)
 	Next() http.Handler
 }
 
@@ -144,7 +144,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if !stuck {
-		fwdURL, err := rb.next.NextServer()
+		fwdURL, err := rb.next.NextServer(w, req, &newReq)
 		if err != nil {
 			rb.errHandler.ServeHTTP(w, req, err)
 			return

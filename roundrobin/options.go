@@ -67,15 +67,15 @@ func RebalancerDebug(debug bool) RebalancerOption {
 }
 
 // ServerOption provides various options for server, e.g. weight.
-type ServerOption func(*server) error
+type ServerOption func(s Server) error
 
 // Weight is an optional functional argument that sets weight of the server.
 func Weight(w int) ServerOption {
-	return func(s *server) error {
+	return func(s Server) error {
 		if w < 0 {
-			return fmt.Errorf("Weight should be >= 0")
+			return fmt.Errorf("Weight should be >= 0 ")
 		}
-		s.weight = w
+		s.Set(w)
 		return nil
 	}
 }
