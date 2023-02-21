@@ -10,6 +10,8 @@ import (
 )
 
 // SerializableHTTPRequest serializable HTTP request.
+//
+//nolint:musttag // Cannot be changed more now.
 type SerializableHTTPRequest struct {
 	Method           string
 	URL              *url.URL

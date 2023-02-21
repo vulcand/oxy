@@ -77,7 +77,7 @@ func (w *WebhookSideEffect) Exec() error {
 		return err
 	}
 	if re.Body != nil {
-		defer re.Body.Close()
+		defer func() { _ = re.Body.Close() }()
 	}
 	body, err := io.ReadAll(re.Body)
 	if err != nil {
