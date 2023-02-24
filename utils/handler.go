@@ -27,9 +27,10 @@ type StdHandler struct {
 	log Logger
 }
 
-func (e *StdHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request, err error) {
+func (e *StdHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	statusCode := http.StatusInternalServerError
 
+	ctxErr := req.Context().Err()
 	//nolint:errorlint // must be changed
 	if e, ok := err.(net.Error); ok {
 		if e.Timeout() {
@@ -39,7 +40,7 @@ func (e *StdHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request, err error
 		}
 	} else if errors.Is(err, io.EOF) {
 		statusCode = http.StatusBadGateway
-	} else if errors.Is(err, context.Canceled) {
+	} else if errors.Is(err, context.Canceled) || errors.Is(ctxErr, context.Canceled) {
 		statusCode = StatusClientClosedRequest
 	}
 

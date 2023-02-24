@@ -26,7 +26,7 @@ func TestDefaultHandlerErrors(t *testing.T) {
 
 	w := NewBufferWriter(NopWriteCloser(&bytes.Buffer{}), &NoopLogger{})
 
-	DefaultHandler.ServeHTTP(w, nil, err)
+	DefaultHandler.ServeHTTP(w, request, err)
 
 	assert.Equal(t, http.StatusBadGateway, w.Code)
 }
