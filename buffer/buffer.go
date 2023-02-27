@@ -126,6 +126,12 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// and the reader would be unbounded bufio in the http.Server
 	body, err := multibuf.New(req.Body, multibuf.MaxBytes(b.maxRequestBodyBytes), multibuf.MemBytes(b.memRequestBodyBytes))
 	if err != nil || body == nil {
+		if req.Context().Err() != nil {
+			b.log.Error("vulcand/oxy/buffer: error when reading request body, err: %v", req.Context().Err())
+			b.errHandler.ServeHTTP(w, req, req.Context().Err())
+			return
+		}
+
 		b.log.Error("vulcand/oxy/buffer: error when reading request body, err: %v", err)
 		b.errHandler.ServeHTTP(w, req, err)
 		return
