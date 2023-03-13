@@ -3,6 +3,7 @@ package buffer
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,24 +53,37 @@ func TestRetryOnError(t *testing.T) {
 }
 
 func TestRetryExceedAttempts(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	server := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
-	t.Cleanup(srv.Close)
+	t.Cleanup(server.Close)
 
-	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
+	countDeadCalls := atomic.Int32{}
+
+	// uses 20 to have a higher value than DefaultMaxRetryAttempts (10)
+	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 20`)
 
 	proxy := httptest.NewServer(rt)
 	t.Cleanup(proxy.Close)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64321")))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64322")))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64323")))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(srv.URL)))
+	// creates more dead server than the expected number of retries (20)
+	for i := 0; i <= 30; i++ {
+		deadServer := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+			countDeadCalls.Add(1)
+			w.WriteHeader(http.StatusBadGateway)
+		})
+		t.Cleanup(deadServer.Close)
+
+		require.NoError(t, lb.UpsertServer(testutils.ParseURI(deadServer.URL)))
+	}
+
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(server.URL)))
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadGateway, re.StatusCode)
+
+	assert.Equal(t, int32(21), countDeadCalls.Load())
 }
 
 func newBufferMiddleware(t *testing.T, p string) (*roundrobin.RoundRobin, *Buffer) {
