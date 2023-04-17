@@ -380,3 +380,68 @@ func TestNotNilBody(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 	assert.Equal(t, "hello", string(body))
 }
+
+func TestGRPCErrorResponse(t *testing.T) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Grpc-Status", "10" /* ABORTED */)
+		w.WriteHeader(http.StatusOK)
+
+		// To skip the "Content-Length" header.
+		w.(http.Flusher).Flush()
+	})
+	t.Cleanup(srv.Close)
+
+	// forwarder will proxy the request to whatever destination
+	fwd := forward.New(false)
+
+	// this is our redirect to server
+	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		fwd.ServeHTTP(w, req)
+	})
+
+	// stream handler will forward requests to redirect
+	st, err := New(rdr)
+	require.NoError(t, err)
+
+	proxy := httptest.NewServer(st)
+	t.Cleanup(proxy.Close)
+
+	re, body, err := testutils.Get(proxy.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+	assert.Empty(t, body)
+}
+
+func TestGRPCOKResponse(t *testing.T) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Grpc-Status", "0" /* OK */)
+		_, _ = w.Write([]byte("grpc-body"))
+		w.WriteHeader(http.StatusOK)
+
+		// To skip the "Content-Length" header.
+		w.(http.Flusher).Flush()
+	})
+	t.Cleanup(srv.Close)
+
+	// forwarder will proxy the request to whatever destination
+	fwd := forward.New(false)
+
+	// this is our redirect to server
+	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.ParseURI(srv.URL)
+		fwd.ServeHTTP(w, req)
+	})
+
+	// stream handler will forward requests to redirect
+	st, err := New(rdr)
+	require.NoError(t, err)
+
+	proxy := httptest.NewServer(st)
+	t.Cleanup(proxy.Close)
+
+	re, body, err := testutils.Get(proxy.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+	assert.Equal(t, "grpc-body", string(body))
+}

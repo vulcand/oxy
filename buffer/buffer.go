@@ -276,6 +276,10 @@ func (b *bufferWriter) expectBody(r *http.Request) bool {
 	if b.header.Get("Content-Length") == "0" {
 		return false
 	}
+	// Support for gRPC, gRPC Web.
+	if b.header.Get("Grpc-Status") != "" && b.header.Get("Grpc-Status") != "0" {
+		return false
+	}
 	return true
 }
 
