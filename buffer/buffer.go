@@ -277,7 +277,7 @@ func (b *bufferWriter) expectBody(r *http.Request) bool {
 		return false
 	}
 	// Support for gRPC, gRPC Web.
-	if b.header.Get("Grpc-Status") != "" && b.header.Get("Grpc-Status") != "0" {
+	if grpcStatus := b.header.Get("Grpc-Status"); grpcStatus != "" && grpcStatus != "0" {
 		return false
 	}
 	return true
