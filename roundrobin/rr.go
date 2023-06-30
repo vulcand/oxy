@@ -2,6 +2,7 @@
 package roundrobin
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,6 +10,9 @@ import (
 
 	"github.com/vulcand/oxy/v2/utils"
 )
+
+// ErrNoServers indicates that there are no servers registered for the given Backend.
+var ErrNoServers = errors.New("no servers in the pool")
 
 // RoundRobin implements dynamic weighted round-robin load balancer http handler.
 type RoundRobin struct {
@@ -116,7 +120,7 @@ func (r *RoundRobin) nextServer() (*server, error) {
 	defer r.mutex.Unlock()
 
 	if len(r.servers) == 0 {
-		return nil, fmt.Errorf("no servers in the pool")
+		return nil, ErrNoServers
 	}
 
 	// The algo below may look messy, but is actually very simple
