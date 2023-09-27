@@ -27,10 +27,13 @@ linters-settings:
   gofumpt:
     extra-rules: false
   depguard:
-    list-type: blacklist
-    include-go-root: false
-    packages:
-      - github.com/pkg/errors
+    rules:
+      main:
+        deny:
+          - pkg: "github.com/instana/testify"
+            desc: not allowed
+          - pkg: "github.com/pkg/errors"
+            desc: Should be replaced by standard lib errors package
   gocritic:
     enabled-tags:
       - diagnostic
@@ -100,6 +103,7 @@ issues:
     - 'Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked'
     - 'SA1019: http.CloseNotifier has been deprecated'
     - 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'# TODO(ldez) must be fixed
+    - 'G101: Potential hardcoded credentials' # TODO(ldez) https://github.com/golangci/golangci-lint/issues/4037
 
   exclude-rules:
     - path: .*_test.go

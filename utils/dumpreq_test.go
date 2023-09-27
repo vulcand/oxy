@@ -10,7 +10,7 @@ import (
 
 type readCloserTestImpl struct{}
 
-func (r *readCloserTestImpl) Read(p []byte) (n int, err error) {
+func (r *readCloserTestImpl) Read(_ []byte) (n int, err error) {
 	return 0, nil
 }
 
