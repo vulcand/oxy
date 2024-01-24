@@ -30,7 +30,7 @@ func TestRateSetAdd(t *testing.T) {
 
 	err = rs.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
-	assert.Equal(t, rs.String(), "map[1s:rate(1/1s, burst=1)]")
+	assert.Equal(t, "map[1s:rate(1/1s, burst=1)]", rs.String())
 }
 
 // We've hit the limit and were able to proceed on the next time run.

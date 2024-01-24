@@ -40,7 +40,7 @@ func TestFallbackValue_FindURL(t *testing.T) {
 
 				value, err := NewFallbackValue(from.CookieValue, to.CookieValue)
 				if from.CookieValue == nil && to.CookieValue == nil {
-					assert.Error(t, err)
+					require.Error(t, err)
 					return
 				}
 				require.NoError(t, err)
@@ -182,14 +182,14 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			value, err := NewFallbackValue(tt.From, tt.To)
 			if tt.expectErrorOnNew {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
 			findURL, err := value.FindURL(tt.rawValue, servers)
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)

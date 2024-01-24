@@ -36,7 +36,7 @@ type BalancerHandler interface {
 // Meter measures server performance and returns its relative value via rating.
 type Meter interface {
 	Rating() float64
-	Record(int, time.Duration)
+	Record(code int, latency time.Duration)
 	IsReady() bool
 }
 

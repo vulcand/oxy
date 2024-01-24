@@ -95,7 +95,7 @@ linters:
 
 issues:
   exclude-use-default: false
-  max-per-linter: 0
+  max-issues-per-linter: 0
   max-same-issues: 0
   exclude:
     - 'ST1000: at least one file in a package should have a package comment' # TODO(ldez) must be fixed
@@ -110,6 +110,7 @@ issues:
       linters:
         - funlen
         - gosec
+        - goconst
     - path: testutils/.+
       linters:
         - gosec
@@ -125,3 +126,9 @@ issues:
       text: "Function 'serveWebSocket' has too many statements" # TODO(ldez) must be fixed
     - path: utils/handler.go
       text: "ifElseChain: rewrite if-else to switch statement" # TODO(ldez) must be fixed
+    - path: memmetrics/ratio_test.go
+      text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed
+    - path: memmetrics/roundtrip_test.go
+      text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed
+    - path: memmetrics/anomaly_test.go
+      text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed

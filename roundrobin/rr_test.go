@@ -30,7 +30,7 @@ func TestRemoveBadServer(t *testing.T) {
 	lb, err := New(nil)
 	require.NoError(t, err)
 
-	assert.Error(t, lb.RemoveServer(testutils.ParseURI("http://google.com")))
+	require.Error(t, lb.RemoveServer(testutils.ParseURI("http://google.com")))
 }
 
 func TestCustomErrHandler(t *testing.T) {
@@ -154,7 +154,7 @@ func TestUpsertWeight(t *testing.T) {
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 
-	assert.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL), Weight(3)))
+	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL), Weight(3)))
 
 	assert.Equal(t, []string{"b", "b", "a", "b"}, seq(t, proxy.URL, 4))
 }
@@ -188,19 +188,19 @@ func TestWeighted(t *testing.T) {
 
 	w, ok := lb.ServerWeight(testutils.ParseURI(a.URL))
 	assert.Equal(t, 3, w)
-	assert.Equal(t, true, ok)
+	assert.True(t, ok)
 
 	w, ok = lb.ServerWeight(testutils.ParseURI(b.URL))
 	assert.Equal(t, 2, w)
-	assert.Equal(t, true, ok)
+	assert.True(t, ok)
 
 	w, ok = lb.ServerWeight(testutils.ParseURI(z.URL))
 	assert.Equal(t, 0, w)
-	assert.Equal(t, true, ok)
+	assert.True(t, ok)
 
 	w, ok = lb.ServerWeight(testutils.ParseURI("http://caramba:4000"))
 	assert.Equal(t, -1, w)
-	assert.Equal(t, false, ok)
+	assert.False(t, ok)
 }
 
 func TestRequestRewriteListener(t *testing.T) {

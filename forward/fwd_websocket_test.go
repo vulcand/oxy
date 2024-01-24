@@ -52,7 +52,7 @@ func TestWebSocketTCPClose(t *testing.T) {
 	serverErr := <-errChan
 
 	wsErr := &gorillawebsocket.CloseError{}
-	assert.ErrorAs(t, serverErr, &wsErr)
+	assert.ErrorAs(t, serverErr, &wsErr) //nolint:testifylint // The code is analyzed after this assertion.
 	assert.Equal(t, 1006, wsErr.Code)
 }
 

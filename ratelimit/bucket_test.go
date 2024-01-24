@@ -378,8 +378,8 @@ func TestDivisionByZeroOnPeriod(t *testing.T) {
 	tb := newTokenBucket(&rate{period: time.Duration(emptyPeriod), average: 2, burst: 2})
 
 	_, err := tb.consume(1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = tb.update(&rate{period: clock.Nanosecond, average: 1, burst: 1})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

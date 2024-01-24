@@ -29,14 +29,14 @@ func TestNotReady(t *testing.T) {
 	// No data
 	fr, err := NewRatioCounter(10, clock.Second)
 	require.NoError(t, err)
-	assert.Equal(t, false, fr.IsReady())
+	assert.False(t, fr.IsReady())
 	assert.Equal(t, 0.0, fr.Ratio())
 
 	// Not enough data
 	fr, err = NewRatioCounter(10, clock.Second)
 	require.NoError(t, err)
 	fr.CountA()
-	assert.Equal(t, false, fr.IsReady())
+	assert.False(t, fr.IsReady())
 }
 
 func TestNoB(t *testing.T) {
@@ -45,7 +45,7 @@ func TestNoB(t *testing.T) {
 	fr, err := NewRatioCounter(1, clock.Second)
 	require.NoError(t, err)
 	fr.IncA(1)
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, 1.0, fr.Ratio())
 }
 
@@ -56,7 +56,7 @@ func TestNoA(t *testing.T) {
 	fr, err := NewRatioCounter(1, clock.Second)
 	require.NoError(t, err)
 	fr.IncB(1)
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, 0.0, fr.Ratio())
 }
 
@@ -75,7 +75,7 @@ func TestMultipleBuckets(t *testing.T) {
 	clock.Advance(clock.Second)
 	fr.IncA(1)
 
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, float64(2)/float64(3), fr.Ratio())
 }
 
@@ -101,7 +101,7 @@ func TestOverwriteBuckets(t *testing.T) {
 	fr.IncA(1)
 	fr.IncB(2)
 
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, float64(3)/float64(5), fr.Ratio())
 }
 
@@ -131,7 +131,7 @@ func TestInactiveBuckets(t *testing.T) {
 	clock.Advance(clock.Second * 2)
 	fr.IncB(1)
 
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, float64(1)/float64(4), fr.Ratio())
 }
 
@@ -147,7 +147,7 @@ func TestLongPeriodsOfInactivity(t *testing.T) {
 	clock.Advance(clock.Second)
 	fr.IncA(1)
 
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, 0.5, fr.Ratio())
 
 	// This time we should overwrite all data points
@@ -166,17 +166,17 @@ func TestNewRatioCounterReset(t *testing.T) {
 	fr.IncB(1)
 	fr.IncA(1)
 
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, 0.5, fr.Ratio())
 
 	// Reset the counter
 	fr.Reset()
-	assert.Equal(t, false, fr.IsReady())
+	assert.False(t, fr.IsReady())
 
 	// Now add some stats
 	fr.IncA(2)
 
 	// We are game again!
-	assert.Equal(t, true, fr.IsReady())
+	assert.True(t, fr.IsReady())
 	assert.Equal(t, 1.0, fr.Ratio())
 }

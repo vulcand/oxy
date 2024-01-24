@@ -6,10 +6,10 @@ import "net/url"
 // It will be used by the load balancer to generate the sticky cookie value and to retrieve the matching url.
 type CookieValue interface {
 	// Get converts raw value to an expected sticky format.
-	Get(*url.URL) string
+	Get(raw *url.URL) string
 
 	// FindURL gets url from array that match the value.
-	FindURL(string, []*url.URL) (*url.URL, error)
+	FindURL(raw string, urls []*url.URL) (*url.URL, error)
 }
 
 // areURLEqual compare a string to a url and check if the string is the same as the url value.
