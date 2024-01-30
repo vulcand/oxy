@@ -123,8 +123,8 @@ func TestRebalancerRecovery(t *testing.T) {
 	assert.Equal(t, 1, rb.servers[0].curWeight)
 	assert.Equal(t, FSMMaxWeight, rb.servers[1].curWeight)
 
-	assert.Equal(t, 1, lb.servers[0].weight)
-	assert.Equal(t, FSMMaxWeight, lb.servers[1].weight)
+	assert.Equal(t, 1, lb.servers[0].Weight())
+	assert.Equal(t, FSMMaxWeight, lb.servers[1].Weight())
 
 	// server a is now recovering, the weights should go back to the original state
 	rb.servers[0].meter.(*testMeter).rating = 0
@@ -141,8 +141,8 @@ func TestRebalancerRecovery(t *testing.T) {
 	assert.Equal(t, 1, rb.servers[1].curWeight)
 
 	// Make sure we have applied the weights to the inner load balancer
-	assert.Equal(t, 1, lb.servers[0].weight)
-	assert.Equal(t, 1, lb.servers[1].weight)
+	assert.Equal(t, 1, lb.servers[0].Weight())
+	assert.Equal(t, 1, lb.servers[1].Weight())
 }
 
 // Test scenario when increaing the weight on good endpoints made it worse.

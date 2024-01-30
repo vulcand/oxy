@@ -4,6 +4,7 @@ package roundrobin
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"sync"
@@ -21,7 +22,7 @@ type RoundRobin struct {
 	errHandler utils.ErrorHandler
 	// Current index (starts from -1)
 	index                  int
-	servers                []*server
+	servers                []Server
 	currentWeight          int
 	stickySession          *StickySession
 	requestRewriteListener RequestRewriteListener
@@ -36,7 +37,7 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 		next:          next,
 		index:         -1,
 		mutex:         &sync.Mutex{},
-		servers:       []*server{},
+		servers:       []Server{},
 		stickySession: nil,
 
 		log: &utils.NoopLogger{},
@@ -80,7 +81,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if !stuck {
-		uri, err := r.NextServer()
+		uri, err := r.NextServer(w, req, &newReq)
 		if err != nil {
 			r.errHandler.ServeHTTP(w, req, err)
 			return
@@ -107,15 +108,19 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // NextServer gets the next server.
-func (r *RoundRobin) NextServer() (*url.URL, error) {
-	srv, err := r.nextServer()
+func (r *RoundRobin) NextServer(w http.ResponseWriter, req *http.Request, neq *http.Request) (*url.URL, error) {
+	// Use extension balance server, if extension return multiple servers, choose anyone.
+	if ss := Strategy().Next(w, req, neq, r.servers); len(ss) > 0 && (len(ss) < len(r.servers) || len(r.servers) < 1) {
+		return Strategy().Strip(w, req, neq, utils.CopyURL(ss[rand.Intn(len(ss))].URL())), nil
+	}
+	srv, err := r.nextServer(w, req)
 	if err != nil {
 		return nil, err
 	}
-	return utils.CopyURL(srv.url), nil
+	return utils.CopyURL(srv.URL()), nil
 }
 
-func (r *RoundRobin) nextServer() (*server, error) {
+func (r *RoundRobin) nextServer(w http.ResponseWriter, req *http.Request) (Server, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -144,7 +149,7 @@ func (r *RoundRobin) nextServer() (*server, error) {
 			}
 		}
 		srv := r.servers[r.index]
-		if srv.weight >= r.currentWeight {
+		if srv.Weight() >= r.currentWeight {
 			return srv, nil
 		}
 	}
@@ -171,7 +176,7 @@ func (r *RoundRobin) Servers() []*url.URL {
 
 	out := make([]*url.URL, len(r.servers))
 	for i, srv := range r.servers {
-		out[i] = srv.url
+		out[i] = srv.URL()
 	}
 	return out
 }
@@ -182,7 +187,7 @@ func (r *RoundRobin) ServerWeight(u *url.URL) (int, bool) {
 	defer r.mutex.Unlock()
 
 	if s, _ := r.findServerByURL(u); s != nil {
-		return s.weight, true
+		return s.Weight(), true
 	}
 	return -1, false
 }
@@ -231,12 +236,12 @@ func (r *RoundRobin) resetState() {
 	r.resetIterator()
 }
 
-func (r *RoundRobin) findServerByURL(u *url.URL) (*server, int) {
+func (r *RoundRobin) findServerByURL(u *url.URL) (Server, int) {
 	if len(r.servers) == 0 {
 		return nil, -1
 	}
 	for i, s := range r.servers {
-		if sameURL(u, s.url) {
+		if sameURL(u, s.URL()) {
 			return s, i
 		}
 	}
@@ -246,8 +251,8 @@ func (r *RoundRobin) findServerByURL(u *url.URL) (*server, int) {
 func (r *RoundRobin) maxWeight() int {
 	max := -1
 	for _, s := range r.servers {
-		if s.weight > max {
-			max = s.weight
+		if s.Weight() > max {
+			max = s.Weight()
 		}
 	}
 	return max
@@ -257,9 +262,9 @@ func (r *RoundRobin) weightGcd() int {
 	divisor := -1
 	for _, s := range r.servers {
 		if divisor == -1 {
-			divisor = s.weight
+			divisor = s.Weight()
 		} else {
-			divisor = gcd(divisor, s.weight)
+			divisor = gcd(divisor, s.Weight())
 		}
 	}
 	return divisor
@@ -277,6 +282,18 @@ type server struct {
 	url *url.URL
 	// Relative weight for the enpoint to other enpoints in the load balancer
 	weight int
+}
+
+func (that *server) URL() *url.URL {
+	return that.url
+}
+
+func (that *server) Weight() int {
+	return that.weight
+}
+
+func (that *server) Set(weight int) {
+	that.weight = weight
 }
 
 var defaultWeight = 1
