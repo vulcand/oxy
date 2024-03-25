@@ -24,7 +24,7 @@ func TestRampUp(t *testing.T) {
 		t.Log("Ratio", ratio)
 		t.Log("Expected", expected)
 		t.Log("Diff", diff)
-		assert.EqualValues(t, 0, round(diff, 0.5, 1))
+		assert.EqualValues(t, 0, round(diff, 0.5, 1)) //nolint:testifylint // the rounding is already handled.
 		clock.Advance(clock.Millisecond)
 	}
 }

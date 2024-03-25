@@ -34,7 +34,7 @@ func TestRemoveBadServer(t *testing.T) {
 }
 
 func TestCustomErrHandler(t *testing.T) {
-	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
+	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ error) {
 		w.WriteHeader(http.StatusTeapot)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
@@ -213,7 +213,7 @@ func TestRequestRewriteListener(t *testing.T) {
 	fwd := forward.New(false)
 
 	lb, err := New(fwd,
-		RoundRobinRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {}))
+		RoundRobinRequestRewriteListener(func(_ *http.Request, _ *http.Request) {}))
 	require.NoError(t, err)
 
 	assert.NotNil(t, lb.requestRewriteListener)

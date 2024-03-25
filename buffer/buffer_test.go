@@ -19,7 +19,7 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 	t.Cleanup(srv.Close)
@@ -87,7 +87,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 }
 
 func TestChunkedEncodingLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 	t.Cleanup(srv.Close)
@@ -118,7 +118,7 @@ func TestChunkedEncodingLimitReached(t *testing.T) {
 }
 
 func TestChunkedResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
 		_, _ = fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
@@ -146,7 +146,7 @@ func TestChunkedResponse(t *testing.T) {
 }
 
 func TestRequestLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 	t.Cleanup(srv.Close)
@@ -173,7 +173,7 @@ func TestRequestLimitReached(t *testing.T) {
 }
 
 func TestResponseLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	t.Cleanup(srv.Close)
@@ -200,7 +200,7 @@ func TestResponseLimitReached(t *testing.T) {
 }
 
 func TestFileStreamingResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
 	t.Cleanup(srv.Close)
@@ -228,7 +228,7 @@ func TestFileStreamingResponse(t *testing.T) {
 }
 
 func TestCustomErrorHandler(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	t.Cleanup(srv.Close)
@@ -243,7 +243,7 @@ func TestCustomErrorHandler(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
+	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ error) {
 		w.WriteHeader(http.StatusTeapot)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
@@ -259,7 +259,7 @@ func TestCustomErrorHandler(t *testing.T) {
 }
 
 func TestNotModified(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
 	t.Cleanup(srv.Close)
@@ -286,7 +286,7 @@ func TestNotModified(t *testing.T) {
 }
 
 func TestNoBody(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	t.Cleanup(srv.Close)
@@ -314,7 +314,7 @@ func TestNoBody(t *testing.T) {
 
 // Make sure that stream handler preserves TLS settings.
 func TestPreservesTLS(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
@@ -346,7 +346,7 @@ func TestPreservesTLS(t *testing.T) {
 }
 
 func TestNotNilBody(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 	t.Cleanup(srv.Close)
@@ -382,7 +382,7 @@ func TestNotNilBody(t *testing.T) {
 }
 
 func TestGRPCErrorResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Grpc-Status", "10" /* ABORTED */)
 		w.WriteHeader(http.StatusOK)
 
@@ -414,7 +414,7 @@ func TestGRPCErrorResponse(t *testing.T) {
 }
 
 func TestGRPCOKResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Grpc-Status", "0" /* OK */)
 		_, _ = w.Write([]byte("grpc-body"))
 		w.WriteHeader(http.StatusOK)

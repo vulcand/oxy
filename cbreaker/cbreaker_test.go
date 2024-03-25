@@ -19,7 +19,7 @@ import (
 const triggerNetRatio = `NetworkErrorRatio() > 0.5`
 
 func TestStandbyCycle(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -36,7 +36,7 @@ func TestStandbyCycle(t *testing.T) {
 }
 
 func TestFullCycle(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -93,7 +93,7 @@ func TestFullCycle(t *testing.T) {
 }
 
 func TestRedirectWithPath(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -114,7 +114,7 @@ func TestRedirectWithPath(t *testing.T) {
 	require.NoError(t, err)
 
 	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return fmt.Errorf("no redirects")
 		},
 	}
@@ -126,7 +126,7 @@ func TestRedirectWithPath(t *testing.T) {
 }
 
 func TestRedirect(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -144,7 +144,7 @@ func TestRedirect(t *testing.T) {
 	require.NoError(t, err)
 
 	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return fmt.Errorf("no redirects")
 		},
 	}
@@ -156,7 +156,7 @@ func TestRedirect(t *testing.T) {
 }
 
 func TestTriggerDuringRecovery(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -233,7 +233,7 @@ func TestSideEffects(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 

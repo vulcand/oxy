@@ -20,7 +20,7 @@ func NewHandler(handler http.HandlerFunc) *httptest.Server {
 
 // NewResponder creates a new Server with response.
 func NewResponder(response string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(response))
 	}))
 }
@@ -150,7 +150,7 @@ func MakeRequest(uri string, opts ...ReqOption) (*http.Response, []byte, error) 
 
 	client := &http.Client{
 		Transport: tr,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return errors.New("no redirects")
 		},
 	}

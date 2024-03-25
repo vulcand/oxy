@@ -11,7 +11,7 @@ import (
 
 func ExampleNew_customErrHandler() {
 	f := New(true)
-	f.ErrorHandler = func(w http.ResponseWriter, req *http.Request, err error) {
+	f.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {
 		w.WriteHeader(http.StatusTeapot)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	}
@@ -43,7 +43,7 @@ func ExampleNew_customErrHandler() {
 }
 
 func ExampleNew_responseModifier() {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	}))
 	defer srv.Close()
@@ -75,7 +75,7 @@ func ExampleNew_responseModifier() {
 }
 
 func ExampleNew_customTransport() {
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	}))
 	defer srv.Close()
@@ -113,7 +113,7 @@ func ExampleNew_customTransport() {
 }
 
 func ExampleNewStateListener() {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	}))
 	defer srv.Close()

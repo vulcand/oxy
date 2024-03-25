@@ -219,7 +219,7 @@ func TestWebSocketPassHost(t *testing.T) {
 func TestWebSocketServerWithoutCheckOrigin(t *testing.T) {
 	f := New(true)
 
-	upgrader := gorillawebsocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
+	upgrader := gorillawebsocket.Upgrader{CheckOrigin: func(_ *http.Request) bool {
 		return true
 	}}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -412,7 +412,7 @@ func TestWebSocketUpgradeFailed(t *testing.T) {
 	f := New(true)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", func(w http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	})
 

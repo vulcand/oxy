@@ -12,7 +12,7 @@ import (
 )
 
 func TestDefaultHandlerErrors(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
 		conn.Close()

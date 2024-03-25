@@ -35,7 +35,7 @@ func TestRateSetAdd(t *testing.T) {
 
 // We've hit the limit and were able to proceed on the next time run.
 func TestHitLimit(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -70,7 +70,7 @@ func TestHitLimit(t *testing.T) {
 
 // We've failed to extract client ip.
 func TestFailure(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -94,7 +94,7 @@ func TestFailure(t *testing.T) {
 
 // Make sure rates from different ips are controlled separately.
 func TestIsolation(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -128,7 +128,7 @@ func TestIsolation(t *testing.T) {
 
 // Make sure that expiration works (Expiration is triggered after significant amount of time passes).
 func TestExpiration(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -182,7 +182,7 @@ func TestExtractRates(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -225,7 +225,7 @@ func TestBadRateExtractor(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -264,7 +264,7 @@ func TestExtractorEmpty(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -314,7 +314,7 @@ func TestInvalidParams(t *testing.T) {
 
 // We've hit the limit and were able to proceed on the next time run.
 func TestOptions(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -322,7 +322,7 @@ func TestOptions(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
+	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ error) {
 		w.WriteHeader(http.StatusTeapot)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})

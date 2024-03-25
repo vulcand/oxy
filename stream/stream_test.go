@@ -18,7 +18,7 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 	t.Cleanup(srv.Close)
@@ -108,7 +108,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 }
 
 func TestRequestLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 	t.Cleanup(srv.Close)
@@ -135,7 +135,7 @@ func TestRequestLimitReached(t *testing.T) {
 }
 
 func TestResponseLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	t.Cleanup(srv.Close)
@@ -162,7 +162,7 @@ func TestResponseLimitReached(t *testing.T) {
 }
 
 func TestFileStreamingResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
 	t.Cleanup(srv.Close)
@@ -190,7 +190,7 @@ func TestFileStreamingResponse(t *testing.T) {
 }
 
 func TestCustomErrorHandler(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
 	t.Cleanup(srv.Close)
@@ -216,7 +216,7 @@ func TestCustomErrorHandler(t *testing.T) {
 }
 
 func TestNotModified(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
 	t.Cleanup(srv.Close)
@@ -243,7 +243,7 @@ func TestNotModified(t *testing.T) {
 }
 
 func TestNoBody(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	t.Cleanup(srv.Close)
@@ -271,7 +271,7 @@ func TestNoBody(t *testing.T) {
 
 // Make sure that stream handler preserves TLS settings.
 func TestPreservesTLS(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})

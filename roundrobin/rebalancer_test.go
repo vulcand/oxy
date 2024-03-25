@@ -369,8 +369,7 @@ func TestRebalancerRequestRewriteListener(t *testing.T) {
 	require.NoError(t, err)
 
 	rb, err := NewRebalancer(lb,
-		RebalancerRequestRewriteListener(func(oldReq *http.Request, newReq *http.Request) {
-		}))
+		RebalancerRequestRewriteListener(func(_ *http.Request, _ *http.Request) {}))
 	require.NoError(t, err)
 
 	assert.NotNil(t, rb.requestRewriteListener)

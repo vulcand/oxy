@@ -1,7 +1,5 @@
 run:
-  deadline: 5m
-  skip-files: [ ]
-  skip-dirs: ["internal/holsterv4"]
+  timeout: 5m
 
 linters-settings:
   govet:
@@ -11,8 +9,6 @@ linters-settings:
       - shadow
   gocyclo:
     min-complexity: 15
-  maligned:
-    suggest-new: true
   goconst:
     min-len: 5
     min-occurrences: 3
@@ -50,6 +46,9 @@ linters-settings:
     settings:
       hugeParam:
         sizeThreshold: 100
+  testifylint:
+    disable:
+      - go-require
 
 linters:
   enable-all: true
@@ -92,11 +91,24 @@ linters:
     - nonamedreturns
     - gochecknoglobals # TODO(ldez) should be use on the project
     - nestif # TODO(ldez) should be use on the project
+    - musttag
+    - perfsprint # TODO(ldez) should be use on the project
+    - copyloopvar # TODO(ldez) should be use on the project (only for go>=1.22)
+    - intrange # TODO(ldez) should be use on the project (only for go>=1.22)
+
+output:
+  show-stats: true
+  sort-results: true
+  sort-order:
+    - linter
+    - file
 
 issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-dirs:
+    - "internal/holsterv4"
   exclude:
     - 'ST1000: at least one file in a package should have a package comment' # TODO(ldez) must be fixed
     - 'package-comments: should have a package comment'

@@ -18,7 +18,7 @@ import (
 )
 
 func TestTraceSimple(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Length", "5")
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -51,7 +51,7 @@ func TestTraceCaptureHeaders(t *testing.T) {
 		"X-Re-2": []string{"2", "3"},
 	}
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		utils.CopyHeaders(w.Header(), respHeaders)
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -76,7 +76,7 @@ func TestTraceCaptureHeaders(t *testing.T) {
 }
 
 func TestTraceTLS(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 

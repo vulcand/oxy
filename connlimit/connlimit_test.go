@@ -62,11 +62,11 @@ func TestHitLimitAndRelease(t *testing.T) {
 
 // We've hit the limit and were able to proceed once the request has completed.
 func TestCustomHandlers(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
-	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, req *http.Request, err error) {
+	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ error) {
 		w.WriteHeader(http.StatusTeapot)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
@@ -84,7 +84,7 @@ func TestCustomHandlers(t *testing.T) {
 
 // We've hit the limit and were able to proceed once the request has completed.
 func TestFaultyExtract(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
