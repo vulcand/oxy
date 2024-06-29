@@ -1,7 +1,7 @@
 package roundrobin
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/vulcand/oxy/v2/utils"
@@ -73,7 +73,7 @@ type ServerOption func(*server) error
 func Weight(w int) ServerOption {
 	return func(s *server) error {
 		if w < 0 {
-			return fmt.Errorf("Weight should be >= 0")
+			return errors.New("Weight should be >= 0")
 		}
 		s.weight = w
 		return nil

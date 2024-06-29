@@ -1,8 +1,8 @@
 package stickycookie
 
 import (
-	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/segmentio/fasthash/fnv1a"
 )
@@ -30,7 +30,7 @@ func (v *HashValue) FindURL(raw string, urls []*url.URL) (*url.URL, error) {
 }
 
 func (v *HashValue) hash(input string) string {
-	return fmt.Sprintf("%x", fnv1a.HashString64(v.Salt+input))
+	return strconv.FormatUint(fnv1a.HashString64(v.Salt+input), 16)
 }
 
 func normalized(u *url.URL) string {

@@ -2,6 +2,7 @@
 package ratelimit
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -77,10 +78,10 @@ type TokenLimiter struct {
 // New constructs a `TokenLimiter` middleware instance.
 func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet, opts ...TokenLimiterOption) (*TokenLimiter, error) {
 	if defaultRates == nil || len(defaultRates.m) == 0 {
-		return nil, fmt.Errorf("provide default rates")
+		return nil, errors.New("provide default rates")
 	}
 	if extract == nil {
-		return nil, fmt.Errorf("provide extract function")
+		return nil, errors.New("provide extract function")
 	}
 	tl := &TokenLimiter{
 		next:         next,

@@ -2,7 +2,7 @@ package cbreaker
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -35,7 +35,7 @@ type WebhookSideEffect struct {
 // NewWebhookSideEffectsWithLogger creates a new WebhookSideEffect.
 func NewWebhookSideEffectsWithLogger(w Webhook, l utils.Logger) (*WebhookSideEffect, error) {
 	if w.Method == "" {
-		return nil, fmt.Errorf("supply method")
+		return nil, errors.New("supply method")
 	}
 	_, err := url.Parse(w.URL)
 	if err != nil {

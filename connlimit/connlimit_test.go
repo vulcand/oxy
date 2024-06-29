@@ -1,7 +1,7 @@
 package connlimit
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -104,7 +104,7 @@ func headerLimiter(req *http.Request) (string, int64, error) {
 }
 
 func faultyExtractor(_ *http.Request) (string, int64, error) {
-	return "", -1, fmt.Errorf("oops")
+	return "", -1, errors.New("oops")
 }
 
 var headerLimit = utils.ExtractorFunc(headerLimiter)

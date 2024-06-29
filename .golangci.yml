@@ -49,30 +49,26 @@ linters-settings:
   testifylint:
     disable:
       - go-require
+  perfsprint:
+    err-error: true
+    errorf: true
+    sprintf1: true
+    strconcat: false
 
 linters:
   enable-all: true
   disable:
-    - deadcode # deprecated
-    - exhaustivestruct # deprecated
-    - golint # deprecated
-    - ifshort # deprecated
-    - interfacer # deprecated
-    - maligned # deprecated
-    - nosnakecase # deprecated
-    - scopelint # deprecated
-    - structcheck # deprecated
-    - varcheck # deprecated
+    - gomnd # deprecated
+    - execinquery # deprecated
     - sqlclosecheck # not relevant (SQL)
     - rowserrcheck # not relevant (SQL)
-    - execinquery # not relevant (SQL)
     - cyclop # duplicate of gocyclo
     - lll
     - dupl
     - wsl
     - nlreturn
-    - gomnd
-    - goerr113
+    - mnd
+    - err113
     - wrapcheck
     - exhaustive
     - exhaustruct
@@ -80,7 +76,6 @@ linters:
     - tparallel
     - paralleltest
     - prealloc
-    - ifshort
     - forcetypeassert
     - bodyclose # Too many false positives: https://github.com/timakin/bodyclose/issues/30
     - varnamelen
@@ -92,9 +87,6 @@ linters:
     - gochecknoglobals # TODO(ldez) should be use on the project
     - nestif # TODO(ldez) should be use on the project
     - musttag
-    - perfsprint # TODO(ldez) should be use on the project
-    - copyloopvar # TODO(ldez) should be use on the project (only for go>=1.22)
-    - intrange # TODO(ldez) should be use on the project (only for go>=1.22)
 
 output:
   show-stats: true
@@ -115,7 +107,6 @@ issues:
     - 'Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked'
     - 'SA1019: http.CloseNotifier has been deprecated'
     - 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'# TODO(ldez) must be fixed
-    - 'G101: Potential hardcoded credentials' # TODO(ldez) https://github.com/golangci/golangci-lint/issues/4037
 
   exclude-rules:
     - path: .*_test.go
@@ -123,6 +114,7 @@ issues:
         - funlen
         - gosec
         - goconst
+        - canonicalheader
     - path: testutils/.+
       linters:
         - gosec

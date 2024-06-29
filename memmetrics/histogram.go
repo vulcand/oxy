@@ -1,6 +1,7 @@
 package memmetrics
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -73,7 +74,7 @@ func (h *HDRHistogram) RecordValues(v, n int64) error {
 // Merge merges a HDRHistogram.
 func (h *HDRHistogram) Merge(other *HDRHistogram) error {
 	if other == nil {
-		return fmt.Errorf("other is nil")
+		return errors.New("other is nil")
 	}
 	h.h.Merge(other.h)
 	return nil
@@ -145,7 +146,7 @@ func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
 // Append appends a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 	if r.bucketCount != o.bucketCount || r.period != o.period || r.low != o.low || r.high != o.high || r.sigfigs != o.sigfigs {
-		return fmt.Errorf("can't merge")
+		return errors.New("can't merge")
 	}
 
 	for i := range r.buckets {

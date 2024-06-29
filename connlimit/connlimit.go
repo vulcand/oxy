@@ -2,6 +2,7 @@
 package connlimit
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -28,7 +29,7 @@ type ConnLimiter struct {
 // New creates a new ConnLimiter.
 func New(next http.Handler, extract utils.SourceExtractor, maxConnections int64, options ...Option) (*ConnLimiter, error) {
 	if extract == nil {
-		return nil, fmt.Errorf("extract function can not be nil")
+		return nil, errors.New("extract function can not be nil")
 	}
 
 	cl := &ConnLimiter{

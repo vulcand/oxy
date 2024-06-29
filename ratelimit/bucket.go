@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -66,7 +67,7 @@ func (tb *tokenBucket) consume(tokens int64) (time.Duration, error) {
 	tb.updateAvailableTokens()
 	tb.lastConsumed = 0
 	if tokens > tb.burst {
-		return UndefinedDelay, fmt.Errorf("requested tokens larger than max tokens")
+		return UndefinedDelay, errors.New("requested tokens larger than max tokens")
 	}
 	if tb.availableTokens < tokens {
 		return tb.timeTillAvailable(tokens), nil

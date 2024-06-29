@@ -1,7 +1,7 @@
 package memmetrics
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
@@ -23,10 +23,10 @@ type RollingCounter struct {
 // By default, creates a bucket with 10 buckets and 1 second resolution.
 func NewCounter(buckets int, resolution time.Duration, options ...rcOption) (*RollingCounter, error) {
 	if buckets <= 0 {
-		return nil, fmt.Errorf("buckets should be >= 0")
+		return nil, errors.New("buckets should be >= 0")
 	}
 	if resolution < clock.Second {
-		return nil, fmt.Errorf("resolution should be larger than a second")
+		return nil, errors.New("resolution should be larger than a second")
 	}
 
 	rc := &RollingCounter{

@@ -3,7 +3,6 @@ package roundrobin
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
@@ -130,16 +129,16 @@ func (r *RoundRobin) nextServer() (*server, error) {
 	// GCD across all enabled servers
 	gcd := r.weightGcd()
 	// Maximum weight across all enabled servers
-	max := r.maxWeight()
+	maxWeight := r.maxWeight()
 
 	for {
 		r.index = (r.index + 1) % len(r.servers)
 		if r.index == 0 {
 			r.currentWeight -= gcd
 			if r.currentWeight <= 0 {
-				r.currentWeight = max
+				r.currentWeight = maxWeight
 				if r.currentWeight == 0 {
-					return nil, fmt.Errorf("all servers have 0 weight")
+					return nil, errors.New("all servers have 0 weight")
 				}
 			}
 		}
@@ -157,7 +156,7 @@ func (r *RoundRobin) RemoveServer(u *url.URL) error {
 
 	e, index := r.findServerByURL(u)
 	if e == nil {
-		return fmt.Errorf("server not found")
+		return errors.New("server not found")
 	}
 	r.servers = append(r.servers[:index], r.servers[index+1:]...)
 	r.resetState()
@@ -193,7 +192,7 @@ func (r *RoundRobin) UpsertServer(u *url.URL, options ...ServerOption) error {
 	defer r.mutex.Unlock()
 
 	if u == nil {
-		return fmt.Errorf("server URL can't be nil")
+		return errors.New("server URL can't be nil")
 	}
 
 	if s, _ := r.findServerByURL(u); s != nil {
@@ -244,13 +243,13 @@ func (r *RoundRobin) findServerByURL(u *url.URL) (*server, int) {
 }
 
 func (r *RoundRobin) maxWeight() int {
-	max := -1
+	maxWeight := -1
 	for _, s := range r.servers {
-		if s.weight > max {
-			max = s.weight
+		if s.weight > maxWeight {
+			maxWeight = s.weight
 		}
 	}
-	return max
+	return maxWeight
 }
 
 func (r *RoundRobin) weightGcd() int {
@@ -284,7 +283,7 @@ var defaultWeight = 1
 // SetDefaultWeight sets the default server weight.
 func SetDefaultWeight(weight int) error {
 	if weight < 0 {
-		return fmt.Errorf("default weight should be >= 0")
+		return errors.New("default weight should be >= 0")
 	}
 	defaultWeight = weight
 	return nil

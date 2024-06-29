@@ -1,7 +1,7 @@
 package ratelimit
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -218,7 +218,7 @@ func TestExtractRates(t *testing.T) {
 func TestBadRateExtractor(t *testing.T) {
 	// Given
 	extractor := func(*http.Request) (*RateSet, error) {
-		return nil, fmt.Errorf("boom")
+		return nil, errors.New("boom")
 	}
 
 	rates := NewRateSet()
@@ -350,7 +350,7 @@ func headerLimiter(req *http.Request) (string, int64, error) {
 }
 
 func faultyExtractor(_ *http.Request) (string, int64, error) {
-	return "", -1, fmt.Errorf("oops")
+	return "", -1, errors.New("oops")
 }
 
 var headerLimit = utils.ExtractorFunc(headerLimiter)

@@ -1,6 +1,7 @@
 package cbreaker
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -115,7 +116,7 @@ func TestRedirectWithPath(t *testing.T) {
 
 	client := &http.Client{
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return fmt.Errorf("no redirects")
+			return errors.New("no redirects")
 		},
 	}
 
@@ -145,7 +146,7 @@ func TestRedirect(t *testing.T) {
 
 	client := &http.Client{
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return fmt.Errorf("no redirects")
+			return errors.New("no redirects")
 		},
 	}
 

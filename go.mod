@@ -4,12 +4,12 @@ go 1.19
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2
-	github.com/gorilla/websocket v1.5.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/mailgun/multibuf v0.1.2
 	github.com/segmentio/fasthash v1.0.3
 	github.com/stretchr/testify v1.9.0
 	github.com/vulcand/predicate v1.2.0
-	golang.org/x/net v0.24.0
+	golang.org/x/net v0.26.0
 )
 
 require (
@@ -18,8 +18,8 @@ require (
 	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/term v0.19.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
