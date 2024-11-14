@@ -131,9 +131,9 @@ func (c *RollingCounter) getBucket(t time.Time) int {
 func (c *RollingCounter) cleanup() {
 	now := clock.Now().UTC()
 	for i := 0; i < len(c.values); i++ {
-		now = now.Add(time.Duration(-1*i) * c.resolution)
-		if now.Truncate(c.resolution).After(c.lastUpdated.Truncate(c.resolution)) {
-			c.values[c.getBucket(now)] = 0
+		checkPoint := now.Add(time.Duration(-1*i) * c.resolution)
+		if checkPoint.Truncate(c.resolution).After(c.lastUpdated.Truncate(c.resolution)) {
+			c.values[c.getBucket(checkPoint)] = 0
 		} else {
 			break
 		}
