@@ -1,5 +1,34 @@
-run:
-  timeout: 5m
+linters:
+  enable-all: true
+  disable:
+    - exportloopref # deprecated
+    - sqlclosecheck # not relevant (SQL)
+    - rowserrcheck # not relevant (SQL)
+    - cyclop # duplicate of gocyclo
+    - lll
+    - dupl
+    - wsl
+    - nlreturn
+    - mnd
+    - err113
+    - wrapcheck
+    - exhaustive
+    - exhaustruct
+    - testpackage
+    - tparallel
+    - paralleltest
+    - prealloc
+    - forcetypeassert
+    - bodyclose # Too many false positives: https://github.com/timakin/bodyclose/issues/30
+    - varnamelen
+    - noctx
+    - tagliatelle
+    - nilnil
+    - ireturn
+    - nonamedreturns
+    - gochecknoglobals # TODO(ldez) should be use on the project
+    - nestif # TODO(ldez) should be use on the project
+    - musttag
 
 linters-settings:
   govet:
@@ -55,47 +84,6 @@ linters-settings:
     sprintf1: true
     strconcat: false
 
-linters:
-  enable-all: true
-  disable:
-    - gomnd # deprecated
-    - execinquery # deprecated
-    - exportloopref # deprecated
-    - sqlclosecheck # not relevant (SQL)
-    - rowserrcheck # not relevant (SQL)
-    - cyclop # duplicate of gocyclo
-    - lll
-    - dupl
-    - wsl
-    - nlreturn
-    - mnd
-    - err113
-    - wrapcheck
-    - exhaustive
-    - exhaustruct
-    - testpackage
-    - tparallel
-    - paralleltest
-    - prealloc
-    - forcetypeassert
-    - bodyclose # Too many false positives: https://github.com/timakin/bodyclose/issues/30
-    - varnamelen
-    - noctx
-    - tagliatelle
-    - nilnil
-    - ireturn
-    - nonamedreturns
-    - gochecknoglobals # TODO(ldez) should be use on the project
-    - nestif # TODO(ldez) should be use on the project
-    - musttag
-
-output:
-  show-stats: true
-  sort-results: true
-  sort-order:
-    - linter
-    - file
-
 issues:
   exclude-use-default: false
   max-issues-per-linter: 0
@@ -137,3 +125,13 @@ issues:
       text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed
     - path: memmetrics/anomaly_test.go
       text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed
+
+output:
+  show-stats: true
+  sort-results: true
+  sort-order:
+    - linter
+    - file
+
+run:
+  timeout: 5m
