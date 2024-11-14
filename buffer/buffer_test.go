@@ -18,7 +18,7 @@ import (
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-func TestSimple(t *testing.T) {
+func TestBuffer_simple(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -29,7 +29,7 @@ func TestSimple(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -46,7 +46,7 @@ func TestSimple(t *testing.T) {
 	assert.Equal(t, "hello", string(body))
 }
 
-func TestChunkedEncodingSuccess(t *testing.T) {
+func TestBuffer_chunkedEncodingSuccess(t *testing.T) {
 	var reqBody string
 	var contentLength int64
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
@@ -63,7 +63,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -74,7 +74,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	proxy := httptest.NewServer(st)
 	t.Cleanup(proxy.Close)
 
-	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
+	conn, err := net.Dial("tcp", testutils.MustParseRequestURI(proxy.URL).Host)
 	require.NoError(t, err)
 
 	_, _ = fmt.Fprintf(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
@@ -86,7 +86,7 @@ func TestChunkedEncodingSuccess(t *testing.T) {
 	assert.EqualValues(t, len(reqBody), contentLength)
 }
 
-func TestChunkedEncodingLimitReached(t *testing.T) {
+func TestBuffer_chunkedEncodingLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -97,7 +97,7 @@ func TestChunkedEncodingLimitReached(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -108,7 +108,7 @@ func TestChunkedEncodingLimitReached(t *testing.T) {
 	proxy := httptest.NewServer(st)
 	t.Cleanup(proxy.Close)
 
-	conn, err := net.Dial("tcp", testutils.ParseURI(proxy.URL).Host)
+	conn, err := net.Dial("tcp", testutils.MustParseRequestURI(proxy.URL).Host)
 	require.NoError(t, err)
 	_, _ = fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
@@ -117,7 +117,7 @@ func TestChunkedEncodingLimitReached(t *testing.T) {
 	assert.Equal(t, "HTTP/1.1 413 Request Entity Too Large\r\n", status)
 }
 
-func TestChunkedResponse(t *testing.T) {
+func TestBuffer_chunkedResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
@@ -129,7 +129,7 @@ func TestChunkedResponse(t *testing.T) {
 	fwd := forward.New(false)
 
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 	st, err := New(rdr)
@@ -145,7 +145,7 @@ func TestChunkedResponse(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(len("testtest1test2")), re.Header.Get("Content-Length"))
 }
 
-func TestRequestLimitReached(t *testing.T) {
+func TestBuffer_requestLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -156,7 +156,7 @@ func TestRequestLimitReached(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -172,7 +172,7 @@ func TestRequestLimitReached(t *testing.T) {
 	assert.Equal(t, http.StatusRequestEntityTooLarge, re.StatusCode)
 }
 
-func TestResponseLimitReached(t *testing.T) {
+func TestBuffer_responseLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
@@ -183,7 +183,7 @@ func TestResponseLimitReached(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -199,7 +199,7 @@ func TestResponseLimitReached(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, re.StatusCode)
 }
 
-func TestFileStreamingResponse(t *testing.T) {
+func TestBuffer_fileStreamingResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
 	})
@@ -210,7 +210,7 @@ func TestFileStreamingResponse(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -227,7 +227,7 @@ func TestFileStreamingResponse(t *testing.T) {
 	assert.Equal(t, "hello, this response is too large to fit in memory", string(body))
 }
 
-func TestCustomErrorHandler(t *testing.T) {
+func TestBuffer_customErrorHandler(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello, this response is too large"))
 	})
@@ -238,7 +238,7 @@ func TestCustomErrorHandler(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -258,7 +258,7 @@ func TestCustomErrorHandler(t *testing.T) {
 	assert.Equal(t, http.StatusTeapot, re.StatusCode)
 }
 
-func TestNotModified(t *testing.T) {
+func TestBuffer_notModified(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
@@ -269,7 +269,7 @@ func TestNotModified(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -285,7 +285,7 @@ func TestNotModified(t *testing.T) {
 	assert.Equal(t, http.StatusNotModified, re.StatusCode)
 }
 
-func TestNoBody(t *testing.T) {
+func TestBuffer_noBody(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -296,7 +296,7 @@ func TestNoBody(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -313,7 +313,7 @@ func TestNoBody(t *testing.T) {
 }
 
 // Make sure that stream handler preserves TLS settings.
-func TestPreservesTLS(t *testing.T) {
+func TestBuffer_preservesTLS(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -327,7 +327,7 @@ func TestPreservesTLS(t *testing.T) {
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		cs = req.TLS
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -345,7 +345,7 @@ func TestPreservesTLS(t *testing.T) {
 	assert.NotNil(t, cs)
 }
 
-func TestNotNilBody(t *testing.T) {
+func TestBuffer_notNilBody(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -356,7 +356,7 @@ func TestNotNilBody(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		// During a request check if the request body is no nil before sending to the next middleware
 		// Because we can send a POST request without body
 		assert.NotNil(t, req.Body)
@@ -381,7 +381,7 @@ func TestNotNilBody(t *testing.T) {
 	assert.Equal(t, "hello", string(body))
 }
 
-func TestGRPCErrorResponse(t *testing.T) {
+func TestBuffer_GRPC_ErrorResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Grpc-Status", "10" /* ABORTED */)
 		w.WriteHeader(http.StatusOK)
@@ -396,7 +396,7 @@ func TestGRPCErrorResponse(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 
@@ -413,7 +413,7 @@ func TestGRPCErrorResponse(t *testing.T) {
 	assert.Empty(t, body)
 }
 
-func TestGRPCOKResponse(t *testing.T) {
+func TestBuffer_GRPC_OKResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Grpc-Status", "0" /* OK */)
 		_, _ = w.Write([]byte("grpc-body"))
@@ -429,7 +429,7 @@ func TestGRPCOKResponse(t *testing.T) {
 
 	// this is our redirect to server
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		fwd.ServeHTTP(w, req)
 	})
 

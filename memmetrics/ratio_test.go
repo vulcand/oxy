@@ -9,9 +9,8 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestNewRatioCounterInvalidParams(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestNewRatioCounter_invalidParams(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Bad buckets count
 	_, err := NewRatioCounter(0, clock.Second)
@@ -22,48 +21,51 @@ func TestNewRatioCounterInvalidParams(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestNotReady(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestNewRatioCounter_notReady(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// No data
 	fr, err := NewRatioCounter(10, clock.Second)
 	require.NoError(t, err)
+
 	assert.False(t, fr.IsReady())
 	assert.Equal(t, 0.0, fr.Ratio())
 
 	// Not enough data
 	fr, err = NewRatioCounter(10, clock.Second)
 	require.NoError(t, err)
+
 	fr.CountA()
 	assert.False(t, fr.IsReady())
 }
 
-func TestNoB(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRatioCounter_noB(t *testing.T) {
+	testutils.FreezeTime(t)
+
 	fr, err := NewRatioCounter(1, clock.Second)
 	require.NoError(t, err)
+
 	fr.IncA(1)
+
 	assert.True(t, fr.IsReady())
 	assert.Equal(t, 1.0, fr.Ratio())
 }
 
-func TestNoA(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRatioCounter_noA(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	fr, err := NewRatioCounter(1, clock.Second)
 	require.NoError(t, err)
+
 	fr.IncB(1)
+
 	assert.True(t, fr.IsReady())
 	assert.Equal(t, 0.0, fr.Ratio())
 }
 
 // Make sure that data is properly calculated over several buckets.
-func TestMultipleBuckets(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRatioCounter_multipleBuckets(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	fr, err := NewRatioCounter(3, clock.Second)
 	require.NoError(t, err)
@@ -81,9 +83,8 @@ func TestMultipleBuckets(t *testing.T) {
 
 // Make sure that data is properly calculated over several buckets
 // When we overwrite old data when the window is rolling.
-func TestOverwriteBuckets(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRatioCounter_overwriteBuckets(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	fr, err := NewRatioCounter(3, clock.Second)
 	require.NoError(t, err)
@@ -107,9 +108,8 @@ func TestOverwriteBuckets(t *testing.T) {
 
 // Make sure we cleanup the data after periods of inactivity
 // So it does not mess up the stats.
-func TestInactiveBuckets(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRatioCounter_inactiveBuckets(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	fr, err := NewRatioCounter(3, clock.Second)
 	require.NoError(t, err)
@@ -135,9 +135,8 @@ func TestInactiveBuckets(t *testing.T) {
 	assert.Equal(t, float64(1)/float64(4), fr.Ratio())
 }
 
-func TestLongPeriodsOfInactivity(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRatioCounter_longPeriodsOfInactivity(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	fr, err := NewRatioCounter(2, clock.Second)
 	require.NoError(t, err)
@@ -156,9 +155,8 @@ func TestLongPeriodsOfInactivity(t *testing.T) {
 	assert.Equal(t, 1.0, fr.Ratio())
 }
 
-func TestNewRatioCounterReset(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRatioCounter_Reset(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	fr, err := NewRatioCounter(1, clock.Second)
 	require.NoError(t, err)

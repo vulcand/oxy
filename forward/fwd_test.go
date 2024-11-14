@@ -15,7 +15,7 @@ func TestDefaultErrHandler(t *testing.T) {
 	f := New(true)
 
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI("http://localhost:63450")
+		req.URL = testutils.MustParseRequestURI("http://localhost:63450")
 		f.ServeHTTP(w, req)
 	}))
 	t.Cleanup(proxy.Close)
@@ -80,7 +80,7 @@ func TestForwardedProto(t *testing.T) {
 	f := New(true)
 
 	proxy := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		f.ServeHTTP(w, req)
 	}))
 	proxy.StartTLS()

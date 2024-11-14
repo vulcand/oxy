@@ -43,8 +43,7 @@ func TestHitLimit(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	l, err := New(handler, headerLimit, rates)
 	require.NoError(t, err)
@@ -78,8 +77,7 @@ func TestFailure(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	l, err := New(handler, faultyExtract, rates)
 	require.NoError(t, err)
@@ -102,8 +100,7 @@ func TestIsolation(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	l, err := New(handler, headerLimit, rates)
 	require.NoError(t, err)
@@ -136,8 +133,7 @@ func TestExpiration(t *testing.T) {
 	err := rates.Add(clock.Second, 1, 1)
 	require.NoError(t, err)
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	l, err := New(handler, headerLimit, rates)
 	require.NoError(t, err)
@@ -186,8 +182,7 @@ func TestExtractRates(t *testing.T) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tl, err := New(handler, headerLimit, rates, ExtractRates(RateExtractorFunc(extractRates)))
 	require.NoError(t, err)
@@ -229,8 +224,7 @@ func TestBadRateExtractor(t *testing.T) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	l, err := New(handler, headerLimit, rates, ExtractRates(RateExtractorFunc(extractor)))
 	require.NoError(t, err)
@@ -268,8 +262,7 @@ func TestExtractorEmpty(t *testing.T) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	l, err := New(handler, headerLimit, rates, ExtractRates(RateExtractorFunc(extractor)))
 	require.NoError(t, err)
@@ -327,8 +320,7 @@ func TestOptions(t *testing.T) {
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
 	})
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	l, err := New(handler, headerLimit, rates, ErrorHandler(errHandler))
 	require.NoError(t, err)

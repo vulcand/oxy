@@ -10,9 +10,9 @@ import (
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-func TestRampUp(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_ratioController_rampUp(t *testing.T) {
+	testutils.FreezeTime(t)
+
 	duration := 10 * clock.Second
 	rc := newRatioController(duration, &utils.NoopLogger{})
 

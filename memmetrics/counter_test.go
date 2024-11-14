@@ -7,10 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
+	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestCloneExpired(t *testing.T) {
-	clock.Freeze(clock.Date(2012, 3, 4, 5, 6, 7, 0, clock.UTC))
+func TestRollingCounter_Clone_expired(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	cnt, err := NewCounter(3, clock.Second)
 	require.NoError(t, err)
@@ -29,8 +30,8 @@ func TestCloneExpired(t *testing.T) {
 	assert.EqualValues(t, 2, out.Count())
 }
 
-func Test_cleanup(t *testing.T) {
-	clock.Freeze(clock.Date(2012, 3, 4, 5, 6, 7, 0, clock.UTC))
+func TestRollingCounter_cleanup(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	cnt, err := NewCounter(10, clock.Second)
 	require.NoError(t, err)

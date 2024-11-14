@@ -16,12 +16,9 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestBasic(t *testing.T) {
-	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
-
-	defer a.Close()
-	defer b.Close()
+func TestStickySession_basic(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -31,9 +28,9 @@ func TestBasic(t *testing.T) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	require.NoError(t, err)
 
-	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
@@ -57,12 +54,9 @@ func TestBasic(t *testing.T) {
 	}
 }
 
-func TestBasicWithHashValue(t *testing.T) {
-	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
-
-	defer a.Close()
-	defer b.Close()
+func TestStickySession_basicWithHashValue(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -75,9 +69,9 @@ func TestBasicWithHashValue(t *testing.T) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	require.NoError(t, err)
 
-	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
@@ -110,12 +104,9 @@ func TestBasicWithHashValue(t *testing.T) {
 	}
 }
 
-func TestBasicWithAESValue(t *testing.T) {
-	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
-
-	defer a.Close()
-	defer b.Close()
+func TestStickySession_basicWithAESValue(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -131,9 +122,9 @@ func TestBasicWithAESValue(t *testing.T) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	require.NoError(t, err)
 
-	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
@@ -165,12 +156,9 @@ func TestBasicWithAESValue(t *testing.T) {
 	}
 }
 
-func TestStickyCookie(t *testing.T) {
-	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
-
-	defer a.Close()
-	defer b.Close()
+func TestStickySession_stickyCookie(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -180,9 +168,9 @@ func TestStickyCookie(t *testing.T) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	require.NoError(t, err)
 
-	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
@@ -196,12 +184,9 @@ func TestStickyCookie(t *testing.T) {
 	assert.Equal(t, a.URL, cookie.Value)
 }
 
-func TestStickyCookieWithOptions(t *testing.T) {
-	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
-
-	defer a.Close()
-	defer b.Close()
+func TestStickySession_stickyCookieWithOptions(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	testCases := []struct {
 		desc     string
@@ -331,9 +316,9 @@ func TestStickyCookieWithOptions(t *testing.T) {
 			lb, err := New(fwd, EnableStickySession(sticky))
 			require.NoError(t, err)
 
-			err = lb.UpsertServer(testutils.ParseURI(a.URL))
+			err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 			require.NoError(t, err)
-			err = lb.UpsertServer(testutils.ParseURI(b.URL))
+			err = lb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 			require.NoError(t, err)
 
 			proxy := httptest.NewServer(lb)
@@ -348,12 +333,9 @@ func TestStickyCookieWithOptions(t *testing.T) {
 	}
 }
 
-func TestRemoveRespondingServer(t *testing.T) {
-	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
-
-	defer a.Close()
-	defer b.Close()
+func TestStickySession_removeRespondingServer(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -363,9 +345,9 @@ func TestRemoveRespondingServer(t *testing.T) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	require.NoError(t, err)
 
-	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
@@ -389,7 +371,7 @@ func TestRemoveRespondingServer(t *testing.T) {
 		assert.Equal(t, "a", string(body))
 	}
 
-	err = lb.RemoveServer(testutils.ParseURI(a.URL))
+	err = lb.RemoveServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
 
 	// Now, use the organic cookie response in our next requests.
@@ -417,12 +399,9 @@ func TestRemoveRespondingServer(t *testing.T) {
 	}
 }
 
-func TestRemoveAllServers(t *testing.T) {
-	a := testutils.NewResponder("a")
-	b := testutils.NewResponder("b")
-
-	defer a.Close()
-	defer b.Close()
+func TestStickySession_removeAllServers(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -432,9 +411,9 @@ func TestRemoveAllServers(t *testing.T) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	require.NoError(t, err)
 
-	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = lb.UpsertServer(testutils.ParseURI(b.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
@@ -457,9 +436,9 @@ func TestRemoveAllServers(t *testing.T) {
 		assert.Equal(t, "a", string(body))
 	}
 
-	err = lb.RemoveServer(testutils.ParseURI(a.URL))
+	err = lb.RemoveServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = lb.RemoveServer(testutils.ParseURI(b.URL))
+	err = lb.RemoveServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	// Now, use the organic cookie response in our next requests.
@@ -471,10 +450,8 @@ func TestRemoveAllServers(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
 
-func TestBadCookieVal(t *testing.T) {
-	a := testutils.NewResponder("a")
-
-	defer a.Close()
+func TestStickySession_badCookieVal(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
 
 	fwd := forward.New(false)
 
@@ -484,7 +461,7 @@ func TestBadCookieVal(t *testing.T) {
 	lb, err := New(fwd, EnableStickySession(sticky))
 	require.NoError(t, err)
 
-	err = lb.UpsertServer(testutils.ParseURI(a.URL))
+	err = lb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(lb)
@@ -504,7 +481,7 @@ func TestBadCookieVal(t *testing.T) {
 	assert.Equal(t, "a", string(body))
 
 	// Now, cycle off the good server to cause an error
-	err = lb.RemoveServer(testutils.ParseURI(a.URL))
+	err = lb.RemoveServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
 
 	resp, err = client.Do(req)

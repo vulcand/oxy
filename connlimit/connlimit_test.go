@@ -13,7 +13,7 @@ import (
 )
 
 // We've hit the limit and were able to proceed once the request has completed.
-func TestHitLimitAndRelease(t *testing.T) {
+func TestConnLimiter_hitLimitAndRelease(t *testing.T) {
 	wait := make(chan bool)
 	proceed := make(chan bool)
 	finish := make(chan bool)
@@ -61,7 +61,7 @@ func TestHitLimitAndRelease(t *testing.T) {
 }
 
 // We've hit the limit and were able to proceed once the request has completed.
-func TestCustomHandlers(t *testing.T) {
+func TestConnLimiter_customHandlers(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -83,7 +83,7 @@ func TestCustomHandlers(t *testing.T) {
 }
 
 // We've hit the limit and were able to proceed once the request has completed.
-func TestFaultyExtract(t *testing.T) {
+func TestConnLimiter_faultyExtract(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})

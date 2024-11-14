@@ -12,7 +12,7 @@ import (
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-func TestNoServers(t *testing.T) {
+func TestRoundRobin_noServers(t *testing.T) {
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
@@ -26,14 +26,14 @@ func TestNoServers(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, re.StatusCode)
 }
 
-func TestRemoveBadServer(t *testing.T) {
+func TestRoundRobin_RemoveServer_badServer(t *testing.T) {
 	lb, err := New(nil)
 	require.NoError(t, err)
 
-	require.Error(t, lb.RemoveServer(testutils.ParseURI("http://google.com")))
+	require.Error(t, lb.RemoveServer(testutils.MustParseRequestURI("http://google.com")))
 }
 
-func TestCustomErrHandler(t *testing.T) {
+func TestRoundRobin_customErrHandler(t *testing.T) {
 	errHandler := utils.ErrorHandlerFunc(func(w http.ResponseWriter, _ *http.Request, _ error) {
 		w.WriteHeader(http.StatusTeapot)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
@@ -52,16 +52,15 @@ func TestCustomErrHandler(t *testing.T) {
 	assert.Equal(t, http.StatusTeapot, re.StatusCode)
 }
 
-func TestOneServer(t *testing.T) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
+func TestRoundRobin_oneServer(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
 
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(a.URL)))
 
 	proxy := httptest.NewServer(lb)
 	t.Cleanup(proxy.Close)
@@ -69,20 +68,17 @@ func TestOneServer(t *testing.T) {
 	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
 }
 
-func TestSimple(t *testing.T) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
-
-	b := testutils.NewResponder("b")
-	defer b.Close()
+func TestRoundRobin__imple(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
 	t.Cleanup(proxy.Close)
@@ -90,43 +86,39 @@ func TestSimple(t *testing.T) {
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 }
 
-func TestRemoveServer(t *testing.T) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
-
-	b := testutils.NewResponder("b")
-	defer b.Close()
+func TestRoundRobin_removeServer(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
 	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 
-	err = lb.RemoveServer(testutils.ParseURI(a.URL))
+	err = lb.RemoveServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"b", "b", "b"}, seq(t, proxy.URL, 3))
 }
 
-func TestUpsertSame(t *testing.T) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
+func TestRoundRobin_upsertSame(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
 
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(a.URL)))
 
 	proxy := httptest.NewServer(lb)
 	t.Cleanup(proxy.Close)
@@ -134,81 +126,70 @@ func TestUpsertSame(t *testing.T) {
 	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
 }
 
-func TestUpsertWeight(t *testing.T) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
-
-	b := testutils.NewResponder("b")
-	defer b.Close()
+func TestRoundRobin_upsertWeight(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL)))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(a.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(b.URL)))
 
 	proxy := httptest.NewServer(lb)
 	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL), Weight(3)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(b.URL), Weight(3)))
 
 	assert.Equal(t, []string{"b", "b", "a", "b"}, seq(t, proxy.URL, 4))
 }
 
-func TestWeighted(t *testing.T) {
+func TestRoundRobin_weighted(t *testing.T) {
 	require.NoError(t, SetDefaultWeight(0))
 	defer func() { _ = SetDefaultWeight(1) }()
 
-	a := testutils.NewResponder("a")
-	defer a.Close()
-
-	b := testutils.NewResponder("b")
-	defer b.Close()
-
-	z := testutils.NewResponder("z")
-	defer z.Close()
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
+	z := testutils.NewResponder(t, "z")
 
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(a.URL), Weight(3)))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(b.URL), Weight(2)))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(z.URL), Weight(0)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(a.URL), Weight(3)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(b.URL), Weight(2)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(z.URL), Weight(0)))
 
 	proxy := httptest.NewServer(lb)
 	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "a", "b", "a", "b", "a"}, seq(t, proxy.URL, 6))
 
-	w, ok := lb.ServerWeight(testutils.ParseURI(a.URL))
+	w, ok := lb.ServerWeight(testutils.MustParseRequestURI(a.URL))
 	assert.Equal(t, 3, w)
 	assert.True(t, ok)
 
-	w, ok = lb.ServerWeight(testutils.ParseURI(b.URL))
+	w, ok = lb.ServerWeight(testutils.MustParseRequestURI(b.URL))
 	assert.Equal(t, 2, w)
 	assert.True(t, ok)
 
-	w, ok = lb.ServerWeight(testutils.ParseURI(z.URL))
+	w, ok = lb.ServerWeight(testutils.MustParseRequestURI(z.URL))
 	assert.Equal(t, 0, w)
 	assert.True(t, ok)
 
-	w, ok = lb.ServerWeight(testutils.ParseURI("http://caramba:4000"))
+	w, ok = lb.ServerWeight(testutils.MustParseRequestURI("http://caramba:4000"))
 	assert.Equal(t, -1, w)
 	assert.False(t, ok)
 }
 
-func TestRequestRewriteListener(t *testing.T) {
-	a := testutils.NewResponder("a")
-	defer a.Close()
-
-	b := testutils.NewResponder("b")
-	defer b.Close()
+func TestRoundRobinRequestRewriteListener(t *testing.T) {
+	testutils.NewResponder(t, "a")
+	testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 

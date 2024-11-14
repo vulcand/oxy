@@ -10,9 +10,8 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestConsumeSingleToken(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_consume_singleToken(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	tb := newTokenBucket(&rate{period: clock.Second, average: 1, burst: 1})
 
@@ -47,9 +46,8 @@ func TestConsumeSingleToken(t *testing.T) {
 	assert.Equal(t, clock.Second, delay)
 }
 
-func TestFastConsumption(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_consume_fastConsumption(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	tb := newTokenBucket(&rate{period: clock.Second, average: 1, burst: 1})
 
@@ -80,9 +78,8 @@ func TestFastConsumption(t *testing.T) {
 	assert.Equal(t, time.Duration(0), delay)
 }
 
-func TestConsumeMultipleTokens(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_consume_multipleTokens(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	tb := newTokenBucket(&rate{period: clock.Second, average: 3, burst: 5})
 
@@ -99,9 +96,8 @@ func TestConsumeMultipleTokens(t *testing.T) {
 	assert.NotEqual(t, time.Duration(0), delay)
 }
 
-func TestDelayIsCorrect(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_consume_delayIsCorrect(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	tb := newTokenBucket(&rate{period: clock.Second, average: 3, burst: 5})
 
@@ -123,9 +119,8 @@ func TestDelayIsCorrect(t *testing.T) {
 }
 
 // Make sure requests that exceed burst size are not allowed.
-func TestExceedsBurst(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_exceedsBurst(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	tb := newTokenBucket(&rate{period: clock.Second, average: 1, burst: 10})
 
@@ -133,9 +128,8 @@ func TestExceedsBurst(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestConsumeBurst(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_consume_burst(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	tb := newTokenBucket(&rate{period: clock.Second, average: 2, burst: 5})
 
@@ -148,9 +142,8 @@ func TestConsumeBurst(t *testing.T) {
 	assert.Equal(t, time.Duration(0), delay)
 }
 
-func TestConsumeEstimate(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_consume_estimate(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	tb := newTokenBucket(&rate{period: clock.Second, average: 2, burst: 4})
 
@@ -167,9 +160,8 @@ func TestConsumeEstimate(t *testing.T) {
 
 // If a rate with different period is passed to the `update` method, then an
 // error is returned but the state of the bucket remains valid and unchanged.
-func TestUpdateInvalidPeriod(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_update_invalidPeriod(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 20})
@@ -207,9 +199,8 @@ func TestUpdateInvalidPeriod(t *testing.T) {
 
 // If the capacity of the bucket is increased by the update then it takes some
 // time to fill the bucket with tokens up to the new capacity.
-func TestUpdateBurstIncreased(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_update_burstIncreased(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 20})
@@ -228,9 +219,8 @@ func TestUpdateBurstIncreased(t *testing.T) {
 
 // If the capacity of the bucket is increased by the update then it takes some
 // time to fill the bucket with tokens up to the new capacity.
-func TestUpdateBurstDecreased(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_update_burstDecreased(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 50})
@@ -248,9 +238,8 @@ func TestUpdateBurstDecreased(t *testing.T) {
 }
 
 // If rate is updated then it affects the bucket refill speed.
-func TestUpdateRateChanged(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_update_rateChanged(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 20})
@@ -268,9 +257,8 @@ func TestUpdateRateChanged(t *testing.T) {
 }
 
 // Only the most recent consumption is reverted by `Rollback`.
-func TestRollback(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_rollback(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 20})
@@ -294,9 +282,8 @@ func TestRollback(t *testing.T) {
 
 // It is safe to call `Rollback` several times. The second and all subsequent
 // calls just do nothing.
-func TestRollbackSeveralTimes(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_rollback_severalTimes(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 20})
@@ -321,9 +308,8 @@ func TestRollbackSeveralTimes(t *testing.T) {
 
 // If previous consumption returned a delay due to an attempt to consume more
 // tokens then there are available, then `Rollback` has no effect.
-func TestRollbackAfterAvailableExceeded(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_rollback_afterAvailableExceeded(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 20})
@@ -348,9 +334,8 @@ func TestRollbackAfterAvailableExceeded(t *testing.T) {
 
 // If previous consumption returned a error due to an attempt to consume more
 // tokens then the bucket's burst size, then `Rollback` has no effect.
-func TestRollbackAfterError(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func Test_tokenBucket_rollback_afterError(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	// Given
 	tb := newTokenBucket(&rate{period: clock.Second, average: 10, burst: 20})
@@ -373,7 +358,7 @@ func TestRollbackAfterError(t *testing.T) {
 	assert.Equal(t, 100*clock.Millisecond, delay)
 }
 
-func TestDivisionByZeroOnPeriod(t *testing.T) {
+func Test_tokenBucket_divisionByZeroOnPeriod(t *testing.T) {
 	var emptyPeriod int64
 	tb := newTokenBucket(&rate{period: time.Duration(emptyPeriod), average: 2, burst: 2})
 

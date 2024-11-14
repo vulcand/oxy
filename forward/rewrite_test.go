@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIPv6Fix(t *testing.T) {
+func Test_ipv6fix(t *testing.T) {
 	testCases := []struct {
 		desc     string
 		clientIP string

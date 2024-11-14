@@ -19,7 +19,7 @@ import (
 
 const triggerNetRatio = `NetworkErrorRatio() > 0.5`
 
-func TestStandbyCycle(t *testing.T) {
+func TestCircuitBreaker_standbyCycle(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -36,13 +36,12 @@ func TestStandbyCycle(t *testing.T) {
 	assert.Equal(t, "hello", string(body))
 }
 
-func TestFullCycle(t *testing.T) {
+func TestCircuitBreaker_fullCycle(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	cb, err := New(handler, triggerNetRatio)
 	require.NoError(t, err)
@@ -93,7 +92,7 @@ func TestFullCycle(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
 
-func TestRedirectWithPath(t *testing.T) {
+func TestCircuitBreaker_redirectWithPath(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -126,7 +125,7 @@ func TestRedirectWithPath(t *testing.T) {
 	assert.Equal(t, "http://localhost:6000/somePath", re.Header.Get("Location"))
 }
 
-func TestRedirect(t *testing.T) {
+func TestCircuitBreaker_redirect(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -156,13 +155,12 @@ func TestRedirect(t *testing.T) {
 	assert.Equal(t, "http://localhost:5000", re.Header.Get("Location"))
 }
 
-func TestTriggerDuringRecovery(t *testing.T) {
+func TestCircuitBreaker_triggerDuringRecovery(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	cb, err := New(handler, triggerNetRatio, CheckPeriod(clock.Microsecond))
 	require.NoError(t, err)
@@ -196,7 +194,7 @@ func TestTriggerDuringRecovery(t *testing.T) {
 	assert.Equal(t, cbState(stateTripped), cb.state)
 }
 
-func TestSideEffects(t *testing.T) {
+func TestCircuitBreaker_sideEffects(t *testing.T) {
 	srv1Chan := make(chan *http.Request, 1)
 	var srv1Body []byte
 	srv1 := testutils.NewHandler(func(w http.ResponseWriter, r *http.Request) {
@@ -238,8 +236,7 @@ func TestSideEffects(t *testing.T) {
 		_, _ = w.Write([]byte("hello"))
 	})
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	cb, err := New(handler, triggerNetRatio, CheckPeriod(clock.Microsecond), OnTripped(onTripped), OnStandby(onStandby))
 	require.NoError(t, err)
@@ -257,7 +254,7 @@ func TestSideEffects(t *testing.T) {
 	case req := <-srv1Chan:
 		assert.Equal(t, http.MethodPost, req.Method)
 		assert.Equal(t, "/post.json", req.URL.Path)
-		assert.Equal(t, `{"Key": ["val1", "val2"]}`, string(srv1Body))
+		assert.JSONEq(t, `{"Key": ["val1", "val2"]}`, string(srv1Body))
 		assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
 	case <-clock.After(clock.Second):
 		t.Error("timeout waiting for side effect to kick off")

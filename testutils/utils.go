@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"testing"
 
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 	"github.com/vulcand/oxy/v2/utils"
@@ -19,14 +20,19 @@ func NewHandler(handler http.HandlerFunc) *httptest.Server {
 }
 
 // NewResponder creates a new Server with response.
-func NewResponder(response string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+func NewResponder(t *testing.T, response string) *httptest.Server {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(response))
 	}))
+
+	t.Cleanup(server.Close)
+	return server
 }
 
-// ParseURI is the version of url.ParseRequestURI that panics if incorrect, helpful to shorten the tests.
-func ParseURI(uri string) *url.URL {
+// MustParseRequestURI is the version of url.ParseRequestURI that panics if incorrect, helpful to shorten the tests.
+func MustParseRequestURI(uri string) *url.URL {
 	out, err := url.ParseRequestURI(uri)
 	if err != nil {
 		panic(err)
@@ -176,7 +182,10 @@ func Post(uri string, opts ...ReqOption) (*http.Response, []byte, error) {
 
 // FreezeTime to the predetermined time. Returns a function that should be
 // deferred to unfreeze time. Meant for testing.
-func FreezeTime() func() {
+func FreezeTime(t *testing.T) {
+	t.Helper()
+
 	clock.Freeze(clock.Date(2012, 3, 4, 5, 6, 7, 0, clock.UTC))
-	return clock.Unfreeze
+
+	t.Cleanup(clock.Unfreeze)
 }

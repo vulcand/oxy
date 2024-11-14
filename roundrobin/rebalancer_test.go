@@ -14,10 +14,9 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestRebalancerNormalOperation(t *testing.T) {
-	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
-	defer a.Close()
-	defer b.Close()
+func TestRebalancer_normalOperation(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -27,7 +26,7 @@ func TestRebalancerNormalOperation(t *testing.T) {
 	rb, err := NewRebalancer(lb)
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
 
 	assert.Equal(t, a.URL, rb.Servers()[0].String())
@@ -38,7 +37,7 @@ func TestRebalancerNormalOperation(t *testing.T) {
 	assert.Equal(t, []string{"a", "a", "a"}, seq(t, proxy.URL, 3))
 }
 
-func TestRebalancerNoServers(t *testing.T) {
+func TestRebalancer_noServers(t *testing.T) {
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
@@ -55,10 +54,9 @@ func TestRebalancerNoServers(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, re.StatusCode)
 }
 
-func TestRebalancerRemoveServer(t *testing.T) {
-	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
-	defer a.Close()
-	defer b.Close()
+func TestRebalancer_removeServer(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -68,24 +66,23 @@ func TestRebalancerRemoveServer(t *testing.T) {
 	rb, err := NewRebalancer(lb)
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(b.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(rb)
 	t.Cleanup(proxy.Close)
 
 	assert.Equal(t, []string{"a", "b", "a"}, seq(t, proxy.URL, 3))
-	require.NoError(t, rb.RemoveServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, rb.RemoveServer(testutils.MustParseRequestURI(a.URL)))
 	assert.Equal(t, []string{"b", "b", "b"}, seq(t, proxy.URL, 3))
 }
 
 // Test scenario when one server goes down after what it recovers.
-func TestRebalancerRecovery(t *testing.T) {
-	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
-	defer a.Close()
-	defer b.Close()
+func TestRebalancer_recovery(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -96,15 +93,14 @@ func TestRebalancerRecovery(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(b.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
 
 	rb.servers[0].meter.(*testMeter).rating = 0.3
@@ -146,11 +142,10 @@ func TestRebalancerRecovery(t *testing.T) {
 }
 
 // Test scenario when increaing the weight on good endpoints made it worse.
-func TestRebalancerCascading(t *testing.T) {
-	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
-	defer a.Close()
-	defer b.Close()
-	defer d.Close()
+func TestRebalancer_cascading(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
+	d := testutils.NewResponder(t, "d")
 
 	fwd := forward.New(false)
 
@@ -161,17 +156,16 @@ func TestRebalancerCascading(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(b.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(d.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(d.URL))
 	require.NoError(t, err)
 
 	rb.servers[0].meter.(*testMeter).rating = 0.3
@@ -212,11 +206,10 @@ func TestRebalancerCascading(t *testing.T) {
 }
 
 // Test scenario when all servers started failing.
-func TestRebalancerAllBad(t *testing.T) {
-	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
-	defer a.Close()
-	defer b.Close()
-	defer d.Close()
+func TestRebalancer_allBad(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
+	d := testutils.NewResponder(t, "d")
 
 	fwd := forward.New(false)
 
@@ -227,17 +220,16 @@ func TestRebalancerAllBad(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(b.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(d.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(d.URL))
 	require.NoError(t, err)
 
 	rb.servers[0].meter.(*testMeter).rating = 0.12
@@ -262,11 +254,10 @@ func TestRebalancerAllBad(t *testing.T) {
 }
 
 // Removing the server resets the state.
-func TestRebalancerReset(t *testing.T) {
-	a, b, d := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("d")
-	defer a.Close()
-	defer b.Close()
-	defer d.Close()
+func TestRebalancer_reset(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
+	d := testutils.NewResponder(t, "d")
 
 	fwd := forward.New(false)
 
@@ -277,17 +268,16 @@ func TestRebalancerReset(t *testing.T) {
 		return &testMeter{}, nil
 	}
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	rb, err := NewRebalancer(lb, RebalancerMeter(newMeter))
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(b.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(d.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(d.URL))
 	require.NoError(t, err)
 
 	rb.servers[0].meter.(*testMeter).rating = 0.3
@@ -311,34 +301,32 @@ func TestRebalancerReset(t *testing.T) {
 	assert.Equal(t, FSMMaxWeight, rb.servers[2].curWeight)
 
 	// Removing servers has reset the state
-	err = rb.RemoveServer(testutils.ParseURI(d.URL))
+	err = rb.RemoveServer(testutils.MustParseRequestURI(d.URL))
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, rb.servers[0].curWeight)
 	assert.Equal(t, 1, rb.servers[1].curWeight)
 }
 
-func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
-	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
-	defer a.Close()
-	defer b.Close()
+func TestRebalancer_requestRewriteListenerLive(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
 	lb, err := New(fwd)
 	require.NoError(t, err)
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	rb, err := NewRebalancer(lb, RebalancerBackoff(clock.Millisecond))
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(b.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI("http://localhost:62345"))
+	err = rb.UpsertServer(testutils.MustParseRequestURI("http://localhost:62345"))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(rb)
@@ -358,10 +346,9 @@ func TestRebalancerRequestRewriteListenerLive(t *testing.T) {
 	assert.Equal(t, 1, rb.servers[2].curWeight)
 }
 
-func TestRebalancerRequestRewriteListener(t *testing.T) {
-	a, b := testutils.NewResponder("a"), testutils.NewResponder("b")
-	defer a.Close()
-	defer b.Close()
+func TestRebalancer_requestRewriteListener(t *testing.T) {
+	testutils.NewResponder(t, "a")
+	testutils.NewResponder(t, "b")
 
 	fwd := forward.New(false)
 
@@ -375,11 +362,10 @@ func TestRebalancerRequestRewriteListener(t *testing.T) {
 	assert.NotNil(t, rb.requestRewriteListener)
 }
 
-func TestRebalancerStickySession(t *testing.T) {
-	a, b, x := testutils.NewResponder("a"), testutils.NewResponder("b"), testutils.NewResponder("x")
-	defer a.Close()
-	defer b.Close()
-	defer x.Close()
+func TestRebalancer_stickySession(t *testing.T) {
+	a := testutils.NewResponder(t, "a")
+	b := testutils.NewResponder(t, "b")
+	x := testutils.NewResponder(t, "x")
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)
@@ -392,11 +378,11 @@ func TestRebalancerStickySession(t *testing.T) {
 	rb, err := NewRebalancer(lb, RebalancerStickySession(sticky))
 	require.NoError(t, err)
 
-	err = rb.UpsertServer(testutils.ParseURI(a.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(a.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(b.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(b.URL))
 	require.NoError(t, err)
-	err = rb.UpsertServer(testutils.ParseURI(x.URL))
+	err = rb.UpsertServer(testutils.MustParseRequestURI(x.URL))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(rb)
@@ -417,10 +403,10 @@ func TestRebalancerStickySession(t *testing.T) {
 		assert.Equal(t, "a", string(body))
 	}
 
-	require.NoError(t, rb.RemoveServer(testutils.ParseURI(a.URL)))
+	require.NoError(t, rb.RemoveServer(testutils.MustParseRequestURI(a.URL)))
 	assert.Equal(t, []string{"b", "x", "b"}, seq(t, proxy.URL, 3))
 
-	require.NoError(t, rb.RemoveServer(testutils.ParseURI(b.URL)))
+	require.NoError(t, rb.RemoveServer(testutils.MustParseRequestURI(b.URL)))
 	assert.Equal(t, []string{"x", "x", "x"}, seq(t, proxy.URL, 3))
 }
 

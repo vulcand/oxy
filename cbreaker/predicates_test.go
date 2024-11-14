@@ -9,7 +9,7 @@ import (
 	"github.com/vulcand/oxy/v2/memmetrics"
 )
 
-func TestTripped(t *testing.T) {
+func Test_parseExpression_tripped(t *testing.T) {
 	testCases := []struct {
 		expression string
 		metrics    *memmetrics.RTMetrics

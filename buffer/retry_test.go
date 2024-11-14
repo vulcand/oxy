@@ -12,7 +12,7 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestSuccess(t *testing.T) {
+func TestBuffer_success(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -23,7 +23,7 @@ func TestSuccess(t *testing.T) {
 	proxy := httptest.NewServer(rt)
 	t.Cleanup(proxy.Close)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(srv.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(srv.URL)))
 
 	re, body, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestSuccess(t *testing.T) {
 	assert.Equal(t, "hello", string(body))
 }
 
-func TestRetryOnError(t *testing.T) {
+func TestBuffer_retryOnError(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -42,8 +42,8 @@ func TestRetryOnError(t *testing.T) {
 	proxy := httptest.NewServer(rt)
 	t.Cleanup(proxy.Close)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64321")))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(srv.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI("http://localhost:64321")))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(srv.URL)))
 
 	re, body, err := testutils.Get(proxy.URL, testutils.Body("some request parameters"))
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestRetryOnError(t *testing.T) {
 	assert.Equal(t, "hello", string(body))
 }
 
-func TestRetryExceedAttempts(t *testing.T) {
+func TestBuffer_retryExceedAttempts(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})
@@ -62,10 +62,10 @@ func TestRetryExceedAttempts(t *testing.T) {
 	proxy := httptest.NewServer(rt)
 	t.Cleanup(proxy.Close)
 
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64321")))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64322")))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI("http://localhost:64323")))
-	require.NoError(t, lb.UpsertServer(testutils.ParseURI(srv.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI("http://localhost:64321")))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI("http://localhost:64322")))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI("http://localhost:64323")))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(srv.URL)))
 
 	re, _, err := testutils.Get(proxy.URL)
 	require.NoError(t, err)

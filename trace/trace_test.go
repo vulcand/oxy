@@ -17,7 +17,7 @@ import (
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-func TestTraceSimple(t *testing.T) {
+func TestTracer_simple(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Length", "5")
 		_, _ = w.Write([]byte("hello"))
@@ -45,7 +45,7 @@ func TestTraceSimple(t *testing.T) {
 	assert.EqualValues(t, 5, r.Response.BodyBytes)
 }
 
-func TestTraceCaptureHeaders(t *testing.T) {
+func TestTracer_captureHeaders(t *testing.T) {
 	respHeaders := http.Header{
 		"X-Re-1": []string{"6", "7"},
 		"X-Re-2": []string{"2", "3"},
@@ -75,7 +75,7 @@ func TestTraceCaptureHeaders(t *testing.T) {
 	assert.Equal(t, respHeaders, r.Response.Headers)
 }
 
-func TestTraceTLS(t *testing.T) {
+func TestTracer_TLS(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
 	})

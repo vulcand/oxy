@@ -12,9 +12,8 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestDefaults(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestNewRTMetrics_defaults(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	rr, err := NewRTMetrics()
 	require.NoError(t, err)
@@ -47,9 +46,8 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, time.Duration(0), h.LatencyAtQuantile(100))
 }
 
-func TestAppend(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestRTMetrics_Append(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	rr, err := NewRTMetrics()
 	require.NoError(t, err)
@@ -78,7 +76,7 @@ func TestAppend(t *testing.T) {
 	assert.EqualValues(t, 3, h.LatencyAtQuantile(100)/clock.Second)
 }
 
-func TestConcurrentRecords(t *testing.T) {
+func TestRTMetrics_concurrentRecords(t *testing.T) {
 	// This test asserts a race condition which requires parallelism
 	runtime.GOMAXPROCS(100)
 
@@ -94,7 +92,7 @@ func TestConcurrentRecords(t *testing.T) {
 	}
 }
 
-func TestRTMetricExportReturnsNewCopy(t *testing.T) {
+func TestRTMetric_Export_returnsNewCopy(t *testing.T) {
 	a := RTMetrics{
 		statusCodes:     map[int]*RollingCounter{},
 		statusCodesLock: sync.RWMutex{},

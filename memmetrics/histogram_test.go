@@ -10,33 +10,33 @@ import (
 	"github.com/vulcand/oxy/v2/testutils"
 )
 
-func TestMerge(t *testing.T) {
+func TestHDRHistogram_Merge(t *testing.T) {
 	a, err := NewHDRHistogram(1, 3600000, 2)
 	require.NoError(t, err)
 
-	err = a.RecordValues(1, 2)
-	require.NoError(t, err)
+	require.NoError(t, a.RecordValues(1, 2))
 
 	b, err := NewHDRHistogram(1, 3600000, 2)
 	require.NoError(t, err)
 
 	require.NoError(t, b.RecordValues(2, 1))
-	require.NoError(t, a.Merge(b))
+
+	err = a.Merge(b)
+	require.NoError(t, err)
 
 	assert.EqualValues(t, 1, a.ValueAtQuantile(50))
 	assert.EqualValues(t, 2, a.ValueAtQuantile(100))
 }
 
-func TestMergeNil(t *testing.T) {
+func TestHDRHistogram_Merge_nil(t *testing.T) {
 	a, err := NewHDRHistogram(1, 3600000, 1)
 	require.NoError(t, err)
 
 	require.Error(t, a.Merge(nil))
 }
 
-func TestRotation(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestHDRHistogram_rotation(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	h, err := NewRollingHDRHistogram(
 		1,       // min value
@@ -74,9 +74,8 @@ func TestRotation(t *testing.T) {
 	assert.EqualValues(t, 2, m.ValueAtQuantile(100))
 }
 
-func TestReset(t *testing.T) {
-	done := testutils.FreezeTime()
-	defer done()
+func TestHDRHistogram_Reset(t *testing.T) {
+	testutils.FreezeTime(t)
 
 	h, err := NewRollingHDRHistogram(
 		1,       // min value
@@ -120,7 +119,7 @@ func TestReset(t *testing.T) {
 	assert.EqualValues(t, 5, m.ValueAtQuantile(100))
 }
 
-func TestHDRHistogramExportReturnsNewCopy(t *testing.T) {
+func TestHDRHistogram_Export_returnsNewCopy(t *testing.T) {
 	// Create HDRHistogram instance
 	a := HDRHistogram{
 		low:     1,
@@ -143,11 +142,9 @@ func TestHDRHistogramExportReturnsNewCopy(t *testing.T) {
 	require.NotNil(t, b.h)
 }
 
-func TestRollingHDRHistogramExportReturnsNewCopy(t *testing.T) {
+func TestRollingHDRHistogram_Export_returnsNewCopy(t *testing.T) {
 	origTime := clock.Now()
-
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	a := RollingHDRHistogram{
 		idx:         1,

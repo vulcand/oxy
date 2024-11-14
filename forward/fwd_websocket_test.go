@@ -83,7 +83,7 @@ func TestWebSocketPingPong(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
 	t.Cleanup(proxy.Close)
@@ -131,7 +131,7 @@ func TestWebSocketEcho(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
 	t.Cleanup(proxy.Close)
@@ -193,7 +193,7 @@ func TestWebSocketPassHost(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-				req.URL = testutils.ParseURI(srv.URL)
+				req.URL = testutils.MustParseRequestURI(srv.URL)
 				f.ServeHTTP(w, req)
 			})
 			t.Cleanup(proxy.Close)
@@ -351,7 +351,7 @@ func TestWebSocketRequestWithHeadersInResponseWriter(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.ParseURI(srv.URL)
+		req.URL = testutils.MustParseRequestURI(srv.URL)
 		w.Header().Set("HEADER-KEY", "HEADER-VALUE")
 		f.ServeHTTP(w, req)
 	})
@@ -424,7 +424,7 @@ func TestWebSocketUpgradeFailed(t *testing.T) {
 
 		if path == "/ws" {
 			// Set new backend URL
-			req.URL = testutils.ParseURI(srv.URL)
+			req.URL = testutils.MustParseRequestURI(srv.URL)
 			req.URL.Path = path
 			f.ServeHTTP(w, req)
 		}
@@ -504,7 +504,7 @@ func createProxyWithForwarder(forwarder http.Handler, uri string) *httptest.Serv
 	return testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		path := req.URL.Path // keep the original path
 		// Set new backend URL
-		req.URL = testutils.ParseURI(uri)
+		req.URL = testutils.MustParseRequestURI(uri)
 		req.URL.Path = path
 
 		forwarder.ServeHTTP(w, req)

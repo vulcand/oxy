@@ -18,8 +18,7 @@ func TestLongestPeriod(t *testing.T) {
 	require.NoError(t, rates.Add(7*clock.Second, 10, 20))
 	require.NoError(t, rates.Add(5*clock.Second, 11, 21))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	// When
 	tbs := NewTokenBucketSet(rates)
@@ -35,8 +34,7 @@ func TestConsume(t *testing.T) {
 	require.NoError(t, rates.Add(1*clock.Second, 10, 20))
 	require.NoError(t, rates.Add(10*clock.Second, 20, 50))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
@@ -56,8 +54,7 @@ func TestConsumeRefill(t *testing.T) {
 	require.NoError(t, rates.Add(10*clock.Second, 10, 20))
 	require.NoError(t, rates.Add(100*clock.Second, 20, 50))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
@@ -84,8 +81,7 @@ func TestConsumeLimitedBy1st(t *testing.T) {
 	require.NoError(t, rates.Add(10*clock.Second, 10, 10))
 	require.NoError(t, rates.Add(100*clock.Second, 20, 20))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
@@ -110,8 +106,7 @@ func TestConsumeLimitedBy2st(t *testing.T) {
 	require.NoError(t, rates.Add(10*clock.Second, 10, 10))
 	require.NoError(t, rates.Add(100*clock.Second, 20, 20))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
@@ -146,8 +141,7 @@ func TestConsumeMoreThenBurst(t *testing.T) {
 	require.NoError(t, rates.Add(1*clock.Second, 10, 20))
 	require.NoError(t, rates.Add(10*clock.Second, 50, 100))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
@@ -171,8 +165,7 @@ func TestUpdateMore(t *testing.T) {
 	require.NoError(t, rates.Add(10*clock.Second, 20, 50))
 	require.NoError(t, rates.Add(20*clock.Second, 45, 90))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
@@ -203,8 +196,7 @@ func TestUpdateLess(t *testing.T) {
 	require.NoError(t, rates.Add(20*clock.Second, 45, 90))
 	require.NoError(t, rates.Add(30*clock.Second, 50, 100))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
@@ -231,8 +223,7 @@ func TestUpdateAllDifferent(t *testing.T) {
 	require.NoError(t, rates.Add(10*clock.Second, 20, 50))
 	require.NoError(t, rates.Add(30*clock.Second, 50, 100))
 
-	done := testutils.FreezeTime()
-	defer done()
+	testutils.FreezeTime(t)
 
 	tbs := NewTokenBucketSet(rates)
 
