@@ -417,7 +417,6 @@ func TestBuffer_GRPC_OKResponse(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Grpc-Status", "0" /* OK */)
 		_, _ = w.Write([]byte("grpc-body"))
-		w.WriteHeader(http.StatusOK)
 
 		// To skip the "Content-Length" header.
 		w.(http.Flusher).Flush()
