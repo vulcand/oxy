@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -173,30 +174,75 @@ func TestBuffer_requestLimitReached(t *testing.T) {
 }
 
 func TestBuffer_responseLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello, this response is too large"))
-	})
-	t.Cleanup(srv.Close)
+	cases := []struct {
+		name                 string
+		body                 string
+		maxResponseBodyBytes int64
+	}{
+		{
+			name:                 "small limit with body larger than max response bytes",
+			body:                 "hello, this response is too large",
+			maxResponseBodyBytes: 4,
+		},
+		{
+			name:                 "small limit with body larger than 32768 bytes",
+			body:                 strings.Repeat("A", 32769),
+			maxResponseBodyBytes: 4,
+		},
+		{
+			name:                 "larger limit with body larger than 32768 bytes",
+			body:                 strings.Repeat("A", 32769),
+			maxResponseBodyBytes: 2000,
+		},
+		{
+			name:                 "larger limit with body larger than 32768 + 1999 bytes",
+			body:                 strings.Repeat("A", 32769+1999),
+			maxResponseBodyBytes: 2000,
+		},
+		{
+			name:                 "larger limit with body larger than 32768 + 2000 bytes",
+			body:                 strings.Repeat("A", 32769+2000),
+			maxResponseBodyBytes: 2000,
+		},
+		{
+			name:                 "larger limit with body larger than 65536 + 1999 bytes",
+			body:                 strings.Repeat("A", 65537+1999),
+			maxResponseBodyBytes: 2000,
+		},
+		{
+			name:                 "larger limit with body larger than 65536 + 2000 bytes",
+			body:                 strings.Repeat("A", 65537+2000),
+			maxResponseBodyBytes: 2000,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(tc.body))
+			})
+			t.Cleanup(srv.Close)
 
-	// forwarder will proxy the request to whatever destination
-	fwd := forward.New(false)
+			// forwarder will proxy the request to whatever destination
+			fwd := forward.New(false)
 
-	// this is our redirect to server
-	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.MustParseRequestURI(srv.URL)
-		fwd.ServeHTTP(w, req)
-	})
+			// this is our redirect to server
+			rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				req.URL = testutils.MustParseRequestURI(srv.URL)
+				fwd.ServeHTTP(w, req)
+			})
 
-	// stream handler will forward requests to redirect
-	st, err := New(rdr, MaxResponseBodyBytes(4))
-	require.NoError(t, err)
+			// stream handler will forward requests to redirect
+			st, err := New(rdr, MaxResponseBodyBytes(tc.maxResponseBodyBytes))
+			require.NoError(t, err)
 
-	proxy := httptest.NewServer(st)
-	t.Cleanup(proxy.Close)
+			proxy := httptest.NewServer(st)
+			t.Cleanup(proxy.Close)
 
-	re, _, err := testutils.Get(proxy.URL)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusInternalServerError, re.StatusCode)
+			re, _, err := testutils.Get(proxy.URL)
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusInternalServerError, re.StatusCode)
+		})
+	}
 }
 
 func TestBuffer_fileStreamingResponse(t *testing.T) {

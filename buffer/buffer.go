@@ -189,6 +189,12 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		if bw.writeError != nil {
+			b.log.Error("vulcand/oxy/buffer: failed to copy response, err: %v", bw.writeError)
+			b.errHandler.ServeHTTP(w, req, bw.writeError)
+			return
+		}
+
 		var reader multibuf.MultiReader
 		if bw.expectBody(outReq) {
 			rdr, err := writer.Reader()
@@ -258,6 +264,7 @@ type bufferWriter struct {
 	buffer         multibuf.WriterOnce
 	responseWriter http.ResponseWriter
 	hijacked       bool
+	writeError     error
 	log            utils.Logger
 }
 
@@ -298,6 +305,7 @@ func (b *bufferWriter) Write(buf []byte) (int, error) {
 		// if the writer returns an error, the reverse proxy panics
 		b.log.Error("write: %v", err)
 		length = len(buf)
+		b.writeError = err
 	}
 	return length, nil
 }
