@@ -204,7 +204,7 @@ func seq(t *testing.T, url string, repeat int) []string {
 	t.Helper()
 
 	var out []string
-	for i := 0; i < repeat; i++ {
+	for range repeat {
 		_, body, err := testutils.Get(url)
 		require.NoError(t, err)
 		out = append(out, string(body))

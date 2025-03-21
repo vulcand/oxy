@@ -28,7 +28,6 @@ func TestMedian(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		test := test
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -104,7 +103,6 @@ func TestSplitRatios(t *testing.T) {
 	}
 
 	for ind, test := range testCases {
-		test := test
 		t.Run(strconv.Itoa(ind), func(t *testing.T) {
 			t.Parallel()
 
@@ -170,7 +168,6 @@ func TestSplitLatencies(t *testing.T) {
 	}
 
 	for ind, test := range testCases {
-		test := test
 		t.Run(strconv.Itoa(ind), func(t *testing.T) {
 			t.Parallel()
 

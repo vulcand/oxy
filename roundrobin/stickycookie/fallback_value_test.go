@@ -32,9 +32,7 @@ func TestFallbackValue_FindURL(t *testing.T) {
 	}
 
 	for _, from := range values {
-		from := from
 		for _, to := range values {
-			to := to
 			t.Run(fmt.Sprintf("From: %s, To %s", from.Name, to.Name), func(t *testing.T) {
 				t.Parallel()
 

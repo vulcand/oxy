@@ -62,7 +62,7 @@ func (v *AESValue) Get(raw *url.URL) string {
 		panic(err)
 	}
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		nonce[i+8] = rpend[i]
 	}
 

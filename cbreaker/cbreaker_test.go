@@ -76,7 +76,7 @@ func TestCircuitBreaker_fullCycle(t *testing.T) {
 	// 5 seconds after we should be allowing some requests to pass
 	clock.Advance(5 * clock.Second)
 	allowed := 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		re, _, err = testutils.Get(srv.URL)
 		if re.StatusCode == http.StatusOK && err == nil {
 			allowed++
@@ -184,7 +184,7 @@ func TestCircuitBreaker_triggerDuringRecovery(t *testing.T) {
 	clock.Advance(5 * clock.Second)
 	cb.metrics = statsNetErrors(0.6)
 	allowed := 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		re, _, err = testutils.Get(srv.URL)
 		if re.StatusCode == http.StatusOK && err == nil {
 			allowed++
@@ -296,7 +296,7 @@ func statsNetErrors(threshold float64) *memmetrics.RTMetrics {
 	if err != nil {
 		panic(err)
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		if i < int(threshold*100) {
 			m.Record(http.StatusGatewayTimeout, 0)
 		} else {
@@ -321,7 +321,7 @@ func statsResponseCodes(codes ...statusCode) *memmetrics.RTMetrics {
 		panic(err)
 	}
 	for _, c := range codes {
-		for i := int64(0); i < c.Count; i++ {
+		for range c.Count {
 			m.Record(c.Code, 0)
 		}
 	}

@@ -17,7 +17,7 @@ func Test_ratioController_rampUp(t *testing.T) {
 	rc := newRatioController(duration, &utils.NoopLogger{})
 
 	allowed, denied := 0, 0
-	for i := 0; i < int(duration/clock.Millisecond); i++ {
+	for range duration / clock.Millisecond {
 		ratio := sendRequest(&allowed, &denied, rc)
 		expected := rc.targetRatio()
 		diff := math.Abs(expected - ratio)
