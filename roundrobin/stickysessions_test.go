@@ -38,7 +38,7 @@ func TestStickySession_basic(t *testing.T) {
 
 	client := http.DefaultClient
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
 		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})
@@ -79,7 +79,7 @@ func TestStickySession_basicWithHashValue(t *testing.T) {
 
 	client := http.DefaultClient
 	var cookie *http.Cookie
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
 		if cookie != nil {
@@ -132,7 +132,7 @@ func TestStickySession_basicWithAESValue(t *testing.T) {
 
 	client := http.DefaultClient
 	var cookie *http.Cookie
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
 		if cookie != nil {
@@ -355,7 +355,7 @@ func TestStickySession_removeRespondingServer(t *testing.T) {
 
 	client := http.DefaultClient
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, errReq)
 
@@ -384,7 +384,7 @@ func TestStickySession_removeRespondingServer(t *testing.T) {
 	assert.Equal(t, "test", resp.Cookies()[0].Name)
 	assert.Equal(t, b.URL, resp.Cookies()[0].Value)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
 
@@ -421,7 +421,7 @@ func TestStickySession_removeAllServers(t *testing.T) {
 
 	client := http.DefaultClient
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		req, errReq := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, errReq)
 		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})

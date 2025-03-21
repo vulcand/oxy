@@ -54,7 +54,6 @@ func Test_parseExpression_tripped(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		test := test
 		t.Run(test.expression, func(t *testing.T) {
 			t.Parallel()
 

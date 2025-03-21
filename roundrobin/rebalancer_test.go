@@ -108,7 +108,7 @@ func TestRebalancer_recovery(t *testing.T) {
 	proxy := httptest.NewServer(rb)
 	t.Cleanup(proxy.Close)
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
@@ -125,7 +125,7 @@ func TestRebalancer_recovery(t *testing.T) {
 	// server a is now recovering, the weights should go back to the original state
 	rb.servers[0].meter.(*testMeter).rating = 0
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
@@ -173,7 +173,7 @@ func TestRebalancer_cascading(t *testing.T) {
 	proxy := httptest.NewServer(rb)
 	t.Cleanup(proxy.Close)
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
@@ -191,7 +191,7 @@ func TestRebalancer_cascading(t *testing.T) {
 	rb.servers[1].meter.(*testMeter).rating = 0.2
 	rb.servers[2].meter.(*testMeter).rating = 0.2
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
@@ -239,7 +239,7 @@ func TestRebalancer_allBad(t *testing.T) {
 	proxy := httptest.NewServer(rb)
 	t.Cleanup(proxy.Close)
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
@@ -287,7 +287,7 @@ func TestRebalancer_reset(t *testing.T) {
 	proxy := httptest.NewServer(rb)
 	t.Cleanup(proxy.Close)
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		_, _, err = testutils.Get(proxy.URL)
@@ -332,7 +332,7 @@ func TestRebalancer_requestRewriteListenerLive(t *testing.T) {
 	proxy := httptest.NewServer(rb)
 	t.Cleanup(proxy.Close)
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
 		if i%10 == 0 {
@@ -388,7 +388,7 @@ func TestRebalancer_stickySession(t *testing.T) {
 	proxy := httptest.NewServer(rb)
 	t.Cleanup(proxy.Close)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
 		req.AddCookie(&http.Cookie{Name: "test", Value: a.URL})

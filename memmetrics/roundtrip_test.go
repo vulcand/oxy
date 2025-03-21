@@ -83,8 +83,8 @@ func TestRTMetrics_concurrentRecords(t *testing.T) {
 	rr, err := NewRTMetrics()
 	require.NoError(t, err)
 
-	for code := 0; code < 100; code++ {
-		for numRecords := 0; numRecords < 10; numRecords++ {
+	for code := range 100 {
+		for range 10 {
 			go func(statusCode int) {
 				_ = rr.recordStatusCode(statusCode)
 			}(code)

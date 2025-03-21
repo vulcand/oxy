@@ -38,7 +38,7 @@ func TestRollingCounter_cleanup(t *testing.T) {
 
 	cnt.Inc(1)
 
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		clock.Advance(clock.Second)
 		cnt.Inc(int(math.Pow10(i + 1)))
 	}

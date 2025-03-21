@@ -74,6 +74,7 @@ func TestRemoveHeaders(t *testing.T) {
 	assert.Equal(t, "d", source.Get("c"))
 }
 
+//nolint:intrange // benchmarks
 func BenchmarkCopyHeaders(b *testing.B) {
 	dstHeaders := make([]http.Header, 0, b.N)
 	sourceHeaders := make([]http.Header, 0, b.N)
