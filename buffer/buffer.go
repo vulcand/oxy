@@ -164,6 +164,19 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	outReq := b.copyRequest(req, body, totalSize)
 
+	defer func() {
+		if err := recover(); err != nil {
+			if err == http.ErrAbortHandler {
+				b.log.Error("vulcand/oxy/buffer: failed to read response, err: %v", err)
+
+				b.errHandler.ServeHTTP(w, req, err.(error))
+				return
+			}
+
+			panic(err)
+		}
+	}()
+
 	attempt := 1
 	for {
 		// We create a special writer that will limit the response size, buffer it to disk if necessary
@@ -292,14 +305,7 @@ func (b *bufferWriter) Header() http.Header {
 }
 
 func (b *bufferWriter) Write(buf []byte) (int, error) {
-	length, err := b.buffer.Write(buf)
-	if err != nil {
-		// Since go1.11 (https://github.com/golang/go/commit/8f38f28222abccc505b9a1992deecfe3e2cb85de)
-		// if the writer returns an error, the reverse proxy panics
-		b.log.Error("write: %v", err)
-		length = len(buf)
-	}
-	return length, nil
+	return b.buffer.Write(buf)
 }
 
 // WriteHeader sets rw.Code.

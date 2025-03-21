@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"bufio"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -173,8 +174,11 @@ func TestBuffer_requestLimitReached(t *testing.T) {
 }
 
 func TestBuffer_responseLimitReached(t *testing.T) {
+	payload := make([]byte, 40000)
+	_, _ = rand.Read(payload)
+
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello, this response is too large"))
+		_, _ = w.Write(payload)
 	})
 	t.Cleanup(srv.Close)
 
@@ -188,7 +192,7 @@ func TestBuffer_responseLimitReached(t *testing.T) {
 	})
 
 	// stream handler will forward requests to redirect
-	st, err := New(rdr, MaxResponseBodyBytes(4))
+	st, err := New(rdr, MaxResponseBodyBytes(10000))
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
