@@ -1,137 +1,127 @@
+version: "2"
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gofumpt:
+      extra-rules: false
+
 linters:
-  enable-all: true
+  default: all
   disable:
-    - tenv # deprecated
-    - sqlclosecheck # not relevant (SQL)
-    - rowserrcheck # not relevant (SQL)
+    - bodyclose # Too many false positives: https://github.com/timakin/bodyclose/issues/30
     - cyclop # duplicate of gocyclo
-    - lll
     - dupl
-    - wsl
-    - nlreturn
-    - mnd
     - err113
-    - wrapcheck
     - exhaustive
     - exhaustruct
-    - testpackage
-    - tparallel
+    - forcetypeassert
+    - gochecknoglobals # TODO(ldez) should be use on the project
+    - ireturn
+    - lll
+    - mnd
+    - musttag
+    - nestif # TODO(ldez) should be use on the project
+    - nilnil
+    - nlreturn
+    - noctx
+    - nonamedreturns
     - paralleltest
     - prealloc
-    - forcetypeassert
-    - bodyclose # Too many false positives: https://github.com/timakin/bodyclose/issues/30
-    - varnamelen
-    - noctx
+    - rowserrcheck # not relevant (SQL)
+    - sqlclosecheck # not relevant (SQL)
     - tagliatelle
-    - nilnil
-    - ireturn
-    - nonamedreturns
-    - gochecknoglobals # TODO(ldez) should be use on the project
-    - nestif # TODO(ldez) should be use on the project
-    - musttag
-
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-      - shadow
-  gocyclo:
-    min-complexity: 15
-  goconst:
-    min-len: 5
-    min-occurrences: 3
-  misspell:
-    locale: US
-  funlen:
-    lines: -1
-    statements: 50
-  godox:
-    keywords:
-      - FIXME
-  gofumpt:
-    extra-rules: false
-  depguard:
+    - testpackage
+    - tparallel
+    - varnamelen
+    - wrapcheck
+    - wsl # TODO(ldez) should be use on the project
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: github.com/instana/testify
+              desc: not allowed
+            - pkg: github.com/pkg/errors
+              desc: Should be replaced by standard lib errors package
+    funlen:
+      lines: -1
+      statements: 50
+    goconst:
+      min-len: 5
+      min-occurrences: 3
+    gocritic:
+      disabled-checks:
+        - sloppyReassign
+        - rangeValCopy
+        - octalLiteral
+        - paramTypeCombine # already handle by gofumpt.extra-rules
+        - httpNoBody
+        - unnamedResult
+        - deferInLoop # TODO(ldez) should be use on the project
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      settings:
+        hugeParam:
+          sizeThreshold: 100
+    gocyclo:
+      min-complexity: 15
+    godox:
+      keywords:
+        - FIXME
+    govet:
+      disable:
+        - fieldalignment
+        - shadow
+      enable-all: true
+    misspell:
+      locale: US
+    perfsprint:
+      err-error: true
+      errorf: true
+      sprintf1: true
+      strconcat: false
+    testifylint:
+      disable:
+        - go-require
+  exclusions:
+    warn-unused: true
+    presets:
+      - comments
+      - std-error-handling
     rules:
-      main:
-        deny:
-          - pkg: "github.com/instana/testify"
-            desc: not allowed
-          - pkg: "github.com/pkg/errors"
-            desc: Should be replaced by standard lib errors package
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-    disabled-checks:
-      - sloppyReassign
-      - rangeValCopy
-      - octalLiteral
-      - paramTypeCombine # already handle by gofumpt.extra-rules
-      - httpNoBody
-      - unnamedResult
-      - deferInLoop # TODO(ldez) should be use on the project
-    settings:
-      hugeParam:
-        sizeThreshold: 100
-  testifylint:
-    disable:
-      - go-require
-  perfsprint:
-    err-error: true
-    errorf: true
-    sprintf1: true
-    strconcat: false
-
+      - linters:
+          - canonicalheader
+          - funlen
+          - goconst
+          - gosec
+        path: .*_test.go
+      - linters:
+          - gosec
+        path: testutils/.+
+      - path: cbreaker/cbreaker_test.go # TODO(ldez) must be fixed
+        text: 'statsNetErrors - threshold always receives 0.6'
+      - path: buffer/buffer.go # TODO(ldez) must be fixed
+        text: (cognitive|cyclomatic) complexity \d+ of func `\(\*Buffer\)\.ServeHTTP` is high
+      - path: buffer/buffer.go # TODO(ldez) must be fixed
+        text: Function 'ServeHTTP' has too many statements
+      - path: memmetrics/ratio_test.go # TODO(ldez) must be fixed
+        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
+      - path: memmetrics/roundtrip_test.go # TODO(ldez) must be fixed
+        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
+      - path: memmetrics/anomaly_test.go # TODO(ldez) must be fixed
+        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
+      - path: (.+)\.go$ # TODO(ldez) must be fixed
+        text: 'SA1019: http.CloseNotifier has been deprecated'
+      - path: (.+)\.go$ # TODO(ldez) must be fixed
+        text: 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'
+    paths:
+      - internal/holsterv4
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-dirs:
-    - "internal/holsterv4"
-  exclude:
-    - 'ST1000: at least one file in a package should have a package comment' # TODO(ldez) must be fixed
-    - 'package-comments: should have a package comment'
-    - 'Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked'
-    - 'SA1019: http.CloseNotifier has been deprecated'
-    - 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'# TODO(ldez) must be fixed
-
-  exclude-rules:
-    - path: .*_test.go
-      linters:
-        - funlen
-        - gosec
-        - goconst
-        - canonicalheader
-    - path: testutils/.+
-      linters:
-        - gosec
-    - path: cbreaker/cbreaker_test.go
-      text: "`statsNetErrors` - `threshold` always receives `0.6`" # TODO(ldez) must be fixed
-    - path: buffer/buffer.go
-      text: "(cognitive|cyclomatic) complexity \\d+ of func `\\(\\*Buffer\\)\\.ServeHTTP` is high" # TODO(ldez) must be fixed
-    - path: buffer/buffer.go
-      text: "Function 'ServeHTTP' has too many statements" # TODO(ldez) must be fixed
-    - path: forward/fwd.go
-      text: "(cognitive|cyclomatic) complexity \\d+ of func `\\(\\*httpForwarder\\)\\.serveWebSocket` is high" # TODO(ldez) must be fixed
-    - path: forward/fwd.go
-      text: "Function 'serveWebSocket' has too many statements" # TODO(ldez) must be fixed
-    - path: utils/handler.go
-      text: "ifElseChain: rewrite if-else to switch statement" # TODO(ldez) must be fixed
-    - path: memmetrics/ratio_test.go
-      text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed
-    - path: memmetrics/roundtrip_test.go
-      text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed
-    - path: memmetrics/anomaly_test.go
-      text: "float-compare: use assert\\.InEpsilon \\(or InDelta\\)" # TODO(ldez) must be fixed
-
-output:
-  show-stats: true
-  sort-results: true
-  sort-order:
-    - linter
-    - file
-
-run:
-  timeout: 5m

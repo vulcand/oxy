@@ -49,7 +49,7 @@ func TestCopyHeaders(t *testing.T) {
 	// make sure that altering source does not affect the destination
 	source.Del("a")
 
-	assert.Equal(t, "", source.Get("a"))
+	assert.Empty(t, source.Get("a"))
 	assert.Equal(t, "b", destination.Get("a"))
 }
 
@@ -70,7 +70,7 @@ func TestRemoveHeaders(t *testing.T) {
 
 	RemoveHeaders(source, "a")
 
-	assert.Equal(t, "", source.Get("a"))
+	assert.Empty(t, source.Get("a"))
 	assert.Equal(t, "d", source.Get("c"))
 }
 
