@@ -39,7 +39,6 @@ linters:
     - wrapcheck
     - noinlineerr
     - wsl # Deprecated
-#    - wsl_v5 # TODO(ldez) should be use on the project
   settings:
     depguard:
       rules:
