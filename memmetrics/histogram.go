@@ -28,6 +28,7 @@ func NewHDRHistogram(low, high int64, sigfigs int) (h *HDRHistogram, err error) 
 			err = fmt.Errorf("%s", msg)
 		}
 	}()
+
 	return &HDRHistogram{
 		low:     low,
 		high:    high,
@@ -39,10 +40,12 @@ func NewHDRHistogram(low, high int64, sigfigs int) (h *HDRHistogram, err error) 
 // Export exports a HDRHistogram.
 func (h *HDRHistogram) Export() *HDRHistogram {
 	var hist *hdrhistogram.Histogram
+
 	if h.h != nil {
 		snapshot := h.h.Export()
 		hist = hdrhistogram.Import(snapshot)
 	}
+
 	return &HDRHistogram{low: h.low, high: h.high, sigfigs: h.sigfigs, h: hist}
 }
 
@@ -76,7 +79,9 @@ func (h *HDRHistogram) Merge(other *HDRHistogram) error {
 	if other == nil {
 		return errors.New("other is nil")
 	}
+
 	h.h.Merge(other.h)
+
 	return nil
 }
 
@@ -117,9 +122,12 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 		if err != nil {
 			return nil, err
 		}
+
 		buckets[i] = h
 	}
+
 	rh.buckets = buckets
+
 	return rh, nil
 }
 
@@ -138,6 +146,7 @@ func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
 	for i, hist := range r.buckets {
 		exportBuckets[i] = hist.Export()
 	}
+
 	export.buckets = exportBuckets
 
 	return export
@@ -154,21 +163,18 @@ func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
 // Reset resets a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
+
 	r.lastRoll = clock.Now().UTC()
 	for _, b := range r.buckets {
 		b.Reset()
 	}
-}
-
-func (r *RollingHDRHistogram) rotate() {
-	r.idx = (r.idx + 1) % len(r.buckets)
-	r.buckets[r.idx].Reset()
 }
 
 // Merged gets merged histogram.
@@ -177,20 +183,14 @@ func (r *RollingHDRHistogram) Merged() (*HDRHistogram, error) {
 	if err != nil {
 		return m, err
 	}
+
 	for _, h := range r.buckets {
 		if errMerge := m.Merge(h); errMerge != nil {
 			return nil, errMerge
 		}
 	}
-	return m, nil
-}
 
-func (r *RollingHDRHistogram) getHist() *HDRHistogram {
-	if clock.Now().UTC().Sub(r.lastRoll) >= r.period {
-		r.rotate()
-		r.lastRoll = clock.Now().UTC()
-	}
-	return r.buckets[r.idx]
+	return m, nil
 }
 
 // RecordLatencies sets records latencies.
@@ -201,4 +201,18 @@ func (r *RollingHDRHistogram) RecordLatencies(v time.Duration, n int64) error {
 // RecordValues sets record values.
 func (r *RollingHDRHistogram) RecordValues(v, n int64) error {
 	return r.getHist().RecordValues(v, n)
+}
+
+func (r *RollingHDRHistogram) rotate() {
+	r.idx = (r.idx + 1) % len(r.buckets)
+	r.buckets[r.idx].Reset()
+}
+
+func (r *RollingHDRHistogram) getHist() *HDRHistogram {
+	if clock.Now().UTC().Sub(r.lastRoll) >= r.period {
+		r.rotate()
+		r.lastRoll = clock.Now().UTC()
+	}
+
+	return r.buckets[r.idx]
 }

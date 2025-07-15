@@ -41,10 +41,13 @@ func (r *ratioController) allowRequest() bool {
 	if e < t {
 		r.allowed++
 		r.log.Debug("%v allowed", r)
+
 		return true
 	}
+
 	r.denied++
 	r.log.Debug("%v denied", r)
+
 	return false
 }
 
@@ -52,6 +55,7 @@ func (r *ratioController) computeRatio(allowed, denied int) float64 {
 	if denied+allowed == 0 {
 		return 0
 	}
+
 	return float64(allowed) / float64(denied+allowed)
 }
 

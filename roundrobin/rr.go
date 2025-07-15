@@ -45,9 +45,11 @@ func New(next http.Handler, opts ...LBOption) (*RoundRobin, error) {
 			return nil, err
 		}
 	}
+
 	if rr.errHandler == nil {
 		rr.errHandler = utils.DefaultHandler
 	}
+
 	return rr, nil
 }
 
@@ -59,6 +61,7 @@ func (r *RoundRobin) Next() http.Handler {
 func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.verbose {
 		dump := utils.DumpHTTPRequest(req)
+
 		r.log.Debug("vulcand/oxy/roundrobin/rr: begin ServeHttp on request: %s", dump)
 		defer r.log.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request: %s", dump)
 	}
@@ -66,6 +69,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
 	stuck := false
+
 	if r.stickySession != nil {
 		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
 		if err != nil {
@@ -88,6 +92,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if r.stickySession != nil {
 			r.stickySession.StickBackend(uri, w)
 		}
+
 		newReq.URL = uri
 	}
 
@@ -111,7 +116,87 @@ func (r *RoundRobin) NextServer() (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return utils.CopyURL(srv.url), nil
+}
+
+// RemoveServer remove a server.
+func (r *RoundRobin) RemoveServer(u *url.URL) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	e, index := r.findServerByURL(u)
+	if e == nil {
+		return errors.New("server not found")
+	}
+
+	r.servers = append(r.servers[:index], r.servers[index+1:]...)
+	r.resetState()
+
+	return nil
+}
+
+// Servers gets servers URL.
+func (r *RoundRobin) Servers() []*url.URL {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	out := make([]*url.URL, len(r.servers))
+	for i, srv := range r.servers {
+		out[i] = srv.url
+	}
+
+	return out
+}
+
+// ServerWeight gets the server weight.
+func (r *RoundRobin) ServerWeight(u *url.URL) (int, bool) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if s, _ := r.findServerByURL(u); s != nil {
+		return s.weight, true
+	}
+
+	return -1, false
+}
+
+// UpsertServer In case if server is already present in the load balancer, returns error.
+func (r *RoundRobin) UpsertServer(u *url.URL, options ...ServerOption) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if u == nil {
+		return errors.New("server URL can't be nil")
+	}
+
+	if s, _ := r.findServerByURL(u); s != nil {
+		for _, o := range options {
+			if err := o(s); err != nil {
+				return err
+			}
+		}
+
+		r.resetState()
+
+		return nil
+	}
+
+	srv := &server{url: utils.CopyURL(u)}
+	for _, o := range options {
+		if err := o(srv); err != nil {
+			return err
+		}
+	}
+
+	if srv.weight == 0 {
+		srv.weight = defaultWeight
+	}
+
+	r.servers = append(r.servers, srv)
+	r.resetState()
+
+	return nil
 }
 
 func (r *RoundRobin) nextServer() (*server, error) {
@@ -142,83 +227,12 @@ func (r *RoundRobin) nextServer() (*server, error) {
 				}
 			}
 		}
+
 		srv := r.servers[r.index]
 		if srv.weight >= r.currentWeight {
 			return srv, nil
 		}
 	}
-}
-
-// RemoveServer remove a server.
-func (r *RoundRobin) RemoveServer(u *url.URL) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	e, index := r.findServerByURL(u)
-	if e == nil {
-		return errors.New("server not found")
-	}
-	r.servers = append(r.servers[:index], r.servers[index+1:]...)
-	r.resetState()
-	return nil
-}
-
-// Servers gets servers URL.
-func (r *RoundRobin) Servers() []*url.URL {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	out := make([]*url.URL, len(r.servers))
-	for i, srv := range r.servers {
-		out[i] = srv.url
-	}
-	return out
-}
-
-// ServerWeight gets the server weight.
-func (r *RoundRobin) ServerWeight(u *url.URL) (int, bool) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if s, _ := r.findServerByURL(u); s != nil {
-		return s.weight, true
-	}
-	return -1, false
-}
-
-// UpsertServer In case if server is already present in the load balancer, returns error.
-func (r *RoundRobin) UpsertServer(u *url.URL, options ...ServerOption) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if u == nil {
-		return errors.New("server URL can't be nil")
-	}
-
-	if s, _ := r.findServerByURL(u); s != nil {
-		for _, o := range options {
-			if err := o(s); err != nil {
-				return err
-			}
-		}
-		r.resetState()
-		return nil
-	}
-
-	srv := &server{url: utils.CopyURL(u)}
-	for _, o := range options {
-		if err := o(srv); err != nil {
-			return err
-		}
-	}
-
-	if srv.weight == 0 {
-		srv.weight = defaultWeight
-	}
-
-	r.servers = append(r.servers, srv)
-	r.resetState()
-	return nil
 }
 
 func (r *RoundRobin) resetIterator() {
@@ -234,11 +248,13 @@ func (r *RoundRobin) findServerByURL(u *url.URL) (*server, int) {
 	if len(r.servers) == 0 {
 		return nil, -1
 	}
+
 	for i, s := range r.servers {
 		if sameURL(u, s.url) {
 			return s, i
 		}
 	}
+
 	return nil, -1
 }
 
@@ -249,6 +265,7 @@ func (r *RoundRobin) maxWeight() int {
 			maxWeight = s.weight
 		}
 	}
+
 	return maxWeight
 }
 
@@ -261,6 +278,7 @@ func (r *RoundRobin) weightGcd() int {
 			divisor = gcd(divisor, s.weight)
 		}
 	}
+
 	return divisor
 }
 
@@ -268,6 +286,7 @@ func gcd(a, b int) int {
 	for b != 0 {
 		a, b = b, a%b
 	}
+
 	return a
 }
 
@@ -285,7 +304,9 @@ func SetDefaultWeight(weight int) error {
 	if weight < 0 {
 		return errors.New("default weight should be >= 0")
 	}
+
 	defaultWeight = weight
+
 	return nil
 }
 

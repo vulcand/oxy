@@ -39,6 +39,7 @@ func (p *ProxyWriter) StatusCode() int {
 		// by user, here we avoid the confusion by mirroring this logic
 		return http.StatusOK
 	}
+
 	return p.code
 }
 
@@ -76,7 +77,9 @@ func (p *ProxyWriter) CloseNotify() <-chan bool {
 	if cn, ok := p.w.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
+
 	p.log.Debug("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(p.w))
+
 	return make(<-chan bool)
 }
 
@@ -85,8 +88,18 @@ func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := p.w.(http.Hijacker); ok {
 		return hi.Hijack()
 	}
+
 	p.log.Debug("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.w))
+
 	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.w))
+}
+
+// BufferWriter buffer writer.
+type BufferWriter struct {
+	H    http.Header
+	Code int
+	W    io.WriteCloser
+	log  Logger
 }
 
 // NewBufferWriter creates a new BufferWriter.
@@ -96,14 +109,6 @@ func NewBufferWriter(w io.WriteCloser, l Logger) *BufferWriter {
 		H:   make(http.Header),
 		log: l,
 	}
-}
-
-// BufferWriter buffer writer.
-type BufferWriter struct {
-	H    http.Header
-	Code int
-	W    io.WriteCloser
-	log  Logger
 }
 
 // Close close the writer.
@@ -131,6 +136,7 @@ func (b *BufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.W.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
+
 	b.log.Warn("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.W))
 
 	return make(<-chan bool)
@@ -141,6 +147,7 @@ func (b *BufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if hi, ok := b.W.(http.Hijacker); ok {
 		return hi.Hijack()
 	}
+
 	b.log.Debug("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(b.W))
 
 	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(b.W))
@@ -165,6 +172,7 @@ func CopyURL(i *url.URL) *url.URL {
 		u := *i.User
 		out.User = &u
 	}
+
 	return &out
 }
 
@@ -183,6 +191,7 @@ func HasHeaders(names []string, headers http.Header) bool {
 			return true
 		}
 	}
+
 	return false
 }
 

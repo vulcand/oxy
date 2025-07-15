@@ -23,6 +23,7 @@ func NewTokenBucketSet(rates *RateSet) *TokenBucketSet {
 		tbs.buckets[rate.period] = newBucket
 		tbs.maxPeriod = maxDuration(tbs.maxPeriod, rate.period)
 	}
+
 	return tbs
 }
 
@@ -52,8 +53,11 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 
 // Consume consume tokens.
 func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
-	var maxDelay time.Duration = UndefinedDelay
-	var firstErr error
+	var (
+		maxDelay time.Duration = UndefinedDelay
+		firstErr error
+	)
+
 	for _, tokenBucket := range tbs.buckets {
 		// We keep calling `Consume` even after a error is returned for one of
 		// buckets because that allows us to simplify the rollback procedure,
@@ -74,6 +78,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 			tokenBucket.rollback()
 		}
 	}
+
 	return maxDelay, firstErr
 }
 
@@ -89,12 +94,15 @@ func (tbs *TokenBucketSet) debugState() string {
 	for period := range tbs.buckets {
 		periods = append(periods, int64(period))
 	}
+
 	sort.Slice(periods, func(i, j int) bool { return periods[i] < periods[j] })
+
 	bucketRepr := make([]string, 0, len(tbs.buckets))
 	for _, period := range periods {
 		bucket := tbs.buckets[time.Duration(period)]
 		bucketRepr = append(bucketRepr, fmt.Sprintf("{%v: %v}", bucket.period, bucket.availableTokens))
 	}
+
 	return strings.Join(bucketRepr, ", ")
 }
 
@@ -102,5 +110,6 @@ func maxDuration(x, y time.Duration) time.Duration {
 	if x > y {
 		return x
 	}
+
 	return y
 }

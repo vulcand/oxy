@@ -182,12 +182,14 @@ func TestSplitLatencies(t *testing.T) {
 			for _, v := range test.good {
 				vgood[time.Duration(v)*clock.Millisecond] = true
 			}
+
 			assert.Equal(t, vgood, good)
 
 			vbad := make(map[time.Duration]bool, len(test.bad))
 			for _, v := range test.bad {
 				vbad[time.Duration(v)*clock.Millisecond] = true
 			}
+
 			assert.Equal(t, vbad, bad)
 		})
 	}

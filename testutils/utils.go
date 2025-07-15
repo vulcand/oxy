@@ -28,6 +28,7 @@ func NewResponder(t *testing.T, response string) *httptest.Server {
 	}))
 
 	t.Cleanup(server.Close)
+
 	return server
 }
 
@@ -37,6 +38,7 @@ func MustParseRequestURI(uri string) *url.URL {
 	if err != nil {
 		panic(err)
 	}
+
 	return out
 }
 
@@ -82,7 +84,9 @@ func Header(name, val string) ReqOption {
 		if o.Headers == nil {
 			o.Headers = make(http.Header)
 		}
+
 		o.Headers.Add(name, val)
+
 		return nil
 	}
 }
@@ -93,7 +97,9 @@ func Headers(h http.Header) ReqOption {
 		if o.Headers == nil {
 			o.Headers = make(http.Header)
 		}
+
 		utils.CopyHeaders(o.Headers, h)
+
 		return nil
 	}
 }
@@ -105,6 +111,7 @@ func BasicAuth(username, password string) ReqOption {
 			Username: username,
 			Password: password,
 		}
+
 		return nil
 	}
 }
@@ -160,11 +167,13 @@ func MakeRequest(uri string, opts ...ReqOption) (*http.Response, []byte, error) 
 			return errors.New("no redirects")
 		},
 	}
+
 	response, err := client.Do(request)
 	if err == nil {
 		bodyBytes, errRead := io.ReadAll(response.Body)
 		return response, bodyBytes, errRead
 	}
+
 	return response, nil, err
 }
 

@@ -14,21 +14,25 @@ func SplitLatencies(values []time.Duration, precision time.Duration) (good map[t
 	// Find the max latency M and then map each latency L to the ratio L/M and then call SplitFloat64
 	v2r := map[float64]time.Duration{}
 	ratios := make([]float64, len(values))
+
 	m := maxTime(values)
 	for i, v := range values {
 		ratio := float64(v/precision+1) / float64(m/precision+1) // +1 is to avoid division by 0
 		v2r[ratio] = v
 		ratios[i] = ratio
 	}
+
 	good, bad = make(map[time.Duration]bool), make(map[time.Duration]bool)
 	// Note that multiplier makes this function way less sensitive than ratios detector, this is to avoid noise.
 	vgood, vbad := SplitFloat64(2, 0, ratios)
 	for r := range vgood {
 		good[v2r[r]] = true
 	}
+
 	for r := range vbad {
 		bad[v2r[r]] = true
 	}
+
 	return good, bad
 }
 
@@ -46,6 +50,7 @@ func SplitRatios(values []float64) (good map[float64]bool, bad map[float64]bool)
 // on such data sets.
 func SplitFloat64(threshold, sentinel float64, values []float64) (good map[float64]bool, bad map[float64]bool) {
 	good, bad = make(map[float64]bool), make(map[float64]bool)
+
 	var newValues []float64
 	if len(values)%2 == 0 {
 		newValues = make([]float64, len(values)+1)
@@ -57,6 +62,7 @@ func SplitFloat64(threshold, sentinel float64, values []float64) (good map[float
 	}
 
 	m := median(newValues)
+
 	mAbs := medianAbsoluteDeviation(newValues)
 	for _, v := range values {
 		if v > (m+mAbs)*threshold {
@@ -65,6 +71,7 @@ func SplitFloat64(threshold, sentinel float64, values []float64) (good map[float
 			good[v] = true
 		}
 	}
+
 	return good, bad
 }
 
@@ -72,19 +79,23 @@ func median(values []float64) float64 {
 	vals := make([]float64, len(values))
 	copy(vals, values)
 	sort.Float64s(vals)
+
 	l := len(vals)
 	if l%2 != 0 {
 		return vals[l/2]
 	}
+
 	return (vals[l/2-1] + vals[l/2]) / 2.0
 }
 
 func medianAbsoluteDeviation(values []float64) float64 {
 	m := median(values)
+
 	distances := make([]float64, len(values))
 	for i, v := range values {
 		distances[i] = math.Abs(v - m)
 	}
+
 	return median(distances)
 }
 
@@ -95,5 +106,6 @@ func maxTime(vals []time.Duration) time.Duration {
 			val = v
 		}
 	}
+
 	return val
 }

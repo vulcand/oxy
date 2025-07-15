@@ -77,6 +77,7 @@ func TestRemoveHeaders(t *testing.T) {
 //nolint:intrange // benchmarks
 func BenchmarkCopyHeaders(b *testing.B) {
 	dstHeaders := make([]http.Header, 0, b.N)
+
 	sourceHeaders := make([]http.Header, 0, b.N)
 	for n := 0; n < b.N; n++ {
 		// example from a reverse proxy merging headers
@@ -94,6 +95,7 @@ func BenchmarkCopyHeaders(b *testing.B) {
 		s.Add("Accept-Ranges", "bytes")
 		sourceHeaders = append(sourceHeaders, s)
 	}
+
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {

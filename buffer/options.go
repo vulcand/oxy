@@ -34,6 +34,7 @@ func Cond(condition bool, setter Option) Option {
 			return nil
 		}
 	}
+
 	return setter
 }
 
@@ -53,7 +54,9 @@ func Retry(predicate string) Option {
 		if err != nil {
 			return err
 		}
+
 		b.retryPredicate = p
+
 		return nil
 	}
 }
@@ -72,7 +75,9 @@ func MaxRequestBodyBytes(m int64) Option {
 		if m < 0 {
 			return fmt.Errorf("max bytes should be >= 0 got %d", m)
 		}
+
 		b.maxRequestBodyBytes = m
+
 		return nil
 	}
 }
@@ -84,7 +89,9 @@ func MemRequestBodyBytes(m int64) Option {
 		if m < 0 {
 			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
 		}
+
 		b.memRequestBodyBytes = m
+
 		return nil
 	}
 }
@@ -95,7 +102,9 @@ func MaxResponseBodyBytes(m int64) Option {
 		if m < 0 {
 			return fmt.Errorf("max bytes should be >= 0 got %d", m)
 		}
+
 		b.maxResponseBodyBytes = m
+
 		return nil
 	}
 }
@@ -107,7 +116,9 @@ func MemResponseBodyBytes(m int64) Option {
 		if m < 0 {
 			return fmt.Errorf("mem bytes should be >= 0 got %d", m)
 		}
+
 		b.memResponseBodyBytes = m
+
 		return nil
 	}
 }

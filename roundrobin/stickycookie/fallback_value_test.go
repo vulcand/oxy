@@ -41,6 +41,7 @@ func TestFallbackValue_FindURL(t *testing.T) {
 					require.Error(t, err)
 					return
 				}
+
 				require.NoError(t, err)
 
 				if from.CookieValue != nil {
@@ -183,6 +184,7 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 
 			findURL, err := value.FindURL(tt.rawValue, servers)
@@ -190,6 +192,7 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want, findURL)

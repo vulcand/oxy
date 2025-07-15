@@ -31,7 +31,9 @@ func Capacity(capacity int) TokenLimiterOption {
 		if capacity <= 0 {
 			return fmt.Errorf("bad capacity: %v", capacity)
 		}
+
 		cl.capacity = capacity
+
 		return nil
 	}
 }

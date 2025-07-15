@@ -101,6 +101,7 @@ func TestRTMetric_Export_returnsNewCopy(t *testing.T) {
 	}
 
 	var err error
+
 	a.total, err = NewCounter(1, clock.Second)
 	require.NoError(t, err)
 
@@ -131,11 +132,13 @@ func TestRTMetric_Export_returnsNewCopy(t *testing.T) {
 
 	// a and b should have different locks
 	locksSucceed := make(chan bool)
+
 	go func() {
 		a.statusCodesLock.Lock()
 		b.statusCodesLock.Lock()
 		a.histogramLock.Lock()
 		b.histogramLock.Lock()
+
 		locksSucceed <- true
 	}()
 

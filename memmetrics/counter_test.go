@@ -25,6 +25,7 @@ func TestRollingCounter_Clone_expired(t *testing.T) {
 	cnt.Inc(1)
 
 	clock.Advance(clock.Second)
+
 	out := cnt.Clone()
 
 	assert.EqualValues(t, 2, out.Count())

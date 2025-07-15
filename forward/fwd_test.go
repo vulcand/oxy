@@ -60,6 +60,7 @@ func TestXForwardedHostHeader(t *testing.T) {
 
 			backendURL, err := url.Parse(test.ProxyfiedURL)
 			require.NoError(t, err)
+
 			r.URL = backendURL
 
 			f.Director(r)
@@ -70,6 +71,7 @@ func TestXForwardedHostHeader(t *testing.T) {
 
 func TestForwardedProto(t *testing.T) {
 	var proto string
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		proto = req.Header.Get(XForwardedProto)
 		_, _ = w.Write([]byte("hello"))

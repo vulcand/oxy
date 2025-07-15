@@ -335,6 +335,7 @@ func TestRebalancer_requestRewriteListenerLive(t *testing.T) {
 	for i := range 1000 {
 		_, _, err = testutils.Get(proxy.URL)
 		require.NoError(t, err)
+
 		if i%10 == 0 {
 			clock.Advance(rb.backoffDuration + clock.Second)
 		}
@@ -395,6 +396,7 @@ func TestRebalancer_stickySession(t *testing.T) {
 
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
+
 		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)

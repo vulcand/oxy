@@ -30,6 +30,7 @@ func NewRatioCounter(buckets int, resolution time.Duration, options ...RatioOpti
 
 	rc.a = a
 	rc.b = b
+
 	return rc, nil
 }
 
@@ -82,6 +83,7 @@ func (r *RatioCounter) Ratio() float64 {
 	if a+b == 0 {
 		return 0
 	}
+
 	return float64(a) / float64(a+b)
 }
 

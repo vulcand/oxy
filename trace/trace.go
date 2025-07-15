@@ -40,9 +40,11 @@ func New(next http.Handler, writer io.Writer, opts ...Option) (*Tracer, error) {
 			return nil, err
 		}
 	}
+
 	if t.errHandler == nil {
 		t.errHandler = utils.DefaultHandler
 	}
+
 	return t, nil
 }
 
@@ -79,16 +81,19 @@ func captureHeaders(in http.Header, headers []string) http.Header {
 	if len(headers) == 0 || in == nil {
 		return nil
 	}
+
 	out := make(http.Header, len(headers))
 	for _, h := range headers {
 		vals, ok := in[h]
 		if !ok || len(out[h]) != 0 {
 			continue
 		}
+
 		for i := range vals {
 			out.Add(h, vals[i])
 		}
 	}
+
 	return out
 }
 
@@ -127,6 +132,7 @@ func newTLS(req *http.Request) *TLS {
 	if req.TLS == nil {
 		return nil
 	}
+
 	return &TLS{
 		Version:     versionToString(req.TLS.Version),
 		Resume:      req.TLS.DidResume,
@@ -144,6 +150,7 @@ func versionToString(v uint16) string {
 	case tls.VersionTLS12:
 		return "TLS12"
 	}
+
 	return fmt.Sprintf("unknown: %x", v)
 }
 
@@ -176,6 +183,7 @@ func csToString(cs uint16) string {
 	case tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:
 		return "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
 	}
+
 	return fmt.Sprintf("unknown: %x", cs)
 }
 
@@ -184,9 +192,11 @@ func bodyBytes(h http.Header) int64 {
 	if length == "" {
 		return 0
 	}
+
 	bytes, err := strconv.ParseInt(length, 10, 0)
 	if err == nil {
 		return bytes
 	}
+
 	return 0
 }

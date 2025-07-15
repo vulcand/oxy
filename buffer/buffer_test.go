@@ -48,11 +48,15 @@ func TestBuffer_simple(t *testing.T) {
 }
 
 func TestBuffer_chunkedEncodingSuccess(t *testing.T) {
-	var reqBody string
-	var contentLength int64
+	var (
+		reqBody       string
+		contentLength int64
+	)
+
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
+
 		reqBody = string(body)
 		contentLength = req.ContentLength
 		_, _ = w.Write([]byte("hello"))
@@ -111,6 +115,7 @@ func TestBuffer_chunkedEncodingLimitReached(t *testing.T) {
 
 	conn, err := net.Dial("tcp", testutils.MustParseRequestURI(proxy.URL).Host)
 	require.NoError(t, err)
+
 	_, _ = fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	status, err := bufio.NewReader(conn).ReadString('\n')
 	require.NoError(t, err)
@@ -135,6 +140,7 @@ func TestBuffer_chunkedResponse(t *testing.T) {
 	})
 	st, err := New(rdr)
 	require.NoError(t, err)
+
 	proxy := httptest.NewServer(st)
 
 	t.Cleanup(proxy.Close)

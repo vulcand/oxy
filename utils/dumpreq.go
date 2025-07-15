@@ -46,6 +46,7 @@ func Clone(r *http.Request) *SerializableHTTPRequest {
 	rc.Host = r.Host
 	rc.RemoteAddr = r.RemoteAddr
 	rc.RequestURI = r.RequestURI
+
 	return rc
 }
 
@@ -55,6 +56,7 @@ func (s *SerializableHTTPRequest) ToJSON() string {
 	if err != nil || jsonVal == nil {
 		return fmt.Sprintf("error marshaling SerializableHTTPRequest to json: %s", err)
 	}
+
 	return string(jsonVal)
 }
 

@@ -144,6 +144,7 @@ func TestHDRHistogram_Export_returnsNewCopy(t *testing.T) {
 
 func TestRollingHDRHistogram_Export_returnsNewCopy(t *testing.T) {
 	origTime := clock.Now()
+
 	testutils.FreezeTime(t)
 
 	a := RollingHDRHistogram{

@@ -67,11 +67,14 @@ func (cl *ConnLimiter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		cl.log.Error("failed to extract source of the connection: %v", err)
 		cl.errHandler.ServeHTTP(w, r, err)
+
 		return
 	}
+
 	if err := cl.acquire(token, amount); err != nil {
 		cl.log.Debug("limiting request source %s: %v", token, err)
 		cl.errHandler.ServeHTTP(w, r, err)
+
 		return
 	}
 
@@ -91,6 +94,7 @@ func (cl *ConnLimiter) acquire(token string, amount int64) error {
 
 	cl.connections[token] += amount
 	cl.totalConnections += amount
+
 	return nil
 }
 
@@ -125,6 +129,7 @@ type ConnErrHandler struct {
 func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
 	if e.debug {
 		dump := utils.DumpHTTPRequest(req)
+
 		e.log.Debug("vulcand/oxy/connlimit: begin ServeHttp on request: %s", dump)
 		defer e.log.Debug("vulcand/oxy/connlimit: completed ServeHttp on request: %s", dump)
 	}
@@ -133,7 +138,9 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 	if _, ok := err.(*MaxConnError); ok {
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte(err.Error()))
+
 		return
 	}
+
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }

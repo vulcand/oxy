@@ -62,6 +62,7 @@ func TestHitLimit(t *testing.T) {
 
 	// Second later, the request from this ip will succeed
 	clock.Advance(clock.Second)
+
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
@@ -163,14 +164,17 @@ func TestExtractRates(t *testing.T) {
 	// Given
 	extractRates := func(*http.Request) (*RateSet, error) {
 		rates := NewRateSet()
+
 		err := rates.Add(clock.Second, 2, 2)
 		if err != nil {
 			return nil, err
 		}
+
 		err = rates.Add(60*clock.Second, 10, 10)
 		if err != nil {
 			return nil, err
 		}
+
 		return rates, nil
 	}
 
@@ -204,6 +208,7 @@ func TestExtractRates(t *testing.T) {
 	assert.Equal(t, 429, re.StatusCode)
 
 	clock.Advance(clock.Second)
+
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
@@ -242,6 +247,7 @@ func TestBadRateExtractor(t *testing.T) {
 	assert.Equal(t, 429, re.StatusCode)
 
 	clock.Advance(clock.Second)
+
 	re, _, err = testutils.Get(srv.URL, testutils.Header("Source", "a"))
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)

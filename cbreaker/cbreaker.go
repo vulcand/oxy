@@ -86,12 +86,14 @@ func New(next http.Handler, expression string, options ...Option) (*CircuitBreak
 	if err != nil {
 		return nil, err
 	}
+
 	cb.condition = condition
 
 	mt, err := memmetrics.NewRTMetrics()
 	if err != nil {
 		return nil, err
 	}
+
 	cb.metrics = mt
 
 	return cb, nil
@@ -100,6 +102,7 @@ func New(next http.Handler, expression string, options ...Option) (*CircuitBreak
 func (c *CircuitBreaker) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.verbose {
 		dump := utils.DumpHTTPRequest(req)
+
 		c.log.Debug("vulcand/oxy/circuitbreaker: begin ServeHttp on request: %s", dump)
 		defer c.log.Debug("vulcand/oxy/circuitbreaker: completed ServeHttp on request: %s", dump)
 	}
@@ -120,6 +123,16 @@ func (c *CircuitBreaker) Fallback(f http.Handler) {
 // Wrap sets the next handler to be called by circuit breaker handler.
 func (c *CircuitBreaker) Wrap(next http.Handler) {
 	c.next = next
+}
+
+// String returns log-friendly representation of the circuit breaker state.
+func (c *CircuitBreaker) String() string {
+	switch c.state {
+	case stateTripped, stateRecovering:
+		return fmt.Sprintf("CircuitBreaker(state=%v, until=%v)", c.state, c.until)
+	default:
+		return fmt.Sprintf("CircuitBreaker(state=%v)", c.state)
+	}
 }
 
 // updateState updates internal state and returns true if fallback should be used and false otherwise.
@@ -144,6 +157,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 		}
 		// We have been in active state enough, enter recovering state
 		c.setRecovering()
+
 		fallthrough
 	case stateRecovering:
 		// We have been in recovering state enough, enter standby and allow request
@@ -155,8 +169,10 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 		if c.rc.allowRequest() {
 			return false
 		}
+
 		return true
 	}
+
 	return false
 }
 
@@ -177,17 +193,8 @@ func (c *CircuitBreaker) serve(w http.ResponseWriter, req *http.Request) {
 func (c *CircuitBreaker) isStandby() bool {
 	c.m.RLock()
 	defer c.m.RUnlock()
-	return c.state == stateStandby
-}
 
-// String returns log-friendly representation of the circuit breaker state.
-func (c *CircuitBreaker) String() string {
-	switch c.state {
-	case stateTripped, stateRecovering:
-		return fmt.Sprintf("CircuitBreaker(state=%v, until=%v)", c.state, c.until)
-	default:
-		return fmt.Sprintf("CircuitBreaker(state=%v)", c.state)
-	}
+	return c.state == stateStandby
 }
 
 // exec executes side effect.
@@ -195,6 +202,7 @@ func (c *CircuitBreaker) exec(s SideEffect) {
 	if s == nil {
 		return
 	}
+
 	go func() {
 		if err := s.Exec(); err != nil {
 			c.log.Error("%v side effect failure: %v", c, err)
@@ -206,6 +214,7 @@ func (c *CircuitBreaker) setState(state cbState, until time.Time) {
 	c.log.Debug("%v setting state to %v, until %v", c, state, until)
 	c.state = state
 	c.until = until
+
 	switch state {
 	case stateTripped:
 		c.exec(c.onTripped)
@@ -217,6 +226,7 @@ func (c *CircuitBreaker) setState(state cbState, until time.Time) {
 func (c *CircuitBreaker) timeToCheck() bool {
 	c.m.RLock()
 	defer c.m.RUnlock()
+
 	return clock.Now().UTC().After(c.lastCheck)
 }
 
@@ -233,6 +243,7 @@ func (c *CircuitBreaker) checkAndSet() {
 	if clock.Now().UTC().Before(c.lastCheck) {
 		return
 	}
+
 	c.lastCheck = clock.Now().UTC().Add(c.checkPeriod)
 
 	if c.state == stateTripped {
@@ -265,6 +276,7 @@ func (s cbState) String() string {
 	case stateRecovering:
 		return "recovering"
 	}
+
 	return "undefined"
 }
 

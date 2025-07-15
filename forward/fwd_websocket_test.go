@@ -29,6 +29,7 @@ func TestWebSocketTCPClose(t *testing.T) {
 			return
 		}
 		defer func(c *gorillawebsocket.Conn) { _ = c.Close() }(c)
+
 		for {
 			_, _, err := c.ReadMessage()
 			if err != nil {
@@ -47,6 +48,7 @@ func TestWebSocketTCPClose(t *testing.T) {
 		withPath("/ws"),
 	).open()
 	require.NoError(t, err)
+
 	_ = conn.Close()
 
 	serverErr := <-errChan
@@ -96,20 +98,23 @@ func TestWebSocketPingPong(t *testing.T) {
 
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
 	require.NoError(t, err, "Error during Dial with response: %+v", resp)
+
 	defer conn.Close()
 
 	goodErr := fmt.Errorf("signal: %s", "Good data")
 	badErr := fmt.Errorf("signal: %s", "Bad data")
+
 	conn.SetPongHandler(func(data string) error {
 		if data == "PingPong" {
 			return goodErr
 		}
+
 		return badErr
 	})
 
 	_ = conn.WriteControl(gorillawebsocket.PingMessage, []byte("Ping"), clock.Now().Add(clock.Second))
-	_, _, err = conn.ReadMessage()
 
+	_, _, err = conn.ReadMessage()
 	if !errors.Is(err, goodErr) {
 		require.NoError(t, err)
 	}
@@ -228,11 +233,13 @@ func TestWebSocketServerWithoutCheckOrigin(t *testing.T) {
 			return
 		}
 		defer c.Close()
+
 		for {
 			mt, message, err := c.ReadMessage()
 			if err != nil {
 				break
 			}
+
 			err = c.WriteMessage(mt, message)
 			if err != nil {
 				break
@@ -266,11 +273,13 @@ func TestWebSocketRequestWithOrigin(t *testing.T) {
 			return
 		}
 		defer c.Close()
+
 		for {
 			mt, message, err := c.ReadMessage()
 			if err != nil {
 				break
 			}
+
 			err = c.WriteMessage(mt, message)
 			if err != nil {
 				break
@@ -311,12 +320,15 @@ func TestWebSocketRequestWithQueryParams(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
 		assert.Equal(t, "test", r.URL.Query().Get("query"))
+
 		for {
 			mt, message, err := conn.ReadMessage()
 			if err != nil {
 				break
 			}
+
 			err = conn.WriteMessage(mt, message)
 			if err != nil {
 				break
@@ -352,6 +364,7 @@ func TestWebSocketRequestWithHeadersInResponseWriter(t *testing.T) {
 
 	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.MustParseRequestURI(srv.URL)
+
 		w.Header().Set("HEADER-KEY", "HEADER-VALUE")
 		f.ServeHTTP(w, req)
 	})
@@ -379,12 +392,15 @@ func TestWebSocketRequestWithEncodedChar(t *testing.T) {
 			return
 		}
 		defer conn.Close()
+
 		assert.Equal(t, "/%3A%2F%2F", r.URL.EscapedPath())
+
 		for {
 			mt, message, err := conn.ReadMessage()
 			if err != nil {
 				break
 			}
+
 			err = conn.WriteMessage(mt, message)
 			if err != nil {
 				break
@@ -435,6 +451,7 @@ func TestWebSocketUpgradeFailed(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", proxyAddr, dialTimeout)
 
 	require.NoError(t, err)
+
 	defer conn.Close()
 
 	req, err := http.NewRequest(http.MethodGet, "ws://127.0.0.1/ws", nil)
@@ -486,17 +503,20 @@ func createTLSWebsocketServer() *httptest.Server {
 			return
 		}
 		defer conn.Close()
+
 		for {
 			mt, message, err := conn.ReadMessage()
 			if err != nil {
 				break
 			}
+
 			err = conn.WriteMessage(mt, message)
 			if err != nil {
 				break
 			}
 		}
 	}))
+
 	return srv
 }
 
@@ -555,6 +575,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 	forwarderWithTLSConfigFromDefaultTransport := New(true)
 
 	proxyWithTLSConfigFromDefaultTransport := createProxyWithForwarder(forwarderWithTLSConfigFromDefaultTransport, srv.URL)
+
 	defer proxyWithTLSConfig.Close()
 
 	proxyAddr = proxyWithTLSConfigFromDefaultTransport.Listener.Addr().String()
@@ -602,12 +623,15 @@ func newWebsocketRequest(opts ...websocketRequestOpt) *websocketRequest {
 	for _, opt := range opts {
 		opt(wsrequest)
 	}
+
 	if wsrequest.Origin == "" {
 		wsrequest.Origin = "http://" + wsrequest.ServerAddr
 	}
+
 	if wsrequest.Config == nil {
 		wsrequest.Config, _ = websocket.NewConfig(fmt.Sprintf("ws://%s%s", wsrequest.ServerAddr, wsrequest.Path), wsrequest.Origin)
 	}
+
 	return wsrequest
 }
 
@@ -625,18 +649,22 @@ func (w *websocketRequest) send() (string, error) {
 		return "", err
 	}
 	defer conn.Close()
+
 	if _, err := conn.Write([]byte(w.Data)); err != nil {
 		return "", err
 	}
 
 	msg := make([]byte, 512)
+
 	var n int
+
 	n, err = conn.Read(msg)
 	if err != nil {
 		return "", err
 	}
 
 	received := string(msg[:n])
+
 	return received, nil
 }
 
@@ -645,9 +673,11 @@ func (w *websocketRequest) open() (*websocket.Conn, net.Conn, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
 	conn, err := websocket.NewClient(w.Config, client)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return conn, client, err
 }

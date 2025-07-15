@@ -75,7 +75,9 @@ func Weight(w int) ServerOption {
 		if w < 0 {
 			return errors.New("Weight should be >= 0")
 		}
+
 		s.weight = w
+
 		return nil
 	}
 }

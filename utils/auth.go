@@ -30,6 +30,7 @@ func ParseAuthHeader(header string) (*BasicAuth, error) {
 	}
 
 	encodedString := values[1]
+
 	decodedString, err := base64.StdEncoding.DecodeString(encodedString)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse header '%s', base64 failed: %w", header, err)
@@ -39,5 +40,6 @@ func ParseAuthHeader(header string) (*BasicAuth, error) {
 	if len(values) != 2 {
 		return nil, fmt.Errorf("failed to parse header '%s', expected separator ':'", header)
 	}
+
 	return &BasicAuth{Username: values[0], Password: values[1]}, nil
 }

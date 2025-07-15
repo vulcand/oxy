@@ -188,6 +188,7 @@ func Test_tokenBucket_update_invalidPeriod(t *testing.T) {
 
 	// ...check that burst did not change
 	clock.Advance(40 * clock.Second)
+
 	_, err = tb.consume(21)
 	require.Error(t, err)
 
@@ -360,6 +361,7 @@ func Test_tokenBucket_rollback_afterError(t *testing.T) {
 
 func Test_tokenBucket_divisionByZeroOnPeriod(t *testing.T) {
 	var emptyPeriod int64
+
 	tb := newTokenBucket(&rate{period: time.Duration(emptyPeriod), average: 2, burst: 2})
 
 	_, err := tb.consume(1)

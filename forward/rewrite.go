@@ -9,19 +9,20 @@ import (
 	"github.com/vulcand/oxy/v2/utils"
 )
 
+// HeaderRewriter is responsible for removing hop-by-hop headers and setting forwarding headers.
+type HeaderRewriter struct {
+	TrustForwardHeader bool
+	Hostname           string
+}
+
 // NewHeaderRewriter creates a new HeaderRewriter middleware.
 func NewHeaderRewriter() *HeaderRewriter {
 	h, err := os.Hostname()
 	if err != nil {
 		h = "localhost"
 	}
-	return &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
-}
 
-// HeaderRewriter is responsible for removing hop-by-hop headers and setting forwarding headers.
-type HeaderRewriter struct {
-	TrustForwardHeader bool
-	Hostname           string
+	return &HeaderRewriter{TrustForwardHeader: true, Hostname: h}
 }
 
 // clean up IP in case if it is ipv6 address and it has {zone} information in it, like "[fe80::d806:a55d:eb1b:49cc%vEthernet (vmxnet3 Ethernet Adapter - Virtual Switch)]:64692".

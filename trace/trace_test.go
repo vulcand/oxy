@@ -102,6 +102,7 @@ func TestTracer_TLS(t *testing.T) {
 	status, err := bufio.NewReader(conn).ReadString('\n')
 	require.NoError(t, err)
 	assert.Equal(t, "HTTP/1.0 200 OK\r\n", status)
+
 	state := conn.ConnectionState()
 	_ = conn.Close()
 

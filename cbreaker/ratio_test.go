@@ -35,9 +35,11 @@ func sendRequest(allowed, denied *int, rc *ratioController) float64 {
 	} else {
 		*denied++
 	}
+
 	if *allowed+*denied == 0 {
 		return 0
 	}
+
 	return float64(*allowed) / float64(*allowed+*denied)
 }
 
@@ -45,11 +47,13 @@ func round(val float64, roundOn float64, places int) float64 {
 	pow := math.Pow(10, float64(places))
 	digit := pow * val
 	_, div := math.Modf(digit)
+
 	var round float64
 	if div >= roundOn {
 		round = math.Ceil(digit)
 	} else {
 		round = math.Floor(digit)
 	}
+
 	return round / pow
 }

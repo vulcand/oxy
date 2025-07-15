@@ -25,6 +25,7 @@ type RateSet struct {
 func NewRateSet() *RateSet {
 	rs := new(RateSet)
 	rs.m = make(map[time.Duration]*rate)
+
 	return rs
 }
 
@@ -34,13 +35,17 @@ func (rs *RateSet) Add(period time.Duration, average int64, burst int64) error {
 	if period <= 0 {
 		return fmt.Errorf("invalid period: %v", period)
 	}
+
 	if average <= 0 {
 		return fmt.Errorf("invalid average: %v", average)
 	}
+
 	if burst <= 0 {
 		return fmt.Errorf("invalid burst: %v", burst)
 	}
+
 	rs.m[period] = &rate{period: period, average: average, burst: burst}
+
 	return nil
 }
 
@@ -80,9 +85,11 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 	if defaultRates == nil || len(defaultRates.m) == 0 {
 		return nil, errors.New("provide default rates")
 	}
+
 	if extract == nil {
 		return nil, errors.New("provide extract function")
 	}
+
 	tl := &TokenLimiter{
 		next:         next,
 		defaultRates: defaultRates,
@@ -96,8 +103,10 @@ func New(next http.Handler, extract utils.SourceExtractor, defaultRates *RateSet
 			return nil, err
 		}
 	}
+
 	setDefaults(tl)
 	tl.bucketSets = collections.NewTTLMap(tl.capacity)
+
 	return tl, nil
 }
 
@@ -116,6 +125,7 @@ func (tl *TokenLimiter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err := tl.consumeRates(req, source, amount); err != nil {
 		tl.log.Warn("limiting request %v %v, limit: %v", req.Method, req.URL, err)
 		tl.errHandler.ServeHTTP(w, req, err)
+
 		return
 	}
 
@@ -128,6 +138,7 @@ func (tl *TokenLimiter) consumeRates(req *http.Request, source string, amount in
 
 	effectiveRates := tl.resolveRates(req)
 	bucketSetI, exists := tl.bucketSets.Get(source)
+
 	var bucketSet *TokenBucketSet
 
 	if exists {
@@ -142,13 +153,16 @@ func (tl *TokenLimiter) consumeRates(req *http.Request, source string, amount in
 			return err
 		}
 	}
+
 	delay, err := bucketSet.Consume(amount)
 	if err != nil {
 		return err
 	}
+
 	if delay > 0 {
 		return &MaxRateError{Delay: delay}
 	}
+
 	return nil
 }
 
@@ -193,8 +207,10 @@ func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 		w.Header().Set("X-Retry-In", rerr.Delay.String())
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte(err.Error()))
+
 		return
 	}
+
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }
 
@@ -204,6 +220,7 @@ func setDefaults(tl *TokenLimiter) {
 	if tl.capacity <= 0 {
 		tl.capacity = DefaultCapacity
 	}
+
 	if tl.errHandler == nil {
 		tl.errHandler = defaultErrHandler
 	}

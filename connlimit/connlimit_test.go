@@ -20,10 +20,13 @@ func TestConnLimiter_hitLimitAndRelease(t *testing.T) {
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		t.Logf("%v", req.Header)
+
 		if req.Header.Get("Wait") != "" {
 			proceed <- true
+
 			<-wait
 		}
+
 		_, _ = w.Write([]byte("hello"))
 	})
 
@@ -37,6 +40,7 @@ func TestConnLimiter_hitLimitAndRelease(t *testing.T) {
 		re, _, errGet := testutils.Get(srv.URL, testutils.Header("Limit", "a"), testutils.Header("wait", "yes"))
 		require.NoError(t, errGet)
 		assert.Equal(t, http.StatusOK, re.StatusCode)
+
 		finish <- true
 	}()
 

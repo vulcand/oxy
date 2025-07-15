@@ -25,6 +25,7 @@ func NewCounter(buckets int, resolution time.Duration, options ...rcOption) (*Ro
 	if buckets <= 0 {
 		return nil, errors.New("buckets should be >= 0")
 	}
+
 	if resolution < clock.Second {
 		return nil, errors.New("resolution should be larger than a second")
 	}
@@ -61,6 +62,7 @@ func (c *RollingCounter) Clone() *RollingCounter {
 		lastUpdated: c.lastUpdated,
 	}
 	copy(other.values, c.values)
+
 	return other
 }
 
@@ -68,6 +70,7 @@ func (c *RollingCounter) Clone() *RollingCounter {
 func (c *RollingCounter) Reset() {
 	c.lastBucket = -1
 	c.countedBuckets = 0
+
 	c.lastUpdated = clock.Time{}
 	for i := range c.values {
 		c.values[i] = 0
@@ -145,5 +148,6 @@ func (c *RollingCounter) sum() int64 {
 	for _, v := range c.values {
 		out += int64(v)
 	}
+
 	return out
 }

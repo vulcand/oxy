@@ -31,14 +31,17 @@ func parseExpression(in string) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	out, err := p.Parse(in)
 	if err != nil {
 		return nil, err
 	}
+
 	pr, ok := out.(hpredicate)
 	if !ok {
 		return nil, fmt.Errorf("expected predicate, got %T", out)
 	}
+
 	return pr, nil
 }
 
@@ -53,6 +56,7 @@ func latencyAtQuantile(quantile float64) toInt {
 			c.log.Error("Failed to get latency histogram, for %v error: %v", c, err)
 			return 0
 		}
+
 		return int(h.LatencyAtQuantile(quantile) / clock.Millisecond)
 	}
 }
@@ -77,6 +81,7 @@ func or(fns ...hpredicate) hpredicate {
 				return true
 			}
 		}
+
 		return false
 	}
 }
@@ -89,6 +94,7 @@ func and(fns ...hpredicate) hpredicate {
 				return false
 			}
 		}
+
 		return true
 	}
 }
@@ -108,6 +114,7 @@ func eq(m interface{}, value interface{}) (hpredicate, error) {
 	case toFloat64:
 		return float64EQ(mapper, value)
 	}
+
 	return nil, fmt.Errorf("eq: unsupported argument: %T", m)
 }
 
@@ -117,6 +124,7 @@ func neq(m interface{}, value interface{}) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return not(p), nil
 }
 
@@ -128,6 +136,7 @@ func lt(m interface{}, value interface{}) (hpredicate, error) {
 	case toFloat64:
 		return float64LT(mapper, value)
 	}
+
 	return nil, fmt.Errorf("lt: unsupported argument: %T", m)
 }
 
@@ -137,10 +146,12 @@ func le(m interface{}, value interface{}) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	e, err := eq(m, value)
 	if err != nil {
 		return nil, err
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return l(c) || e(c)
 	}, nil
@@ -154,6 +165,7 @@ func gt(m interface{}, value interface{}) (hpredicate, error) {
 	case toFloat64:
 		return float64GT(mapper, value)
 	}
+
 	return nil, fmt.Errorf("gt: unsupported argument: %T", m)
 }
 
@@ -163,10 +175,12 @@ func ge(m interface{}, value interface{}) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	e, err := eq(m, value)
 	if err != nil {
 		return nil, err
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return g(c) || e(c)
 	}, nil
@@ -177,6 +191,7 @@ func intEQ(m toInt, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return m(c) == value
 	}, nil
@@ -187,6 +202,7 @@ func float64EQ(m toFloat64, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected float64, got %T", val)
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return m(c) == value
 	}, nil
@@ -197,6 +213,7 @@ func intLT(m toInt, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return m(c) < value
 	}, nil
@@ -207,6 +224,7 @@ func intGT(m toInt, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return m(c) > value
 	}, nil
@@ -217,6 +235,7 @@ func float64LT(m toFloat64, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return m(c) < value
 	}, nil
@@ -227,6 +246,7 @@ func float64GT(m toFloat64, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *CircuitBreaker) bool {
 		return m(c) > value
 	}, nil

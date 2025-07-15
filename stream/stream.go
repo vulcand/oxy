@@ -68,6 +68,7 @@ func New(next http.Handler, setters ...Option) (*Stream, error) {
 			return nil, err
 		}
 	}
+
 	return strm, nil
 }
 
@@ -80,6 +81,7 @@ func (s *Stream) Wrap(next http.Handler) error {
 func (s *Stream) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if s.verbose {
 		dump := utils.DumpHTTPRequest(req)
+
 		s.log.Debug("vulcand/oxy/stream: begin ServeHttp on request: %s", dump)
 		defer s.log.Debug("vulcand/oxy/stream: completed ServeHttp on request: %s", dump)
 	}

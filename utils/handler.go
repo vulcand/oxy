@@ -53,6 +53,7 @@ func statusText(statusCode int) string {
 	if statusCode == StatusClientClosedRequest {
 		return StatusClientClosedRequestText
 	}
+
 	return http.StatusText(statusCode)
 }
 

@@ -77,6 +77,7 @@ func NewRTMetrics(settings ...RTOption) (*RTMetrics, error) {
 	m.histogram = h
 	m.netErrors = netErrors
 	m.total = total
+
 	return m, nil
 }
 
@@ -84,6 +85,7 @@ func NewRTMetrics(settings ...RTOption) (*RTMetrics, error) {
 func (m *RTMetrics) Export() *RTMetrics {
 	m.statusCodesLock.RLock()
 	defer m.statusCodesLock.RUnlock()
+
 	m.histogramLock.RLock()
 	defer m.histogramLock.RUnlock()
 
@@ -92,14 +94,17 @@ func (m *RTMetrics) Export() *RTMetrics {
 	export.histogramLock = sync.RWMutex{}
 	export.total = m.total.Clone()
 	export.netErrors = m.netErrors.Clone()
+
 	exportStatusCodes := map[int]*RollingCounter{}
 	for code, rollingCounter := range m.statusCodes {
 		exportStatusCodes[code] = rollingCounter.Clone()
 	}
+
 	export.statusCodes = exportStatusCodes
 	if m.histogram != nil {
 		export.histogram = m.histogram.Export()
 	}
+
 	export.newCounter = m.newCounter
 	export.newHist = m.newHist
 
@@ -117,6 +122,7 @@ func (m *RTMetrics) NetworkErrorRatio() float64 {
 	if m.total.Count() == 0 {
 		return 0
 	}
+
 	return float64(m.netErrors.Count()) / float64(m.total.Count())
 }
 
@@ -124,19 +130,24 @@ func (m *RTMetrics) NetworkErrorRatio() float64 {
 func (m *RTMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 	a := int64(0)
 	b := int64(0)
+
 	m.statusCodesLock.RLock()
 	defer m.statusCodesLock.RUnlock()
+
 	for code, v := range m.statusCodes {
 		if code < endA && code >= startA {
 			a += v.Count()
 		}
+
 		if code < endB && code >= startB {
 			b += v.Count()
 		}
 	}
+
 	if b != 0 {
 		return float64(a) / float64(b)
 	}
+
 	return 0
 }
 
@@ -158,8 +169,10 @@ func (m *RTMetrics) Append(other *RTMetrics) error {
 
 	m.statusCodesLock.Lock()
 	defer m.statusCodesLock.Unlock()
+
 	m.histogramLock.Lock()
 	defer m.histogramLock.Unlock()
+
 	for code, c := range copied.statusCodes {
 		o, ok := m.statusCodes[code]
 		if ok {
@@ -177,9 +190,11 @@ func (m *RTMetrics) Append(other *RTMetrics) error {
 // Record records a metric.
 func (m *RTMetrics) Record(code int, duration time.Duration) {
 	m.total.Inc(1)
+
 	if code == http.StatusGatewayTimeout || code == http.StatusBadGateway {
 		m.netErrors.Inc(1)
 	}
+
 	_ = m.recordStatusCode(code)
 	_ = m.recordLatency(duration)
 }
@@ -197,13 +212,16 @@ func (m *RTMetrics) NetworkErrorCount() int64 {
 // StatusCodesCounts returns map with counts of the response codes.
 func (m *RTMetrics) StatusCodesCounts() map[int]int64 {
 	sc := make(map[int]int64)
+
 	m.statusCodesLock.RLock()
 	defer m.statusCodesLock.RUnlock()
+
 	for k, v := range m.statusCodes {
 		if v.Count() != 0 {
 			sc[k] = v.Count()
 		}
 	}
+
 	return sc
 }
 
@@ -211,6 +229,7 @@ func (m *RTMetrics) StatusCodesCounts() map[int]int64 {
 func (m *RTMetrics) LatencyHistogram() (*HDRHistogram, error) {
 	m.histogramLock.Lock()
 	defer m.histogramLock.Unlock()
+
 	return m.histogram.Merged()
 }
 
@@ -218,8 +237,10 @@ func (m *RTMetrics) LatencyHistogram() (*HDRHistogram, error) {
 func (m *RTMetrics) Reset() {
 	m.statusCodesLock.Lock()
 	defer m.statusCodesLock.Unlock()
+
 	m.histogramLock.Lock()
 	defer m.histogramLock.Unlock()
+
 	m.histogram.Reset()
 	m.total.Reset()
 	m.netErrors.Reset()
@@ -229,16 +250,20 @@ func (m *RTMetrics) Reset() {
 func (m *RTMetrics) recordLatency(d time.Duration) error {
 	m.histogramLock.Lock()
 	defer m.histogramLock.Unlock()
+
 	return m.histogram.RecordLatencies(d, 1)
 }
 
 func (m *RTMetrics) recordStatusCode(statusCode int) error {
 	m.statusCodesLock.Lock()
+
 	if c, ok := m.statusCodes[statusCode]; ok {
 		c.Inc(1)
 		m.statusCodesLock.Unlock()
+
 		return nil
 	}
+
 	m.statusCodesLock.Unlock()
 
 	m.statusCodesLock.Lock()
@@ -254,8 +279,10 @@ func (m *RTMetrics) recordStatusCode(statusCode int) error {
 	if err != nil {
 		return err
 	}
+
 	c.Inc(1)
 	m.statusCodes[statusCode] = c
+
 	return nil
 }
 

@@ -54,13 +54,16 @@ func TestCircuitBreaker_fullCycle(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 
 	cb.metrics = statsNetErrors(0.6)
+
 	clock.Advance(defaultCheckPeriod + clock.Millisecond)
+
 	_, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, cbState(stateTripped), cb.state)
 
 	// Some time has passed, but we are still in trapped state.
 	clock.Advance(9 * clock.Second)
+
 	re, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
@@ -68,6 +71,7 @@ func TestCircuitBreaker_fullCycle(t *testing.T) {
 
 	// We should be in recovering state by now
 	clock.Advance(clock.Second*1 + clock.Millisecond)
+
 	re, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
@@ -75,18 +79,23 @@ func TestCircuitBreaker_fullCycle(t *testing.T) {
 
 	// 5 seconds after we should be allowing some requests to pass
 	clock.Advance(5 * clock.Second)
+
 	allowed := 0
+
 	for range 100 {
 		re, _, err = testutils.Get(srv.URL)
 		if re.StatusCode == http.StatusOK && err == nil {
 			allowed++
 		}
 	}
+
 	assert.NotEqual(t, 0, allowed)
 
 	// After some time, all is good and we should be in stand by mode again
 	clock.Advance(5*clock.Second + clock.Millisecond)
+
 	re, _, err = testutils.Get(srv.URL)
+
 	assert.Equal(t, cbState(stateStandby), cb.state)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
@@ -175,6 +184,7 @@ func TestCircuitBreaker_triggerDuringRecovery(t *testing.T) {
 
 	// We should be in recovering state by now
 	clock.Advance(10*clock.Second + clock.Millisecond)
+
 	re, _, err := testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
@@ -182,35 +192,44 @@ func TestCircuitBreaker_triggerDuringRecovery(t *testing.T) {
 
 	// We have matched error condition during recovery state and are going back to tripped state
 	clock.Advance(5 * clock.Second)
+
 	cb.metrics = statsNetErrors(0.6)
 	allowed := 0
+
 	for range 100 {
 		re, _, err = testutils.Get(srv.URL)
 		if re.StatusCode == http.StatusOK && err == nil {
 			allowed++
 		}
 	}
+
 	assert.NotEqual(t, 0, allowed)
 	assert.Equal(t, cbState(stateTripped), cb.state)
 }
 
 func TestCircuitBreaker_sideEffects(t *testing.T) {
 	srv1Chan := make(chan *http.Request, 1)
+
 	var srv1Body []byte
+
 	srv1 := testutils.NewHandler(func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
+
 		srv1Body = b
 		_, _ = w.Write([]byte("srv1"))
+
 		srv1Chan <- r
 	})
 	defer srv1.Close()
 
 	srv2Chan := make(chan *http.Request, 1)
+
 	srv2 := testutils.NewHandler(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("srv2"))
 		err := r.ParseForm()
 		require.NoError(t, err)
+
 		srv2Chan <- r
 	})
 	defer srv2.Close()
@@ -262,6 +281,7 @@ func TestCircuitBreaker_sideEffects(t *testing.T) {
 
 	// Transition to recovering state
 	clock.Advance(10*clock.Second + clock.Millisecond)
+
 	cb.metrics = statsOK()
 	_, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
@@ -269,6 +289,7 @@ func TestCircuitBreaker_sideEffects(t *testing.T) {
 
 	// Going back to standby
 	clock.Advance(10*clock.Second + clock.Millisecond)
+
 	_, _, err = testutils.Get(srv.URL)
 	require.NoError(t, err)
 	assert.Equal(t, cbState(stateStandby), cb.state)
@@ -288,6 +309,7 @@ func statsOK() *memmetrics.RTMetrics {
 	if err != nil {
 		panic(err)
 	}
+
 	return m
 }
 
@@ -296,6 +318,7 @@ func statsNetErrors(threshold float64) *memmetrics.RTMetrics {
 	if err != nil {
 		panic(err)
 	}
+
 	for i := range 100 {
 		if i < int(threshold*100) {
 			m.Record(http.StatusGatewayTimeout, 0)
@@ -303,6 +326,7 @@ func statsNetErrors(threshold float64) *memmetrics.RTMetrics {
 			m.Record(http.StatusOK, 0)
 		}
 	}
+
 	return m
 }
 
@@ -311,7 +335,9 @@ func statsLatencyAtQuantile(_ float64, value time.Duration) *memmetrics.RTMetric
 	if err != nil {
 		panic(err)
 	}
+
 	m.Record(http.StatusOK, value)
+
 	return m
 }
 
@@ -320,11 +346,13 @@ func statsResponseCodes(codes ...statusCode) *memmetrics.RTMetrics {
 	if err != nil {
 		panic(err)
 	}
+
 	for _, c := range codes {
 		for range c.Count {
 			m.Record(c.Code, 0)
 		}
 	}
+
 	return m
 }
 

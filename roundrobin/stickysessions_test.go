@@ -47,6 +47,7 @@ func TestStickySession_basic(t *testing.T) {
 		require.NoError(t, err)
 
 		defer resp.Body.Close()
+
 		body, err := io.ReadAll(resp.Body)
 
 		require.NoError(t, err)
@@ -78,10 +79,12 @@ func TestStickySession_basicWithHashValue(t *testing.T) {
 	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
+
 	var cookie *http.Cookie
 	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
+
 		if cookie != nil {
 			req.AddCookie(cookie)
 		}
@@ -99,6 +102,7 @@ func TestStickySession_basicWithHashValue(t *testing.T) {
 			// The first request will set the cookie value
 			cookie = resp.Cookies()[0]
 		}
+
 		assert.Equal(t, "test", cookie.Name)
 		assert.Equal(t, sticky.cookieValue.Get(mustParse(t, a.URL)), cookie.Value)
 	}
@@ -131,10 +135,12 @@ func TestStickySession_basicWithAESValue(t *testing.T) {
 	t.Cleanup(proxy.Close)
 
 	client := http.DefaultClient
+
 	var cookie *http.Cookie
 	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
+
 		if cookie != nil {
 			req.AddCookie(cookie)
 		}
@@ -152,6 +158,7 @@ func TestStickySession_basicWithAESValue(t *testing.T) {
 			// The first request will set the cookie value
 			cookie = resp.Cookies()[0]
 		}
+
 		assert.Equal(t, "test", cookie.Name)
 	}
 }
@@ -363,6 +370,7 @@ func TestStickySession_removeRespondingServer(t *testing.T) {
 
 		resp, errReq := client.Do(req)
 		require.NoError(t, errReq)
+
 		defer resp.Body.Close()
 
 		body, errReq := io.ReadAll(resp.Body)
@@ -392,6 +400,7 @@ func TestStickySession_removeRespondingServer(t *testing.T) {
 		require.NoError(t, err)
 
 		defer resp.Body.Close()
+
 		body, err := io.ReadAll(resp.Body)
 
 		require.NoError(t, err)
@@ -428,6 +437,7 @@ func TestStickySession_removeAllServers(t *testing.T) {
 
 		resp, errReq := client.Do(req)
 		require.NoError(t, errReq)
+
 		defer resp.Body.Close()
 
 		body, errReq := io.ReadAll(resp.Body)

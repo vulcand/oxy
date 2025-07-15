@@ -65,15 +65,19 @@ func newTokenBucket(rate *rate) *tokenBucket {
 // will become available for consumption.
 func (tb *tokenBucket) consume(tokens int64) (time.Duration, error) {
 	tb.updateAvailableTokens()
+
 	tb.lastConsumed = 0
 	if tokens > tb.burst {
 		return UndefinedDelay, errors.New("requested tokens larger than max tokens")
 	}
+
 	if tb.availableTokens < tokens {
 		return tb.timeTillAvailable(tokens), nil
 	}
+
 	tb.availableTokens -= tokens
 	tb.lastConsumed = tokens
+
 	return 0, nil
 }
 
@@ -93,11 +97,14 @@ func (tb *tokenBucket) update(rate *rate) error {
 	if rate.period != tb.period {
 		return fmt.Errorf("period mismatch: %v != %v", tb.period, rate.period)
 	}
+
 	tb.timePerToken = time.Duration(int64(tb.period) / rate.average)
+
 	tb.burst = rate.burst
 	if tb.availableTokens > rate.burst {
 		tb.availableTokens = rate.burst
 	}
+
 	return nil
 }
 
@@ -127,6 +134,7 @@ func (tb *tokenBucket) updateAvailableTokens() {
 		tb.lastRefresh = now
 		tb.availableTokens = tokens
 	}
+
 	if tb.availableTokens > tb.burst {
 		tb.availableTokens = tb.burst
 	}

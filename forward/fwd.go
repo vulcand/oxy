@@ -53,5 +53,6 @@ func getURLFromRequest(req *http.Request) *url.URL {
 			return parsedURL
 		}
 	}
+
 	return u
 }

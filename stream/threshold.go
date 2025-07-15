@@ -38,14 +38,17 @@ func parseExpression(in string) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	out, err := p.Parse(in)
 	if err != nil {
 		return nil, err
 	}
+
 	pr, ok := out.(hpredicate)
 	if !ok {
 		return nil, fmt.Errorf("expected predicate, got %T", out)
 	}
+
 	return pr, nil
 }
 
@@ -64,6 +67,7 @@ func and(fns ...hpredicate) hpredicate {
 				return false
 			}
 		}
+
 		return true
 	}
 }
@@ -76,6 +80,7 @@ func or(fns ...hpredicate) hpredicate {
 				return true
 			}
 		}
+
 		return false
 	}
 }
@@ -95,6 +100,7 @@ func eq(m interface{}, value interface{}) (hpredicate, error) {
 	case toInt:
 		return intEQ(mapper, value)
 	}
+
 	return nil, fmt.Errorf("unsupported argument: %T", m)
 }
 
@@ -104,6 +110,7 @@ func neq(m interface{}, value interface{}) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return not(p), nil
 }
 
@@ -123,10 +130,12 @@ func le(m interface{}, value interface{}) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	e, err := eq(m, value)
 	if err != nil {
 		return nil, err
 	}
+
 	return func(c *context) bool {
 		return l(c) || e(c)
 	}, nil
@@ -148,10 +157,12 @@ func ge(m interface{}, value interface{}) (hpredicate, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	e, err := eq(m, value)
 	if err != nil {
 		return nil, err
 	}
+
 	return func(c *context) bool {
 		return g(c) || e(c)
 	}, nil
@@ -162,6 +173,7 @@ func stringEQ(m toString, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected string, got %T", val)
 	}
+
 	return func(c *context) bool {
 		return m(c) == value
 	}, nil
@@ -172,6 +184,7 @@ func intEQ(m toInt, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *context) bool {
 		return m(c) == value
 	}, nil
@@ -182,6 +195,7 @@ func intLT(m toInt, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *context) bool {
 		return m(c) < value
 	}, nil
@@ -192,6 +206,7 @@ func intGT(m toInt, val interface{}) (hpredicate, error) {
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
+
 	return func(c *context) bool {
 		return m(c) > value
 	}, nil

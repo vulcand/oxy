@@ -46,26 +46,37 @@ func TestStream_simple(t *testing.T) {
 }
 
 func TestStream_chunkedEncodingSuccess(t *testing.T) {
-	var reqBody string
-	var contentLength int64
+	var (
+		reqBody       string
+		contentLength int64
+	)
+
 	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
+
 		reqBody = string(body)
 		contentLength = req.ContentLength
 
 		w.WriteHeader(http.StatusOK)
+
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			panic("expected http.ResponseWriter to be an http.Flusher")
 		}
+
 		_, _ = fmt.Fprint(w, "Response")
+
 		flusher.Flush()
 		clock.Sleep(500 * clock.Millisecond)
+
 		_, _ = fmt.Fprint(w, "in")
+
 		flusher.Flush()
 		clock.Sleep(500 * clock.Millisecond)
+
 		_, _ = fmt.Fprint(w, "Chunks")
+
 		flusher.Flush()
 	})
 	t.Cleanup(srv.Close)
@@ -88,6 +99,7 @@ func TestStream_chunkedEncodingSuccess(t *testing.T) {
 
 	conn, err := net.Dial("tcp", testutils.MustParseRequestURI(proxy.URL).Host)
 	require.NoError(t, err)
+
 	_, _ = fmt.Fprint(conn, "POST / HTTP/1.1\r\nHost: 127.0.0.1\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 	reader := bufio.NewReader(conn)
 

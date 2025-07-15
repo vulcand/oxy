@@ -150,6 +150,7 @@ func TestRoundRobin_upsertWeight(t *testing.T) {
 
 func TestRoundRobin_weighted(t *testing.T) {
 	require.NoError(t, SetDefaultWeight(0))
+
 	defer func() { _ = SetDefaultWeight(1) }()
 
 	a := testutils.NewResponder(t, "a")
@@ -204,10 +205,13 @@ func seq(t *testing.T, url string, repeat int) []string {
 	t.Helper()
 
 	var out []string
+
 	for range repeat {
 		_, body, err := testutils.Get(url)
 		require.NoError(t, err)
+
 		out = append(out, string(body))
 	}
+
 	return out
 }

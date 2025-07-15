@@ -87,15 +87,18 @@ func NewRebalancer(handler BalancerHandler, opts ...RebalancerOption) (*Rebalanc
 			return nil, err
 		}
 	}
+
 	if rb.backoffDuration == 0 {
 		rb.backoffDuration = 10 * clock.Second
 	}
+
 	if rb.newMeter == nil {
 		rb.newMeter = func() (Meter, error) {
 			rc, err := memmetrics.NewRatioCounter(10, clock.Second)
 			if err != nil {
 				return nil, err
 			}
+
 			return &codeMeter{
 				r:     rc,
 				codeS: http.StatusInternalServerError,
@@ -103,9 +106,11 @@ func NewRebalancer(handler BalancerHandler, opts ...RebalancerOption) (*Rebalanc
 			}, nil
 		}
 	}
+
 	if rb.errHandler == nil {
 		rb.errHandler = utils.DefaultHandler
 	}
+
 	return rb, nil
 }
 
@@ -120,6 +125,7 @@ func (rb *Rebalancer) Servers() []*url.URL {
 func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if rb.debug {
 		dump := utils.DumpHTTPRequest(req)
+
 		rb.log.Debug("vulcand/oxy/roundrobin/rebalancer: begin ServeHttp on request: %s", dump)
 		defer rb.log.Debug("vulcand/oxy/roundrobin/rebalancer: completed ServeHttp on request: %s", dump)
 	}
@@ -173,29 +179,14 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	rb.adjustWeights()
 }
 
-func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency time.Duration) {
-	rb.mtx.Lock()
-	defer rb.mtx.Unlock()
-	if srv, i := rb.findServer(u); i != -1 {
-		srv.meter.Record(code, latency)
-	}
-}
-
-func (rb *Rebalancer) reset() {
-	for _, s := range rb.servers {
-		s.curWeight = s.origWeight
-		_ = rb.next.UpsertServer(s.url, Weight(s.origWeight))
-	}
-	rb.timer = clock.Now().UTC().Add(-1 * clock.Second)
-	rb.ratings = make([]float64, len(rb.servers))
-}
-
 // Wrap sets the next handler to be called by rebalancer handler.
 func (rb *Rebalancer) Wrap(next BalancerHandler) error {
 	if rb.next != nil {
 		return fmt.Errorf("already bound to %T", rb.next)
 	}
+
 	rb.next = next
+
 	return nil
 }
 
@@ -207,12 +198,15 @@ func (rb *Rebalancer) UpsertServer(u *url.URL, options ...ServerOption) error {
 	if err := rb.next.UpsertServer(u, options...); err != nil {
 		return err
 	}
+
 	weight, _ := rb.next.ServerWeight(u)
 	if err := rb.upsertServer(u, weight); err != nil {
 		_ = rb.next.RemoveServer(u)
 		return err
 	}
+
 	rb.reset()
+
 	return nil
 }
 
@@ -224,16 +218,38 @@ func (rb *Rebalancer) RemoveServer(u *url.URL) error {
 	return rb.removeServer(u)
 }
 
+func (rb *Rebalancer) recordMetrics(u *url.URL, code int, latency time.Duration) {
+	rb.mtx.Lock()
+	defer rb.mtx.Unlock()
+
+	if srv, i := rb.findServer(u); i != -1 {
+		srv.meter.Record(code, latency)
+	}
+}
+
+func (rb *Rebalancer) reset() {
+	for _, s := range rb.servers {
+		s.curWeight = s.origWeight
+		_ = rb.next.UpsertServer(s.url, Weight(s.origWeight))
+	}
+
+	rb.timer = clock.Now().UTC().Add(-1 * clock.Second)
+	rb.ratings = make([]float64, len(rb.servers))
+}
+
 func (rb *Rebalancer) removeServer(u *url.URL) error {
 	_, i := rb.findServer(u)
 	if i == -1 {
 		return fmt.Errorf("%v not found", u)
 	}
+
 	if err := rb.next.RemoveServer(u); err != nil {
 		return err
 	}
+
 	rb.servers = append(rb.servers[:i], rb.servers[i+1:]...)
 	rb.reset()
+
 	return nil
 }
 
@@ -241,10 +257,12 @@ func (rb *Rebalancer) upsertServer(u *url.URL, weight int) error {
 	if s, i := rb.findServer(u); i != -1 {
 		s.origWeight = weight
 	}
+
 	meter, err := rb.newMeter()
 	if err != nil {
 		return err
 	}
+
 	rbSrv := &rbServer{
 		url:        utils.CopyURL(u),
 		origWeight: weight,
@@ -252,6 +270,7 @@ func (rb *Rebalancer) upsertServer(u *url.URL, weight int) error {
 		meter:      meter,
 	}
 	rb.servers = append(rb.servers, rbSrv)
+
 	return nil
 }
 
@@ -259,11 +278,13 @@ func (rb *Rebalancer) findServer(u *url.URL) (*rbServer, int) {
 	if len(rb.servers) == 0 {
 		return nil, -1
 	}
+
 	for i, s := range rb.servers {
 		if sameURL(u, s.url) {
 			return s, i
 		}
 	}
+
 	return nil, -1
 }
 
@@ -281,9 +302,11 @@ func (rb *Rebalancer) adjustWeights() {
 	if !rb.metricsReady() {
 		return
 	}
+
 	if !rb.timerExpired() {
 		return
 	}
+
 	if rb.markServers() {
 		if rb.setMarkedWeights() {
 			rb.setTimer()
@@ -315,11 +338,14 @@ func (rb *Rebalancer) setMarkedWeights() bool {
 			}
 		}
 	}
+
 	if changed {
 		rb.normalizeWeights()
 		rb.applyWeights()
+
 		return true
 	}
+
 	return false
 }
 
@@ -337,6 +363,7 @@ func (rb *Rebalancer) metricsReady() bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -347,6 +374,7 @@ func (rb *Rebalancer) markServers() bool {
 	for i, srv := range rb.servers {
 		rb.ratings[i] = srv.meter.Rating()
 	}
+
 	g, b := memmetrics.SplitFloat64(splitThreshold, 0, rb.ratings)
 	for i, srv := range rb.servers {
 		if g[rb.ratings[i]] {
@@ -355,29 +383,36 @@ func (rb *Rebalancer) markServers() bool {
 			srv.good = false
 		}
 	}
+
 	if len(g) != 0 && len(b) != 0 {
 		rb.log.Debug("bad: %v good: %v, ratings: %v", b, g, rb.ratings)
 	}
+
 	return len(g) != 0 && len(b) != 0
 }
 
 func (rb *Rebalancer) convergeWeights() bool {
 	// If we have previously changed servers try to restore weights to the original state
 	changed := false
+
 	for _, s := range rb.servers {
 		if s.origWeight == s.curWeight {
 			continue
 		}
+
 		changed = true
 		newWeight := decrease(s.origWeight, s.curWeight)
 		rb.log.Debug("decreasing weight of %v from %v to %v", s.url, s.curWeight, newWeight)
 		s.curWeight = newWeight
 	}
+
 	if !changed {
 		return false
 	}
+
 	rb.normalizeWeights()
 	rb.applyWeights()
+
 	return true
 }
 
@@ -390,6 +425,7 @@ func (rb *Rebalancer) weightsGcd() int {
 			divisor = gcd(divisor, w.curWeight)
 		}
 	}
+
 	return divisor
 }
 
@@ -398,6 +434,7 @@ func (rb *Rebalancer) normalizeWeights() {
 	if gcd <= 1 {
 		return
 	}
+
 	for _, s := range rb.servers {
 		s.curWeight /= gcd
 	}
@@ -412,6 +449,7 @@ func decrease(target, current int) int {
 	if adjusted < target {
 		return target
 	}
+
 	return adjusted
 }
 

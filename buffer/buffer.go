@@ -94,6 +94,7 @@ func New(next http.Handler, setters ...Option) (*Buffer, error) {
 			return nil, err
 		}
 	}
+
 	if strm.errHandler == nil {
 		strm.errHandler = errHandler
 	}
@@ -110,6 +111,7 @@ func (b *Buffer) Wrap(next http.Handler) error {
 func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if b.verbose {
 		dump := utils.DumpHTTPRequest(req)
+
 		b.log.Debug("vulcand/oxy/buffer: begin ServeHttp on request: %s", dump)
 		defer b.log.Debug("vulcand/oxy/buffer: completed ServeHttp on request: %s", dump)
 	}
@@ -117,6 +119,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err := b.checkLimit(req); err != nil {
 		b.log.Error("vulcand/oxy/buffer: request body over limit, err: %v", err)
 		b.errHandler.ServeHTTP(w, req, err)
+
 		return
 	}
 
@@ -129,11 +132,13 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if req.Context().Err() != nil {
 			b.log.Error("vulcand/oxy/buffer: error when reading request body, err: %v", req.Context().Err())
 			b.errHandler.ServeHTTP(w, req, req.Context().Err())
+
 			return
 		}
 
 		b.log.Error("vulcand/oxy/buffer: error when reading request body, err: %v", err)
 		b.errHandler.ServeHTTP(w, req, err)
+
 		return
 	}
 
@@ -155,6 +160,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		b.log.Error("vulcand/oxy/buffer: failed to get request size, err: %v", err)
 		b.errHandler.ServeHTTP(w, req, err)
+
 		return
 	}
 
@@ -165,12 +171,14 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	outReq := b.copyRequest(req, body, totalSize)
 
 	attempt := 1
+
 	for {
 		// We create a special writer that will limit the response size, buffer it to disk if necessary
 		writer, err := multibuf.NewWriterOnce(multibuf.MaxBytes(b.maxResponseBodyBytes), multibuf.MemBytes(b.memResponseBodyBytes))
 		if err != nil {
 			b.log.Error("vulcand/oxy/buffer: failed create response writer, err: %v", err)
 			b.errHandler.ServeHTTP(w, req, err)
+
 			return
 		}
 
@@ -184,6 +192,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer bw.Close()
 
 		b.next.ServeHTTP(bw, outReq)
+
 		if bw.hijacked {
 			b.log.Debug("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
 			return
@@ -192,18 +201,22 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if bw.writeError != nil {
 			b.log.Error("vulcand/oxy/buffer: failed to copy response, err: %v", bw.writeError)
 			b.errHandler.ServeHTTP(w, req, bw.writeError)
+
 			return
 		}
 
 		var reader multibuf.MultiReader
+
 		if bw.expectBody(outReq) {
 			rdr, err := writer.Reader()
 			if err != nil {
 				b.log.Error("vulcand/oxy/buffer: failed to read response, err: %v", err)
 				b.errHandler.ServeHTTP(w, req, err)
+
 				return
 			}
 			defer rdr.Close()
+
 			reader = rdr
 		}
 
@@ -211,17 +224,21 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			!b.retryPredicate(&context{r: req, attempt: attempt, responseCode: bw.code}) {
 			utils.CopyHeaders(w.Header(), bw.Header())
 			w.WriteHeader(bw.code)
+
 			if reader != nil {
 				_, _ = io.Copy(w, reader)
 			}
+
 			return
 		}
 
 		attempt++
+
 		if body != nil {
 			if _, err := body.Seek(0, 0); err != nil {
 				b.log.Error("vulcand/oxy/buffer: failed to rewind response body, err: %v", err)
 				b.errHandler.ServeHTTP(w, req, err)
+
 				return
 			}
 		}
@@ -245,6 +262,7 @@ func (b *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int
 	} else {
 		o.Body = io.NopCloser(body.(io.Reader))
 	}
+
 	return &o
 }
 
@@ -252,9 +270,11 @@ func (b *Buffer) checkLimit(req *http.Request) error {
 	if b.maxRequestBodyBytes <= 0 {
 		return nil
 	}
+
 	if req.ContentLength > b.maxRequestBodyBytes {
 		return &multibuf.MaxSizeReachedError{MaxSize: b.maxRequestBodyBytes}
 	}
+
 	return nil
 }
 
@@ -266,28 +286,6 @@ type bufferWriter struct {
 	hijacked       bool
 	writeError     error
 	log            utils.Logger
-}
-
-// RFC2616 #4.4.
-func (b *bufferWriter) expectBody(r *http.Request) bool {
-	if r.Method == http.MethodHead {
-		return false
-	}
-	if (b.code >= 100 && b.code < 200) || b.code == 204 || b.code == 304 {
-		return false
-	}
-	// refer to https://github.com/vulcand/oxy/issues/113
-	// if b.header.Get("Content-Length") == "" && b.header.Get("Transfer-Encoding") == "" {
-	// 	return false
-	// }
-	if b.header.Get("Content-Length") == "0" {
-		return false
-	}
-	// Support for gRPC, gRPC Web.
-	if grpcStatus := b.header.Get("Grpc-Status"); grpcStatus != "" && grpcStatus != "0" {
-		return false
-	}
-	return true
 }
 
 func (b *bufferWriter) Close() error {
@@ -304,9 +302,11 @@ func (b *bufferWriter) Write(buf []byte) (int, error) {
 		// Since go1.11 (https://github.com/golang/go/commit/8f38f28222abccc505b9a1992deecfe3e2cb85de)
 		// if the writer returns an error, the reverse proxy panics
 		b.log.Error("write: %v", err)
+
 		length = len(buf)
 		b.writeError = err
 	}
+
 	return length, nil
 }
 
@@ -320,7 +320,9 @@ func (b *bufferWriter) CloseNotify() <-chan bool {
 	if cn, ok := b.responseWriter.(http.CloseNotifier); ok {
 		return cn.CloseNotify()
 	}
+
 	b.log.Warn("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
+
 	return make(<-chan bool)
 }
 
@@ -331,10 +333,37 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		if err == nil {
 			b.hijacked = true
 		}
+
 		return conn, rw, err
 	}
+
 	b.log.Warn("Upstream ResponseWriter of type %v does not implement http.Hijacker.", reflect.TypeOf(b.responseWriter))
+
 	return nil, nil, fmt.Errorf("the response writer wrapped in this proxy does not implement http.Hijacker. Its type is: %v", reflect.TypeOf(b.responseWriter))
+}
+
+// RFC2616 #4.4.
+func (b *bufferWriter) expectBody(r *http.Request) bool {
+	if r.Method == http.MethodHead {
+		return false
+	}
+
+	if (b.code >= 100 && b.code < 200) || b.code == 204 || b.code == 304 {
+		return false
+	}
+	// refer to https://github.com/vulcand/oxy/issues/113
+	// if b.header.Get("Content-Length") == "" && b.header.Get("Transfer-Encoding") == "" {
+	// 	return false
+	// }
+	if b.header.Get("Content-Length") == "0" {
+		return false
+	}
+	// Support for gRPC, gRPC Web.
+	if grpcStatus := b.header.Get("Grpc-Status"); grpcStatus != "" && grpcStatus != "0" {
+		return false
+	}
+
+	return true
 }
 
 // SizeErrHandler Size error handler.
@@ -345,7 +374,9 @@ func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
+
 		return
 	}
+
 	utils.DefaultHandler.ServeHTTP(w, req, err)
 }

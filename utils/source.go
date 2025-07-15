@@ -29,16 +29,20 @@ func NewExtractor(variable string) (SourceExtractor, error) {
 	if variable == "client.ip" {
 		return ExtractorFunc(extractClientIP), nil
 	}
+
 	if variable == "request.host" {
 		return ExtractorFunc(extractHost), nil
 	}
+
 	if strings.HasPrefix(variable, "request.header.") {
 		header := strings.TrimPrefix(variable, "request.header.")
 		if header == "" {
 			return nil, fmt.Errorf("wrong header: %s", header)
 		}
+
 		return makeHeaderExtractor(header), nil
 	}
+
 	return nil, fmt.Errorf("unsupported limiting variable: '%s'", variable)
 }
 
@@ -47,6 +51,7 @@ func extractClientIP(req *http.Request) (string, int64, error) {
 	if vals[0] == "" {
 		return "", 0, fmt.Errorf("failed to parse client IP: %v", req.RemoteAddr)
 	}
+
 	return vals[0], 1, nil
 }
 
