@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +21,7 @@ import (
 
 // An PQItem is something we manage in a priority queue.
 type PQItem struct {
-	Value    interface{}
+	Value    any
 	Priority int // The priority of the item in the queue.
 	// The index is needed by update and is maintained by the heap.Interface methods.
 	index int // The index of the item in the heap.
@@ -79,14 +79,14 @@ func (mh pqImpl) Swap(i, j int) {
 	mh[j].index = j
 }
 
-func (mh *pqImpl) Push(x interface{}) {
+func (mh *pqImpl) Push(x any) {
 	n := len(*mh)
 	item := x.(*PQItem)
 	item.index = n
 	*mh = append(*mh, item)
 }
 
-func (mh *pqImpl) Pop() interface{} {
+func (mh *pqImpl) Pop() any {
 	old := *mh
 	n := len(old)
 	item := old[n-1]

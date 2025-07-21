@@ -118,7 +118,7 @@ func TestRFC822Unmarshaling(t *testing.T) {
 			tcDesc := fmt.Sprintf("Test case #%d: %v", i, tc)
 			var ts testStruct
 
-			inEncoded := []byte(fmt.Sprintf(`{"ts":"%s"}`, tc.inRFC822))
+			inEncoded := fmt.Appendf(nil, `{"ts":"%s"}`, tc.inRFC822)
 			err := json.Unmarshal(inEncoded, &ts)
 			assert.NoError(t, err, tcDesc)
 			assert.Equal(t, tc.outRFC3339, ts.Time.Format(RFC3339), tcDesc)

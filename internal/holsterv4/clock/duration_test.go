@@ -17,7 +17,7 @@ func TestDurationSuite(t *testing.T) {
 }
 
 func (s *DurationSuite) TestNewOk() {
-	for _, v := range []interface{}{
+	for _, v := range []any{
 		42 * clock.Second,
 		int(42000000000),
 		int64(42000000000),
@@ -33,7 +33,7 @@ func (s *DurationSuite) TestNewOk() {
 
 func (s *DurationSuite) TestNewError() {
 	for _, tc := range []struct {
-		v      interface{}
+		v      any
 		errMsg string
 	}{{
 		v:      "foo",

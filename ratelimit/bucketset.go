@@ -2,7 +2,7 @@ package ratelimit
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 )
@@ -95,7 +95,7 @@ func (tbs *TokenBucketSet) debugState() string {
 		periods = append(periods, int64(period))
 	}
 
-	sort.Slice(periods, func(i, j int) bool { return periods[i] < periods[j] })
+	slices.Sort(periods)
 
 	bucketRepr := make([]string, 0, len(tbs.buckets))
 	for _, period := range periods {

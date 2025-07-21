@@ -26,7 +26,7 @@ import (
 type TTLMap struct {
 	// Optionally specifies a callback function to be
 	// executed when an entry has expired
-	OnExpire func(key string, i interface{})
+	OnExpire func(key string, i any)
 
 	capacity    int
 	elements    map[string]*mapElement
@@ -36,7 +36,7 @@ type TTLMap struct {
 
 type mapElement struct {
 	key    string
-	value  interface{}
+	value  any
 	heapEl *PQItem
 }
 
@@ -53,7 +53,7 @@ func NewTTLMap(capacity int) *TTLMap {
 	}
 }
 
-func (m *TTLMap) Set(key string, value interface{}, ttlSeconds int) error {
+func (m *TTLMap) Set(key string, value any, ttlSeconds int) error {
 	expiryTime, err := m.toEpochSeconds(ttlSeconds)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func (m *TTLMap) Len() int {
 	return len(m.elements)
 }
 
-func (m *TTLMap) Get(key string) (interface{}, bool) {
+func (m *TTLMap) Get(key string) (any, bool) {
 	value, mapEl, expired := m.lockNGet(key)
 	if mapEl == nil {
 		return nil, false
@@ -118,7 +118,7 @@ func (m *TTLMap) GetInt(key string) (int, bool, error) {
 	return value, true, nil
 }
 
-func (m *TTLMap) set(key string, value interface{}, expiryTime int) error {
+func (m *TTLMap) set(key string, value any, expiryTime int) error {
 	if mapEl, ok := m.elements[key]; ok {
 		mapEl.value = value
 		m.expiryTimes.Update(mapEl.heapEl, expiryTime)
@@ -142,7 +142,7 @@ func (m *TTLMap) set(key string, value interface{}, expiryTime int) error {
 	return nil
 }
 
-func (m *TTLMap) lockNGet(key string) (value interface{}, mapEl *mapElement, expired bool) {
+func (m *TTLMap) lockNGet(key string) (value any, mapEl *mapElement, expired bool) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 

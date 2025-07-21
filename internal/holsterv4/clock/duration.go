@@ -9,7 +9,7 @@ type DurationJSON struct {
 	Duration Duration
 }
 
-func NewDurationJSON(v interface{}) (DurationJSON, error) {
+func NewDurationJSON(v any) (DurationJSON, error) {
 	switch v := v.(type) {
 	case Duration:
 		return DurationJSON{Duration: v}, nil
@@ -36,7 +36,7 @@ func NewDurationJSON(v interface{}) (DurationJSON, error) {
 	}
 }
 
-func NewDurationJSONOrPanic(v interface{}) DurationJSON {
+func NewDurationJSONOrPanic(v any) DurationJSON {
 	d, err := NewDurationJSON(v)
 	if err != nil {
 		panic(err)
@@ -49,7 +49,7 @@ func (d DurationJSON) MarshalJSON() ([]byte, error) {
 }
 
 func (d *DurationJSON) UnmarshalJSON(b []byte) error {
-	var v interface{}
+	var v any
 	var err error
 
 	if err = json.Unmarshal(b, &v); err != nil {

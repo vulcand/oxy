@@ -12,13 +12,13 @@ type Logger interface {
 type NoopLogger struct{}
 
 // Debug noop.
-func (*NoopLogger) Debug(string, ...interface{}) {}
+func (*NoopLogger) Debug(string, ...any) {}
 
 // Info noop.
-func (*NoopLogger) Info(string, ...interface{}) {}
+func (*NoopLogger) Info(string, ...any) {}
 
 // Warn noop.
-func (*NoopLogger) Warn(string, ...interface{}) {}
+func (*NoopLogger) Warn(string, ...any) {}
 
 // Error noop.
-func (*NoopLogger) Error(string, ...interface{}) {}
+func (*NoopLogger) Error(string, ...any) {}

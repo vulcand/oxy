@@ -34,8 +34,8 @@ func NewExtractor(variable string) (SourceExtractor, error) {
 		return ExtractorFunc(extractHost), nil
 	}
 
-	if strings.HasPrefix(variable, "request.header.") {
-		header := strings.TrimPrefix(variable, "request.header.")
+	if after, ok := strings.CutPrefix(variable, "request.header."); ok {
+		header := after
 		if header == "" {
 			return nil, fmt.Errorf("wrong header: %s", header)
 		}

@@ -312,9 +312,9 @@ func (s *TTLMapSuite) TestUpdate() {
 func (s *TTLMapSuite) TestCallOnExpire() {
 	var called bool
 	var key string
-	var val interface{}
+	var val any
 	m := NewTTLMap(1)
-	m.OnExpire = func(k string, el interface{}) {
+	m.OnExpire = func(k string, el any) {
 		called = true
 		key = k
 		val = el

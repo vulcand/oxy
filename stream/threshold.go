@@ -28,7 +28,7 @@ func parseExpression(in string) (hpredicate, error) {
 			LE:  le,
 			GE:  ge,
 		},
-		Functions: map[string]interface{}{
+		Functions: map[string]any{
 			"RequestMethod":  requestMethod,
 			"IsNetworkError": isNetworkError,
 			"Attempts":       attempts,
@@ -93,7 +93,7 @@ func not(p hpredicate) hpredicate {
 }
 
 // eq returns predicate that tests for equality of the value of the mapper and the constant.
-func eq(m interface{}, value interface{}) (hpredicate, error) {
+func eq(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toString:
 		return stringEQ(mapper, value)
@@ -105,7 +105,7 @@ func eq(m interface{}, value interface{}) (hpredicate, error) {
 }
 
 // neq returns predicate that tests for inequality of the value of the mapper and the constant.
-func neq(m interface{}, value interface{}) (hpredicate, error) {
+func neq(m any, value any) (hpredicate, error) {
 	p, err := eq(m, value)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func neq(m interface{}, value interface{}) (hpredicate, error) {
 }
 
 // lt returns predicate that tests that value of the mapper function is less than the constant.
-func lt(m interface{}, value interface{}) (hpredicate, error) {
+func lt(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
 		return intLT(mapper, value)
@@ -125,7 +125,7 @@ func lt(m interface{}, value interface{}) (hpredicate, error) {
 }
 
 // le returns predicate that tests that value of the mapper function is less or equal than the constant.
-func le(m interface{}, value interface{}) (hpredicate, error) {
+func le(m any, value any) (hpredicate, error) {
 	l, err := lt(m, value)
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func le(m interface{}, value interface{}) (hpredicate, error) {
 }
 
 // gt returns predicate that tests that value of the mapper function is greater than the constant.
-func gt(m interface{}, value interface{}) (hpredicate, error) {
+func gt(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toInt:
 		return intGT(mapper, value)
@@ -152,7 +152,7 @@ func gt(m interface{}, value interface{}) (hpredicate, error) {
 }
 
 // ge returns predicate that tests that value of the mapper function is less or equal than the constant.
-func ge(m interface{}, value interface{}) (hpredicate, error) {
+func ge(m any, value any) (hpredicate, error) {
 	g, err := gt(m, value)
 	if err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func ge(m interface{}, value interface{}) (hpredicate, error) {
 	}, nil
 }
 
-func stringEQ(m toString, val interface{}) (hpredicate, error) {
+func stringEQ(m toString, val any) (hpredicate, error) {
 	value, ok := val.(string)
 	if !ok {
 		return nil, fmt.Errorf("expected string, got %T", val)
@@ -179,7 +179,7 @@ func stringEQ(m toString, val interface{}) (hpredicate, error) {
 	}, nil
 }
 
-func intEQ(m toInt, val interface{}) (hpredicate, error) {
+func intEQ(m toInt, val any) (hpredicate, error) {
 	value, ok := val.(int)
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
@@ -190,7 +190,7 @@ func intEQ(m toInt, val interface{}) (hpredicate, error) {
 	}, nil
 }
 
-func intLT(m toInt, val interface{}) (hpredicate, error) {
+func intLT(m toInt, val any) (hpredicate, error) {
 	value, ok := val.(int)
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
@@ -201,7 +201,7 @@ func intLT(m toInt, val interface{}) (hpredicate, error) {
 	}, nil
 }
 
-func intGT(m toInt, val interface{}) (hpredicate, error) {
+func intGT(m toInt, val any) (hpredicate, error) {
 	value, ok := val.(int)
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)

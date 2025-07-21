@@ -23,11 +23,11 @@ import (
 	"github.com/vulcand/oxy/v2/internal/holsterv4/collections"
 )
 
-func toPtr(i int) interface{} {
+func toPtr(i int) any {
 	return &i
 }
 
-func toInt(i interface{}) int {
+func toInt(i any) int {
 	return *(i.(*int))
 }
 
