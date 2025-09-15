@@ -3,14 +3,14 @@ Oxy [![Build Status](https://travis-ci.org/vulcand/oxy.svg?branch=master)](https
 
 Oxy is a Go library with HTTP handlers that enhance HTTP standard library:
 
-* [Buffer](https://pkg.go.dev/github.com/vulcand/oxy/buffer) retries and buffers requests and responses 
-* [Stream](https://pkg.go.dev/github.com/vulcand/oxy/stream) passes-through requests, supports chunked encoding with configurable flush interval 
-* [Forward](https://pkg.go.dev/github.com/vulcand/oxy/forward) forwards requests to remote location and rewrites headers 
-* [Roundrobin](https://pkg.go.dev/github.com/vulcand/oxy/roundrobin) is a round-robin load balancer 
-* [Circuit Breaker](https://pkg.go.dev/github.com/vulcand/oxy/cbreaker) Hystrix-style circuit breaker
-* [Connlimit](https://pkg.go.dev/github.com/vulcand/oxy/connlimit) Simultaneous connections limiter
-* [Ratelimit](https://pkg.go.dev/github.com/vulcand/oxy/ratelimit) Rate limiter (based on tokenbucket algo)
-* [Trace](https://pkg.go.dev/github.com/vulcand/oxy/trace) Structured request and response logger
+* [Buffer](https://pkg.go.dev/github.com/vulcand/oxy/v2/buffer) retries and buffers requests and responses 
+* [Stream](https://pkg.go.dev/github.com/vulcand/oxy/v2/stream) passes-through requests, supports chunked encoding with configurable flush interval 
+* [Forward](https://pkg.go.dev/github.com/vulcand/oxy/v2/forward) forwards requests to remote location and rewrites headers 
+* [Roundrobin](https://pkg.go.dev/github.com/vulcand/oxy/v2/roundrobin) is a round-robin load balancer 
+* [Circuit Breaker](https://pkg.go.dev/github.com/vulcand/oxy/v2/cbreaker) Hystrix-style circuit breaker
+* [Connlimit](https://pkg.go.dev/github.com/vulcand/oxy/v2/connlimit) Simultaneous connections limiter
+* [Ratelimit](https://pkg.go.dev/github.com/vulcand/oxy/v2/ratelimit) Rate limiter (based on tokenbucket algo)
+* [Trace](https://pkg.go.dev/github.com/vulcand/oxy/v2/trace) Structured request and response logger
 
 It is designed to be fully compatible with http standard library, easy to customize and reuse.
 
