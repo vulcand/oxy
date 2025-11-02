@@ -81,6 +81,7 @@ func TestStickySession_basicWithHashValue(t *testing.T) {
 	client := http.DefaultClient
 
 	var cookie *http.Cookie
+
 	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
@@ -137,6 +138,7 @@ func TestStickySession_basicWithAESValue(t *testing.T) {
 	client := http.DefaultClient
 
 	var cookie *http.Cookie
+
 	for range 10 {
 		req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
 		require.NoError(t, err)
