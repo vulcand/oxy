@@ -207,7 +207,14 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		var reader multibuf.MultiReader
 
-		if bw.expectBody(outReq) && b.maxResponseBodyBytes > 0 && b.memResponseBodyBytes > 0 {
+		if bw.expectBody(outReq) {
+			if _, err := writer.Write([]byte{}); err != nil {
+				b.log.Error("vulcand/oxy/buffer: failed to initialize response writer, err: %v", err)
+				b.errHandler.ServeHTTP(w, req, err)
+
+				return
+			}
+
 			rdr, err := writer.Reader()
 			if err != nil {
 				b.log.Error("vulcand/oxy/buffer: failed to read response, err: %v", err)
