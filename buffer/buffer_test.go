@@ -152,6 +152,33 @@ func TestBuffer_chunkedResponse(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(len("testtest1test2")), re.Header.Get("Content-Length"))
 }
 
+func TestBuffer_emptyChunkedResponse(t *testing.T) {
+	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+		h := w.(http.Hijacker)
+		conn, _, _ := h.Hijack()
+		_, _ = fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n")
+		_ = conn.Close()
+	})
+	t.Cleanup(srv.Close)
+
+	fwd := forward.New(false)
+
+	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.MustParseRequestURI(srv.URL)
+		fwd.ServeHTTP(w, req)
+	})
+	st, err := New(rdr)
+	require.NoError(t, err)
+
+	proxy := httptest.NewServer(st)
+	t.Cleanup(proxy.Close)
+
+	re, body, err := testutils.Get(proxy.URL)
+	require.NoError(t, err)
+	assert.Empty(t, body)
+	assert.Equal(t, http.StatusOK, re.StatusCode)
+}
+
 func TestBuffer_requestLimitReached(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
@@ -495,31 +522,4 @@ func TestBuffer_GRPC_OKResponse(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 	assert.Equal(t, "grpc-body", string(body))
-}
-
-func TestEmptyChunkedResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
-		h := w.(http.Hijacker)
-		conn, _, _ := h.Hijack()
-		_, _ = fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n")
-		_ = conn.Close()
-	})
-	t.Cleanup(srv.Close)
-
-	fwd := forward.New(false)
-
-	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL = testutils.MustParseRequestURI(srv.URL)
-		fwd.ServeHTTP(w, req)
-	})
-	st, err := New(rdr)
-	require.NoError(t, err)
-	proxy := httptest.NewServer(st)
-
-	t.Cleanup(proxy.Close)
-
-	re, body, err := testutils.Get(proxy.URL)
-	require.NoError(t, err)
-	assert.Equal(t, "", string(body))
-	assert.Equal(t, http.StatusOK, re.StatusCode)
 }
