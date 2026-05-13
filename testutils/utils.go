@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
@@ -19,7 +20,7 @@ func NewHandler(handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
-// NewResponder creates a new Server with response.
+// NewResponder creates a new Server with a response.
 func NewResponder(t *testing.T, response string) *httptest.Server {
 	t.Helper()
 
@@ -30,6 +31,15 @@ func NewResponder(t *testing.T, response string) *httptest.Server {
 	t.Cleanup(server.Close)
 
 	return server
+}
+
+// NewResponderWithCount creates a new Server with a call counter.
+func NewResponderWithCount(count *atomic.Int32) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		count.Add(1)
+
+		_, _ = w.Write([]byte("Ok"))
+	}))
 }
 
 // MustParseRequestURI is the version of url.ParseRequestURI that panics if incorrect, helpful to shorten the tests.

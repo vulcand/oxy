@@ -250,7 +250,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			reader = rdr
 		}
 
-		if body == nil || (b.retryPredicate == nil || attempt > DefaultMaxRetryAttempts) ||
+		if b.retryPredicate == nil || attempt > DefaultMaxRetryAttempts ||
 			!b.retryPredicate(&context{r: req, attempt: attempt, responseCode: bw.code}) {
 			utils.CopyHeaders(w.Header(), bw.Header())
 			w.WriteHeader(bw.code)
