@@ -1,12 +1,15 @@
 package roundrobin
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vulcand/oxy/v2/buffer"
 	"github.com/vulcand/oxy/v2/forward"
 	"github.com/vulcand/oxy/v2/testutils"
 	"github.com/vulcand/oxy/v2/utils"
@@ -201,13 +204,55 @@ func TestRoundRobinRequestRewriteListener(t *testing.T) {
 	assert.NotNil(t, lb.requestRewriteListener)
 }
 
-func seq(t *testing.T, url string, repeat int) []string {
+func TestRoundRobinFailWell(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	rr := httptest.NewRecorder()
+
+	var oneCount atomic.Int32
+
+	oneServer := testutils.NewResponderWithCount(&oneCount)
+
+	t.Cleanup(func() { oneServer.Close() })
+
+	var twoCount atomic.Int32
+
+	twoServer := testutils.NewResponderWithCount(&twoCount)
+
+	// explicit close now
+	twoServer.Close()
+
+	lb, err := New(forward.New(false))
+	require.NoError(t, err)
+
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(oneServer.URL)))
+	require.NoError(t, lb.UpsertServer(testutils.MustParseRequestURI(twoServer.URL)))
+
+	buff, err := buffer.New(lb, buffer.Retry(fmt.Sprintf("IsNetworkError() && Attempts() < %d", 2)))
+	require.NoError(t, err)
+
+	okCount := 0
+
+	for range 10 {
+		buff.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		okCount++
+	}
+
+	assert.Equal(t, 10, okCount)
+	assert.Equal(t, int32(10), oneCount.Load())
+	assert.Zero(t, twoCount.Load())
+}
+
+func seq(t *testing.T, uri string, repeat int) []string {
 	t.Helper()
 
 	var out []string
 
 	for range repeat {
-		_, body, err := testutils.Get(url)
+		_, body, err := testutils.Get(uri)
 		require.NoError(t, err)
 
 		out = append(out, string(body))
