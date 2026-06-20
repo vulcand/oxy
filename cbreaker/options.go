@@ -54,7 +54,7 @@ func CheckPeriod(d time.Duration) Option {
 }
 
 // RequestVolumeThreshold sets the minimum number of requests in the rolling
-// window before the CircuitBreaker can trip.
+// window before the CircuitBreaker can trip. Defaults to 0.
 func RequestVolumeThreshold(n int64) Option {
 	return func(c *CircuitBreaker) error {
 		c.requestVolumeThreshold = n

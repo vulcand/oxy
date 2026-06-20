@@ -8,6 +8,8 @@
 //
 // Once the Circuit breaker condition is met, it enters the "Tripped" state, where it activates fallback scenario
 // for all requests during the FallbackDuration time period and reset the stats for the location.
+// RequestVolumeThreshold can be used to require a minimum number of requests in the rolling window
+// before the condition is evaluated.
 //
 // After FallbackDuration time period passes, Circuit breaker enters "Recovering" state, during that state it will
 // start passing some traffic back to the endpoints, increasing the amount of passed requests using linear function:
