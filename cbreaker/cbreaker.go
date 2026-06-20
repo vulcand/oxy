@@ -56,6 +56,8 @@ type CircuitBreaker struct {
 	checkPeriod time.Duration
 	lastCheck   clock.Time
 
+	requestVolumeThreshold int64
+
 	fallback http.Handler
 	next     http.Handler
 
@@ -248,6 +250,10 @@ func (c *CircuitBreaker) checkAndSet() {
 
 	if c.state == stateTripped {
 		c.log.Debug("%v skip set tripped", c)
+		return
+	}
+
+	if c.metrics.TotalCount() < c.requestVolumeThreshold {
 		return
 	}
 

@@ -53,6 +53,15 @@ func CheckPeriod(d time.Duration) Option {
 	}
 }
 
+// RequestVolumeThreshold sets the minimum number of requests in the rolling
+// window before the CircuitBreaker can trip.
+func RequestVolumeThreshold(n int64) Option {
+	return func(c *CircuitBreaker) error {
+		c.requestVolumeThreshold = n
+		return nil
+	}
+}
+
 // OnTripped sets a SideEffect to run when entering the Tripped state.
 // Only one SideEffect can be set for this hook.
 func OnTripped(s SideEffect) Option {
