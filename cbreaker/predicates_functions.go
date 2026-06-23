@@ -4,7 +4,7 @@ import (
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 )
 
-type toType[T int | float64] func(c *CircuitBreaker) T
+type toType[T int | int64 | float64] func(c *CircuitBreaker) T
 
 func latencyAtQuantile(quantile float64) toType[int] {
 	return func(c *CircuitBreaker) int {
@@ -27,5 +27,11 @@ func networkErrorRatio() toType[float64] {
 func responseCodeRatio(startA, endA, startB, endB int) toType[float64] {
 	return func(c *CircuitBreaker) float64 {
 		return c.metrics.ResponseCodeRatio(startA, endA, startB, endB)
+	}
+}
+
+func requestThreshold() toType[int64] {
+	return func(c *CircuitBreaker) int64 {
+		return c.metrics.TotalCount()
 	}
 }

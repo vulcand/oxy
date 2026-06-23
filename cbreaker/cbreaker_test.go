@@ -304,6 +304,42 @@ func TestCircuitBreaker_sideEffects(t *testing.T) {
 	}
 }
 
+func TestCircuitBreaker_requestThreshold(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusGatewayTimeout)
+	})
+
+	testutils.FreezeTime(t)
+
+	cb, err := New(handler, triggerNetRatio+" && RequestThreshold() >= 20")
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(cb)
+	t.Cleanup(srv.Close)
+
+	cb.metrics = statsResponseCodes(statusCode{Code: http.StatusGatewayTimeout, Count: 18})
+
+	clock.Advance(defaultCheckPeriod + clock.Millisecond)
+
+	re, _, err := testutils.Get(srv.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusGatewayTimeout, re.StatusCode)
+	assert.Equal(t, cbState(stateStandby), cb.state)
+
+	cb.metrics = statsResponseCodes(statusCode{Code: http.StatusGatewayTimeout, Count: 19})
+
+	clock.Advance(defaultCheckPeriod + clock.Millisecond)
+
+	re, _, err = testutils.Get(srv.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusGatewayTimeout, re.StatusCode)
+	assert.Equal(t, cbState(stateTripped), cb.state)
+
+	re, _, err = testutils.Get(srv.URL)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
+}
+
 func statsOK() *memmetrics.RTMetrics {
 	m, err := memmetrics.NewRTMetrics()
 	if err != nil {
