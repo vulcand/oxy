@@ -4,7 +4,7 @@ import (
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
 )
 
-type toType[T any] func(c *CircuitBreaker) T
+type toType[T int | float64] func(c *CircuitBreaker) T
 
 func latencyAtQuantile(quantile float64) toType[int] {
 	return func(c *CircuitBreaker) int {
