@@ -45,11 +45,9 @@ func parseExpression(in string) (hpredicate, error) {
 	return pr, nil
 }
 
-type toInt func(c *CircuitBreaker) int
+type toType[T any] func(c *CircuitBreaker) T
 
-type toFloat64 func(c *CircuitBreaker) float64
-
-func latencyAtQuantile(quantile float64) toInt {
+func latencyAtQuantile(quantile float64) toType[int] {
 	return func(c *CircuitBreaker) int {
 		h, err := c.metrics.LatencyHistogram()
 		if err != nil {
@@ -61,13 +59,13 @@ func latencyAtQuantile(quantile float64) toInt {
 	}
 }
 
-func networkErrorRatio() toFloat64 {
+func networkErrorRatio() toType[float64] {
 	return func(c *CircuitBreaker) float64 {
 		return c.metrics.NetworkErrorRatio()
 	}
 }
 
-func responseCodeRatio(startA, endA, startB, endB int) toFloat64 {
+func responseCodeRatio(startA, endA, startB, endB int) toType[float64] {
 	return func(c *CircuitBreaker) float64 {
 		return c.metrics.ResponseCodeRatio(startA, endA, startB, endB)
 	}
@@ -109,10 +107,10 @@ func not(p hpredicate) hpredicate {
 // eq returns predicate that tests for equality of the value of the mapper and the constant.
 func eq(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
-	case toInt:
-		return intEQ(mapper, value)
-	case toFloat64:
-		return float64EQ(mapper, value)
+	case toType[int]:
+		return genericEQ(mapper, value)
+	case toType[float64]:
+		return genericEQ(mapper, value)
 	}
 
 	return nil, fmt.Errorf("eq: unsupported argument: %T", m)
@@ -131,10 +129,10 @@ func neq(m any, value any) (hpredicate, error) {
 // lt returns predicate that tests that value of the mapper function is less than the constant.
 func lt(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
-	case toInt:
-		return intLT(mapper, value)
-	case toFloat64:
-		return float64LT(mapper, value)
+	case toType[int]:
+		return genericLT(mapper, value)
+	case toType[float64]:
+		return genericLT(mapper, value)
 	}
 
 	return nil, fmt.Errorf("lt: unsupported argument: %T", m)
@@ -160,10 +158,10 @@ func le(m any, value any) (hpredicate, error) {
 // gt returns predicate that tests that value of the mapper function is greater than the constant.
 func gt(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
-	case toInt:
-		return intGT(mapper, value)
-	case toFloat64:
-		return float64GT(mapper, value)
+	case toType[int]:
+		return genericGT(mapper, value)
+	case toType[float64]:
+		return genericGT(mapper, value)
 	}
 
 	return nil, fmt.Errorf("gt: unsupported argument: %T", m)
@@ -186,8 +184,8 @@ func ge(m any, value any) (hpredicate, error) {
 	}, nil
 }
 
-func intEQ(m toInt, val any) (hpredicate, error) {
-	value, ok := val.(int)
+func genericEQ[T int | float64](m toType[T], val any) (hpredicate, error) {
+	value, ok := val.(T)
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
@@ -197,19 +195,8 @@ func intEQ(m toInt, val any) (hpredicate, error) {
 	}, nil
 }
 
-func float64EQ(m toFloat64, val any) (hpredicate, error) {
-	value, ok := val.(float64)
-	if !ok {
-		return nil, fmt.Errorf("expected float64, got %T", val)
-	}
-
-	return func(c *CircuitBreaker) bool {
-		return m(c) == value
-	}, nil
-}
-
-func intLT(m toInt, val any) (hpredicate, error) {
-	value, ok := val.(int)
+func genericLT[T int | float64](m toType[T], val any) (hpredicate, error) {
+	value, ok := val.(T)
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
@@ -219,30 +206,8 @@ func intLT(m toInt, val any) (hpredicate, error) {
 	}, nil
 }
 
-func intGT(m toInt, val any) (hpredicate, error) {
-	value, ok := val.(int)
-	if !ok {
-		return nil, fmt.Errorf("expected int, got %T", val)
-	}
-
-	return func(c *CircuitBreaker) bool {
-		return m(c) > value
-	}, nil
-}
-
-func float64LT(m toFloat64, val any) (hpredicate, error) {
-	value, ok := val.(float64)
-	if !ok {
-		return nil, fmt.Errorf("expected int, got %T", val)
-	}
-
-	return func(c *CircuitBreaker) bool {
-		return m(c) < value
-	}, nil
-}
-
-func float64GT(m toFloat64, val any) (hpredicate, error) {
-	value, ok := val.(float64)
+func genericGT[T int | float64](m toType[T], val any) (hpredicate, error) {
+	value, ok := val.(T)
 	if !ok {
 		return nil, fmt.Errorf("expected int, got %T", val)
 	}
