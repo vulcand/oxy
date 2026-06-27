@@ -2,6 +2,7 @@ package memmetrics
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/vulcand/oxy/v2/internal/holsterv4/clock"
@@ -11,6 +12,7 @@ type rcOption func(*RollingCounter) error
 
 // RollingCounter Calculates in memory failure rate of an endpoint using rolling window of a predefined size.
 type RollingCounter struct {
+	mu             sync.Mutex
 	resolution     time.Duration
 	values         []int
 	countedBuckets int // how many samples in different buckets have we collected so far
@@ -54,6 +56,8 @@ func (c *RollingCounter) Append(o *RollingCounter) error {
 
 // Clone clones a counter.
 func (c *RollingCounter) Clone() *RollingCounter {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.cleanup()
 	other := &RollingCounter{
 		resolution:  c.resolution,
@@ -68,6 +72,8 @@ func (c *RollingCounter) Clone() *RollingCounter {
 
 // Reset resets a counter.
 func (c *RollingCounter) Reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.lastBucket = -1
 	c.countedBuckets = 0
 
@@ -79,11 +85,15 @@ func (c *RollingCounter) Reset() {
 
 // CountedBuckets gets counted buckets.
 func (c *RollingCounter) CountedBuckets() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.countedBuckets
 }
 
 // Count counts.
 func (c *RollingCounter) Count() int64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.cleanup()
 	return c.sum()
 }
@@ -105,6 +115,8 @@ func (c *RollingCounter) WindowSize() time.Duration {
 
 // Inc increments counter.
 func (c *RollingCounter) Inc(v int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.cleanup()
 	c.incBucketValue(v)
 }
