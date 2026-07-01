@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 )
@@ -47,12 +48,16 @@ func NewExtractor(variable string) (SourceExtractor, error) {
 }
 
 func extractClientIP(req *http.Request) (string, int64, error) {
-	vals := strings.SplitN(req.RemoteAddr, ":", 2)
-	if vals[0] == "" {
+	// Use net.SplitHostPort to correctly handle bracketed IPv6 addresses
+	// (e.g. "[::1]:8080"). The previous strings.SplitN(":", 2) produced
+	// the literal "[" for any IPv6 client, collapsing all IPv6 callers
+	// into the same rate-limit / connection-limit bucket.
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil || host == "" {
 		return "", 0, fmt.Errorf("failed to parse client IP: %v", req.RemoteAddr)
 	}
 
-	return vals[0], 1, nil
+	return host, 1, nil
 }
 
 func extractHost(req *http.Request) (string, int64, error) {
