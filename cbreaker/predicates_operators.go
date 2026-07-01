@@ -42,6 +42,8 @@ func eq(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toType[int]:
 		return genericEQ(mapper, value)
+	case toType[int64]:
+		return int64EQ(mapper, value)
 	case toType[float64]:
 		return genericEQ(mapper, value)
 	}
@@ -64,6 +66,8 @@ func lt(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toType[int]:
 		return genericLT(mapper, value)
+	case toType[int64]:
+		return int64LT(mapper, value)
 	case toType[float64]:
 		return genericLT(mapper, value)
 	}
@@ -93,6 +97,8 @@ func gt(m any, value any) (hpredicate, error) {
 	switch mapper := m.(type) {
 	case toType[int]:
 		return genericGT(mapper, value)
+	case toType[int64]:
+		return int64GT(mapper, value)
 	case toType[float64]:
 		return genericGT(mapper, value)
 	}
@@ -147,5 +153,44 @@ func genericGT[T int | float64](m toType[T], val any) (hpredicate, error) {
 
 	return func(c *CircuitBreaker) bool {
 		return m(c) > value
+	}, nil
+}
+
+func int64EQ(m toType[int64], val any) (hpredicate, error) {
+	// Use `int` instead of `int64` because `vulcand/predicate` only use `int`.
+	// Note: using `int64` should be the default type of any integer, but changing this will break `vulcand/predicate`.
+	value, ok := val.(int)
+	if !ok {
+		return nil, fmt.Errorf("expected int, got %T", val)
+	}
+
+	return func(c *CircuitBreaker) bool {
+		return m(c) == int64(value)
+	}, nil
+}
+
+func int64LT(m toType[int64], val any) (hpredicate, error) {
+	// Use `int` instead of `int64` because `vulcand/predicate` only use `int`.
+	// Note: using `int64` should be the default type of any integer, but changing this will break `vulcand/predicate`.
+	value, ok := val.(int)
+	if !ok {
+		return nil, fmt.Errorf("expected int, got %T", val)
+	}
+
+	return func(c *CircuitBreaker) bool {
+		return m(c) < int64(value)
+	}, nil
+}
+
+func int64GT(m toType[int64], val any) (hpredicate, error) {
+	// Use `int` instead of `int64` because `vulcand/predicate` only use `int`.
+	// Note: using `int64` should be the default type of any integer, but changing this will break `vulcand/predicate`.
+	value, ok := val.(int)
+	if !ok {
+		return nil, fmt.Errorf("expected int, got %T", val)
+	}
+
+	return func(c *CircuitBreaker) bool {
+		return m(c) > int64(value)
 	}, nil
 }

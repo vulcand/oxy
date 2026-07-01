@@ -25,6 +25,7 @@ func parseExpression(in string) (hpredicate, error) {
 			"LatencyAtQuantileMS": latencyAtQuantile,
 			"NetworkErrorRatio":   networkErrorRatio,
 			"ResponseCodeRatio":   responseCodeRatio,
+			"RequestThreshold":    requestThreshold,
 		},
 	})
 	if err != nil {
