@@ -212,7 +212,10 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			responseWriter: w,
 			log:            b.log,
 		}
-		defer bw.Close()
+		// NOTE: bw.Close() is invoked explicitly at the end of each iteration
+		// rather than deferred. A defer here would only fire on function return,
+		// so up to DefaultMaxRetryAttempts (10) bufferWriters — each potentially
+		// holding a spilled-to-disk temp file — would stay live concurrently.
 
 		b.next.ServeHTTP(bw, outReq)
 
@@ -223,6 +226,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		if bw.writeError != nil {
 			b.log.Error("vulcand/oxy/buffer: failed to copy response, err: %v", bw.writeError)
+			_ = bw.Close()
 			b.errHandler.ServeHTTP(w, req, bw.writeError)
 
 			return
@@ -233,6 +237,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if bw.expectBody(outReq) {
 			if _, err := writer.Write([]byte{}); err != nil {
 				b.log.Error("vulcand/oxy/buffer: failed to initialize response writer, err: %v", err)
+				_ = bw.Close()
 				b.errHandler.ServeHTTP(w, req, err)
 
 				return
@@ -241,11 +246,11 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			rdr, err := writer.Reader()
 			if err != nil {
 				b.log.Error("vulcand/oxy/buffer: failed to read response, err: %v", err)
+				_ = bw.Close()
 				b.errHandler.ServeHTTP(w, req, err)
 
 				return
 			}
-			defer rdr.Close()
 
 			reader = rdr
 		}
@@ -257,10 +262,20 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			if reader != nil {
 				_, _ = io.Copy(w, reader)
+				_ = reader.Close()
 			}
+			_ = bw.Close()
 
 			return
 		}
+
+		// Retry path: close per-iteration buffers before next attempt so that
+		// up to DefaultMaxRetryAttempts (10) spilled-to-disk temp files do not
+		// stay open simultaneously.
+		if reader != nil {
+			_ = reader.Close()
+		}
+		_ = bw.Close()
 
 		attempt++
 
