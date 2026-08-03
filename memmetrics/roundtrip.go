@@ -33,6 +33,12 @@ type RTMetrics struct {
 
 	newCounter NewCounterFn
 	newHist    NewRollingHistogramFn
+	// windowSize total duration of rolling statistics window.
+	// Both windowSize and slideInterval must be non-zero to take effect; both zero uses metrics inner default values.
+	windowSize time.Duration
+	// slideInterval bucket rotation period shared by counter & HDR histogram.
+	// Both windowSize and slideInterval must be non-zero to take effect; both zero uses metrics inner default values.
+	slideInterval time.Duration
 }
 
 // NewRTMetrics returns new instance of metrics collector.
@@ -48,14 +54,38 @@ func NewRTMetrics(settings ...RTOption) (*RTMetrics, error) {
 	}
 
 	if m.newCounter == nil {
+		buckets := counterBuckets
+		resolution := counterResolution
+		if m.windowSize > 0 && m.slideInterval > 0 {
+			buckets = int(m.windowSize / m.slideInterval)
+			if buckets < 1 {
+				buckets = 1
+			}
+			resolution = m.slideInterval
+			if resolution < time.Second {
+				resolution = time.Second
+			}
+		}
 		m.newCounter = func() (*RollingCounter, error) {
-			return NewCounter(counterBuckets, counterResolution)
+			return NewCounter(buckets, resolution)
 		}
 	}
 
 	if m.newHist == nil {
+		buckets := histBuckets
+		resolution := histPeriod
+		if m.windowSize > 0 && m.slideInterval > 0 {
+			buckets = int(m.windowSize / m.slideInterval)
+			if buckets < 1 {
+				buckets = 1
+			}
+			resolution = m.slideInterval
+			if resolution < time.Second {
+				resolution = time.Second
+			}
+		}
 		m.newHist = func() (*RollingHDRHistogram, error) {
-			return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, histPeriod, histBuckets)
+			return NewRollingHDRHistogram(histMin, histMax, histSignificantFigures, resolution, buckets)
 		}
 	}
 
