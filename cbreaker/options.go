@@ -80,6 +80,17 @@ func Fallback(h http.Handler) Option {
 	}
 }
 
+// WithSlidingWindow sets shared sliding window config for both counter and latency histogram.
+// size: total duration of statistics sliding window.
+// interval: bucket rotation period, equals counter resolution and histogram period.
+func WithSlidingWindow(size, interval time.Duration) Option {
+	return func(c *CircuitBreaker) error {
+		c.windowSize = size
+		c.slideInterval = interval
+		return nil
+	}
+}
+
 // ResponseFallbackOption represents an option you can pass to NewResponseFallback.
 type ResponseFallbackOption func(*ResponseFallback) error
 

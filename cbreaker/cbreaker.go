@@ -56,6 +56,9 @@ type CircuitBreaker struct {
 	checkPeriod time.Duration
 	lastCheck   clock.Time
 
+	windowSize    time.Duration
+	slideInterval time.Duration
+
 	fallback http.Handler
 	next     http.Handler
 
@@ -89,7 +92,13 @@ func New(next http.Handler, expression string, options ...Option) (*CircuitBreak
 
 	cb.condition = condition
 
-	mt, err := memmetrics.NewRTMetrics()
+	var mtOpts []memmetrics.RTOption
+	if cb.windowSize > 0 && cb.slideInterval > 0 {
+		mtOpts = []memmetrics.RTOption{
+			memmetrics.WithRTSlidingWindow(cb.windowSize, cb.slideInterval),
+		}
+	}
+	mt, err := memmetrics.NewRTMetrics(mtOpts...)
 	if err != nil {
 		return nil, err
 	}
