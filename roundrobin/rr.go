@@ -143,7 +143,7 @@ func (r *RoundRobin) Servers() []*url.URL {
 
 	out := make([]*url.URL, len(r.servers))
 	for i, srv := range r.servers {
-		out[i] = srv.url
+		out[i] = utils.CopyURL(srv.url)
 	}
 
 	return out
