@@ -260,3 +260,15 @@ func seq(t *testing.T, uri string, repeat int) []string {
 
 	return out
 }
+func TestRoundRobin_ServersReturnsCopies(t *testing.T) {
+	lb, err := New(nil)
+	require.NoError(t, err)
+	backend := testutils.MustParseRequestURI("http://backend.example")
+	require.NoError(t, lb.UpsertServer(backend))
+	servers := lb.Servers()
+	require.Len(t, servers, 1)
+	servers[0].Host = "attacker.example"
+	got := lb.Servers()
+	require.Len(t, got, 1)
+	assert.Equal(t, "backend.example", got[0].Host)
+}
