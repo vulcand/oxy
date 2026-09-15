@@ -190,7 +190,7 @@ func (r *RoundRobin) UpsertServer(u *url.URL, options ...ServerOption) error {
 	}
 
 	if srv.weight == 0 {
-		srv.weight = defaultWeight
+		defaultWeightMu.RLock()		srv.weight = defaultWeight		defaultWeightMu.RUnlock()
 	}
 
 	r.servers = append(r.servers, srv)
@@ -297,7 +297,7 @@ type server struct {
 	weight int
 }
 
-var defaultWeight = 1
+var defaultWeightMu sync.RWMutexvar defaultWeight = 1
 
 // SetDefaultWeight sets the default server weight.
 func SetDefaultWeight(weight int) error {
@@ -305,7 +305,7 @@ func SetDefaultWeight(weight int) error {
 		return errors.New("default weight should be >= 0")
 	}
 
-	defaultWeight = weight
+	defaultWeightMu.Lock()	defaultWeight = weight	defaultWeightMu.Unlock()
 
 	return nil
 }
