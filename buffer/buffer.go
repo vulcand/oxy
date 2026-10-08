@@ -208,6 +208,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		// We are mimicking http.ResponseWriter to replace writer with our special writer
 		bw := &bufferWriter{
 			header:         make(http.Header),
+			code:           http.StatusOK,
 			buffer:         writer,
 			responseWriter: w,
 			log:            b.log,

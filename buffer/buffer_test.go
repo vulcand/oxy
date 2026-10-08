@@ -47,6 +47,81 @@ func TestBuffer_simple(t *testing.T) {
 	assert.Equal(t, "hello", string(body))
 }
 
+func TestBuffer_defaultResponseStatus(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		method  string
+		body    string
+		headers http.Header
+	}{
+		{name: "body", method: http.MethodGet, body: "hello"},
+		{name: "empty", method: http.MethodGet},
+		{name: "headers_only", method: http.MethodGet, headers: http.Header{"Content-Type": {"text/plain"}}},
+		{name: "zero_content_length", method: http.MethodGet, headers: http.Header{"Content-Length": {"0"}}},
+		{name: "head_empty", method: http.MethodHead},
+		{name: "head_body", method: http.MethodHead, body: "hello"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				utils.CopyHeaders(w.Header(), test.headers)
+
+				if test.body != "" {
+					_, _ = w.Write([]byte(test.body))
+				}
+			})
+			st, err := New(handler)
+			require.NoError(t, err)
+
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(test.method, "http://example.com/", nil)
+
+			require.NotPanics(t, func() { st.ServeHTTP(response, request) })
+
+			assert.Equal(t, http.StatusOK, response.Code)
+
+			if test.method == http.MethodHead {
+				assert.Empty(t, response.Body.String())
+			} else {
+				assert.Equal(t, test.body, response.Body.String())
+			}
+
+			for name, values := range test.headers {
+				assert.Equal(t, values, response.Header().Values(name))
+			}
+		})
+	}
+}
+
+func TestBuffer_defaultResponseStatusRetry(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		retry    string
+		attempts int
+	}{
+		{name: "retry_success", retry: "ResponseCode() == 200 && Attempts() < 2", attempts: 2},
+		{name: "keep_success", retry: "ResponseCode() != 200 && Attempts() < 2", attempts: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			attempts := 0
+			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				attempts++
+				_, _ = fmt.Fprintf(w, "attempt %d", attempts)
+			})
+			st, err := New(handler, Retry(test.retry))
+			require.NoError(t, err)
+
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+
+			require.NotPanics(t, func() { st.ServeHTTP(response, request) })
+
+			assert.Equal(t, test.attempts, attempts)
+			assert.Equal(t, http.StatusOK, response.Code)
+			assert.Equal(t, fmt.Sprintf("attempt %d", test.attempts), response.Body.String())
+		})
+	}
+}
+
 func TestBuffer_chunkedEncodingSuccess(t *testing.T) {
 	var (
 		reqBody       string
