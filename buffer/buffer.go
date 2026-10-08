@@ -68,6 +68,8 @@ type Buffer struct {
 	maxResponseBodyBytes int64
 	memResponseBodyBytes int64
 
+	defaultStatusCode int
+
 	retryPredicate hpredicate
 
 	next       http.Handler
@@ -87,6 +89,8 @@ func New(next http.Handler, setters ...Option) (*Buffer, error) {
 
 		maxResponseBodyBytes: DefaultMaxBodyBytes,
 		memResponseBodyBytes: DefaultMemBodyBytes,
+
+		defaultStatusCode: http.StatusOK,
 
 		log: &utils.NoopLogger{},
 	}
@@ -208,6 +212,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		// We are mimicking http.ResponseWriter to replace writer with our special writer
 		bw := &bufferWriter{
 			header:         make(http.Header),
+			code:           b.defaultStatusCode,
 			buffer:         writer,
 			responseWriter: w,
 			log:            b.log,

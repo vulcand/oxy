@@ -140,3 +140,12 @@ func MemResponseBodyBytes(m int64) Option {
 		return nil
 	}
 }
+
+// SetDefaultStatusCode sets the default status code when the handler only calls Write, or returns without writing.
+func SetDefaultStatusCode(code int) Option {
+	return func(b *Buffer) error {
+		b.defaultStatusCode = code
+
+		return nil
+	}
+}
