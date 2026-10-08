@@ -7,7 +7,7 @@ const (
 	XForwardedHost   = "X-Forwarded-Host"
 	XForwardedPort   = "X-Forwarded-Port"
 	XForwardedServer = "X-Forwarded-Server"
-	XRealIP          = "X-Real-Ip"
+	XRealIP          = "X-Real-IP"
 )
 
 // Headers names.

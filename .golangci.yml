@@ -17,6 +17,7 @@ linters:
     - err113
     - exhaustive
     - exhaustruct
+    - exhaustruct_v5
     - forcetypeassert
     - gochecknoglobals # TODO(ldez) should be use on the project
     - ireturn
@@ -113,20 +114,41 @@ linters:
         path: testutils/.+
       - path: cbreaker/cbreaker_test.go # TODO(ldez) must be fixed
         text: 'statsNetErrors - threshold always receives 0.6'
+        linters:
+          - unparam
       - path: buffer/buffer.go # TODO(ldez) must be fixed
         text: (cognitive|cyclomatic) complexity \d+ of func `\(\*Buffer\)\.ServeHTTP` is high
+        linters:
+          - gocognit
+          - gocyclo
       - path: buffer/buffer.go # TODO(ldez) must be fixed
         text: Function 'ServeHTTP' has too many statements
+        linters:
+          - funlen
       - path: memmetrics/ratio_test.go # TODO(ldez) must be fixed
         text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
+        linters:
+          - testifylint
       - path: memmetrics/roundtrip_test.go # TODO(ldez) must be fixed
         text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
+        linters:
+          - testifylint
       - path: memmetrics/anomaly_test.go # TODO(ldez) must be fixed
         text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
+        linters:
+          - testifylint
       - path: (.+)\.go$ # TODO(ldez) must be fixed
-        text: 'SA1019: http.CloseNotifier has been deprecated'
+        text: 'SA1019: net/http.CloseNotifier has been deprecated'
+        linters:
+          - staticcheck
+      - path: (.+)\.go$ # TODO(ldez) must be fixed
+        text: 'SA1019: \(net/http.Request\)\.Cancel has been deprecated'
+        linters:
+          - staticcheck
       - path: (.+)\.go$ # TODO(ldez) must be fixed
         text: 'exported: func name will be used as roundrobin.RoundRobinRequestRewriteListener by other packages'
+        linters:
+          - revive
     paths:
       - internal/holsterv4
 
