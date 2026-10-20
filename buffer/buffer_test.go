@@ -717,7 +717,7 @@ func TestBuffer_responseControllerUnwrap(t *testing.T) {
 	st, err := New(handler)
 	require.NoError(t, err)
 
-	response := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder()}
+	response := &controllerRecorder{ResponseRecorder: httptest.NewRecorder()}
 	request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 
 	st.ServeHTTP(response, request)
@@ -725,13 +725,45 @@ func TestBuffer_responseControllerUnwrap(t *testing.T) {
 	assert.Equal(t, deadline, response.writeDeadline)
 }
 
-type deadlineRecorder struct {
+func TestBuffer_responseControllerHijack(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _, err := http.NewResponseController(w).Hijack()
+		require.NoError(t, err)
+	})
+	st, err := New(handler)
+	require.NoError(t, err)
+
+	recorder := &controllerRecorder{ResponseRecorder: httptest.NewRecorder()}
+	request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+
+	st.ServeHTTP(unwrapper{recorder}, request)
+
+	assert.True(t, recorder.hijacked)
+}
+
+// controllerRecorder records the http.ResponseController calls reaching it.
+type controllerRecorder struct {
 	*httptest.ResponseRecorder
 
 	writeDeadline time.Time
+	hijacked      bool
 }
 
-func (d *deadlineRecorder) SetWriteDeadline(deadline time.Time) error {
-	d.writeDeadline = deadline
+func (c *controllerRecorder) SetWriteDeadline(deadline time.Time) error {
+	c.writeDeadline = deadline
 	return nil
+}
+
+func (c *controllerRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	c.hijacked = true
+	return nil, nil, nil
+}
+
+// unwrapper only exposes the wrapped ResponseWriter through Unwrap.
+type unwrapper struct {
+	http.ResponseWriter
+}
+
+func (u unwrapper) Unwrap() http.ResponseWriter {
+	return u.ResponseWriter
 }

@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -109,7 +111,7 @@ func BenchmarkCopyHeaders(b *testing.B) {
 func TestProxyWriter_responseControllerUnwrap(t *testing.T) {
 	deadline := time.Now().Add(time.Minute)
 
-	recorder := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder()}
+	recorder := &controllerRecorder{ResponseRecorder: httptest.NewRecorder()}
 
 	err := http.NewResponseController(NewProxyWriter(recorder)).SetWriteDeadline(deadline)
 	require.NoError(t, err)
@@ -117,13 +119,54 @@ func TestProxyWriter_responseControllerUnwrap(t *testing.T) {
 	assert.Equal(t, deadline, recorder.writeDeadline)
 }
 
-type deadlineRecorder struct {
+func TestProxyWriter_responseController(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		wrap             func(w http.ResponseWriter) http.ResponseWriter
+		expectedErr      error
+		expectedFlushed  bool
+		expectedHijacked bool
+	}{
+		{
+			name:             "supported",
+			wrap:             func(w http.ResponseWriter) http.ResponseWriter { return w },
+			expectedFlushed:  true,
+			expectedHijacked: true,
+		},
+		{
+			name:        "not_supported",
+			wrap:        func(w http.ResponseWriter) http.ResponseWriter { return struct{ http.ResponseWriter }{w} },
+			expectedErr: http.ErrNotSupported,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			recorder := &controllerRecorder{ResponseRecorder: httptest.NewRecorder()}
+			rc := http.NewResponseController(NewProxyWriter(test.wrap(recorder)))
+
+			require.ErrorIs(t, rc.Flush(), test.expectedErr)
+			assert.Equal(t, test.expectedFlushed, recorder.Flushed)
+
+			_, _, err := rc.Hijack()
+			require.ErrorIs(t, err, test.expectedErr)
+			assert.Equal(t, test.expectedHijacked, recorder.hijacked)
+		})
+	}
+}
+
+// controllerRecorder records the http.ResponseController calls reaching it.
+type controllerRecorder struct {
 	*httptest.ResponseRecorder
 
 	writeDeadline time.Time
+	hijacked      bool
 }
 
-func (d *deadlineRecorder) SetWriteDeadline(deadline time.Time) error {
-	d.writeDeadline = deadline
+func (c *controllerRecorder) SetWriteDeadline(deadline time.Time) error {
+	c.writeDeadline = deadline
 	return nil
+}
+
+func (c *controllerRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	c.hijacked = true
+	return nil, nil, nil
 }

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -66,32 +67,22 @@ func (p *ProxyWriter) WriteHeader(code int) {
 
 // Flush flush the writer.
 func (p *ProxyWriter) Flush() {
-	if f, ok := p.w.(http.Flusher); ok {
-		f.Flush()
-	}
+	_ = p.FlushError()
 }
 
-// CloseNotify returns a channel that receives at most a single value (true)
-// when the client connection has gone away.
-func (p *ProxyWriter) CloseNotify() <-chan bool {
-	if cn, ok := p.w.(http.CloseNotifier); ok {
-		return cn.CloseNotify()
-	}
-
-	p.log.Debug("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(p.w))
-
-	return make(<-chan bool)
+// FlushError flushes the writer, see http.ResponseController.Flush.
+func (p *ProxyWriter) FlushError() error {
+	return http.NewResponseController(p.w).Flush()
 }
 
 // Hijack lets the caller take over the connection.
 func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hi, ok := p.w.(http.Hijacker); ok {
-		return hi.Hijack()
+	conn, rw, err := http.NewResponseController(p.w).Hijack()
+	if errors.Is(err, http.ErrNotSupported) {
+		p.log.Debug("Upstream ResponseWriter of type %v does not implement http.Hijacker.", reflect.TypeOf(p.w))
 	}
 
-	p.log.Debug("Upstream ResponseWriter of type %v does not implement http.Hijacker. Returning dummy channel.", reflect.TypeOf(p.w))
-
-	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.w))
+	return conn, rw, err
 }
 
 // Unwrap returns the wrapped ResponseWriter, used by http.ResponseController.
@@ -133,18 +124,6 @@ func (b *BufferWriter) Write(buf []byte) (int, error) {
 // WriteHeader writes status code.
 func (b *BufferWriter) WriteHeader(code int) {
 	b.Code = code
-}
-
-// CloseNotify returns a channel that receives at most a single value (true)
-// when the client connection has gone away.
-func (b *BufferWriter) CloseNotify() <-chan bool {
-	if cn, ok := b.W.(http.CloseNotifier); ok {
-		return cn.CloseNotify()
-	}
-
-	b.log.Warn("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.W))
-
-	return make(<-chan bool)
 }
 
 // Hijack lets the caller take over the connection.
