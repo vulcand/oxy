@@ -94,6 +94,11 @@ func (p *ProxyWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("the response writer that was wrapped in this proxy, does not implement http.Hijacker. It is of type: %v", reflect.TypeOf(p.w))
 }
 
+// Unwrap returns the wrapped ResponseWriter, used by http.ResponseController.
+func (p *ProxyWriter) Unwrap() http.ResponseWriter {
+	return p.w
+}
+
 // BufferWriter buffer writer.
 type BufferWriter struct {
 	H    http.Header

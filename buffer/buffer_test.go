@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -686,4 +687,51 @@ func TestBuffer_disableResponseBuffer(t *testing.T) {
 	// Response should pass through even though it exceeds the limit, because buffering has been disabled.
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
 	assert.Equal(t, largeResponseBody, string(body))
+}
+
+func TestBuffer_responseControllerFlush(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		assert.ErrorIs(t, http.NewResponseController(w).Flush(), http.ErrNotSupported)
+		_, _ = w.Write([]byte("unavailable"))
+	})
+	st, err := New(handler)
+	require.NoError(t, err)
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+
+	st.ServeHTTP(response, request)
+
+	assert.False(t, response.Flushed)
+	assert.Equal(t, http.StatusServiceUnavailable, response.Code)
+	assert.Equal(t, "unavailable", response.Body.String())
+}
+
+func TestBuffer_responseControllerUnwrap(t *testing.T) {
+	deadline := time.Now().Add(time.Minute)
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		require.NoError(t, http.NewResponseController(w).SetWriteDeadline(deadline))
+	})
+	st, err := New(handler)
+	require.NoError(t, err)
+
+	response := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder()}
+	request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+
+	st.ServeHTTP(response, request)
+
+	assert.Equal(t, deadline, response.writeDeadline)
+}
+
+type deadlineRecorder struct {
+	*httptest.ResponseRecorder
+
+	writeDeadline time.Time
+}
+
+func (d *deadlineRecorder) SetWriteDeadline(deadline time.Time) error {
+	d.writeDeadline = deadline
+	return nil
 }

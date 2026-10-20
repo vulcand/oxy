@@ -377,6 +377,16 @@ func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("the response writer wrapped in this proxy does not implement http.Hijacker. Its type is: %v", reflect.TypeOf(b.responseWriter))
 }
 
+// FlushError returns http.ErrNotSupported: the response is only written once fully buffered, so it cannot be flushed.
+func (b *bufferWriter) FlushError() error {
+	return http.ErrNotSupported
+}
+
+// Unwrap returns the upstream ResponseWriter, used by http.ResponseController.
+func (b *bufferWriter) Unwrap() http.ResponseWriter {
+	return b.responseWriter
+}
+
 // RFC2616 #4.4.
 func (b *bufferWriter) expectBody(r *http.Request) bool {
 	if r.Method == http.MethodHead {

@@ -2,10 +2,13 @@ package utils
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Make sure copy does it right, so the copied url is safe to alter without modifying the other.
@@ -101,4 +104,26 @@ func BenchmarkCopyHeaders(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		CopyHeaders(dstHeaders[n], sourceHeaders[n])
 	}
+}
+
+func TestProxyWriter_responseControllerUnwrap(t *testing.T) {
+	deadline := time.Now().Add(time.Minute)
+
+	recorder := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder()}
+
+	err := http.NewResponseController(NewProxyWriter(recorder)).SetWriteDeadline(deadline)
+	require.NoError(t, err)
+
+	assert.Equal(t, deadline, recorder.writeDeadline)
+}
+
+type deadlineRecorder struct {
+	*httptest.ResponseRecorder
+
+	writeDeadline time.Time
+}
+
+func (d *deadlineRecorder) SetWriteDeadline(deadline time.Time) error {
+	d.writeDeadline = deadline
+	return nil
 }
