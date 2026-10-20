@@ -36,7 +36,7 @@ package buffer
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -350,31 +350,30 @@ func (b *bufferWriter) WriteHeader(code int) {
 	b.code = code
 }
 
-// CloseNotify CloseNotifier interface - this allows downstream connections to be terminated when the client terminates.
-func (b *bufferWriter) CloseNotify() <-chan bool {
-	if cn, ok := b.responseWriter.(http.CloseNotifier); ok {
-		return cn.CloseNotify()
-	}
-
-	b.log.Warn("Upstream ResponseWriter of type %v does not implement http.CloseNotifier. Returning dummy channel.", reflect.TypeOf(b.responseWriter))
-
-	return make(<-chan bool)
-}
-
 // Hijack This allows connections to be hijacked for websockets for instance.
 func (b *bufferWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hi, ok := b.responseWriter.(http.Hijacker); ok {
-		conn, rw, err := hi.Hijack()
-		if err == nil {
-			b.hijacked = true
-		}
+	conn, rw, err := http.NewResponseController(b.responseWriter).Hijack()
+	if err == nil {
+		b.hijacked = true
 
-		return conn, rw, err
+		return conn, rw, nil
 	}
 
-	b.log.Warn("Upstream ResponseWriter of type %v does not implement http.Hijacker.", reflect.TypeOf(b.responseWriter))
+	if errors.Is(err, http.ErrNotSupported) {
+		b.log.Warn("Upstream ResponseWriter of type %v does not implement http.Hijacker.", reflect.TypeOf(b.responseWriter))
+	}
 
-	return nil, nil, fmt.Errorf("the response writer wrapped in this proxy does not implement http.Hijacker. Its type is: %v", reflect.TypeOf(b.responseWriter))
+	return nil, nil, err
+}
+
+// FlushError returns http.ErrNotSupported: the response is only written once fully buffered, so it cannot be flushed.
+func (b *bufferWriter) FlushError() error {
+	return http.ErrNotSupported
+}
+
+// Unwrap returns the upstream ResponseWriter, used by http.ResponseController.
+func (b *bufferWriter) Unwrap() http.ResponseWriter {
+	return b.responseWriter
 }
 
 // RFC2616 #4.4.

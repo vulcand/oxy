@@ -138,10 +138,6 @@ linters:
         linters:
           - testifylint
       - path: (.+)\.go$ # TODO(ldez) must be fixed
-        text: 'SA1019: net/http.CloseNotifier has been deprecated'
-        linters:
-          - staticcheck
-      - path: (.+)\.go$ # TODO(ldez) must be fixed
         text: 'SA1019: \(net/http.Request\)\.Cancel has been deprecated'
         linters:
           - staticcheck

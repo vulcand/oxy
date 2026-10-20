@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -686,4 +687,83 @@ func TestBuffer_disableResponseBuffer(t *testing.T) {
 	// Response should pass through even though it exceeds the limit, because buffering has been disabled.
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
 	assert.Equal(t, largeResponseBody, string(body))
+}
+
+func TestBuffer_responseControllerFlush(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		assert.ErrorIs(t, http.NewResponseController(w).Flush(), http.ErrNotSupported)
+		_, _ = w.Write([]byte("unavailable"))
+	})
+	st, err := New(handler)
+	require.NoError(t, err)
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+
+	st.ServeHTTP(response, request)
+
+	assert.False(t, response.Flushed)
+	assert.Equal(t, http.StatusServiceUnavailable, response.Code)
+	assert.Equal(t, "unavailable", response.Body.String())
+}
+
+func TestBuffer_responseControllerUnwrap(t *testing.T) {
+	deadline := time.Now().Add(time.Minute)
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		require.NoError(t, http.NewResponseController(w).SetWriteDeadline(deadline))
+	})
+	st, err := New(handler)
+	require.NoError(t, err)
+
+	response := &controllerRecorder{ResponseRecorder: httptest.NewRecorder()}
+	request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+
+	st.ServeHTTP(response, request)
+
+	assert.Equal(t, deadline, response.writeDeadline)
+}
+
+func TestBuffer_responseControllerHijack(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _, err := http.NewResponseController(w).Hijack()
+		require.NoError(t, err)
+	})
+	st, err := New(handler)
+	require.NoError(t, err)
+
+	recorder := &controllerRecorder{ResponseRecorder: httptest.NewRecorder()}
+	request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+
+	st.ServeHTTP(unwrapper{recorder}, request)
+
+	assert.True(t, recorder.hijacked)
+}
+
+// controllerRecorder records the http.ResponseController calls reaching it.
+type controllerRecorder struct {
+	*httptest.ResponseRecorder
+
+	writeDeadline time.Time
+	hijacked      bool
+}
+
+func (c *controllerRecorder) SetWriteDeadline(deadline time.Time) error {
+	c.writeDeadline = deadline
+	return nil
+}
+
+func (c *controllerRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	c.hijacked = true
+	return nil, nil, nil
+}
+
+// unwrapper only exposes the wrapped ResponseWriter through Unwrap.
+type unwrapper struct {
+	http.ResponseWriter
+}
+
+func (u unwrapper) Unwrap() http.ResponseWriter {
+	return u.ResponseWriter
 }
