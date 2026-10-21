@@ -340,6 +340,22 @@ func TestCircuitBreaker_requestThreshold(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, re.StatusCode)
 }
 
+func TestCircuitBreaker_SlidingWindowOption(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("hello"))
+	})
+
+	cb, err := New(handler, triggerNetRatio,
+		WithSlidingWindow(20*time.Second, 2*time.Second),
+	)
+	require.NoError(t, err)
+	assert.NotNil(t, cb)
+
+	cb2, err := New(handler, triggerNetRatio)
+	require.NoError(t, err)
+	assert.NotNil(t, cb2)
+}
+
 func statsOK() *memmetrics.RTMetrics {
 	m, err := memmetrics.NewRTMetrics()
 	if err != nil {

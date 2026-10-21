@@ -151,3 +151,21 @@ func TestRTMetric_Export_returnsNewCopy(t *testing.T) {
 		}
 	}
 }
+
+func TestNewRTMetrics_SlidingWindowOption(t *testing.T) {
+	testutils.FreezeTime(t)
+
+	m1, err := NewRTMetrics()
+	require.NoError(t, err)
+	require.NotNil(t, m1)
+
+	m1.Record(200, time.Second)
+	assert.EqualValues(t, 1, m1.TotalCount())
+
+	m2, err := NewRTMetrics(WithRTSlidingWindow(20*time.Second, 2*time.Second))
+	require.NoError(t, err)
+	require.NotNil(t, m2)
+
+	m2.Record(200, time.Second)
+	assert.EqualValues(t, 1, m2.TotalCount())
+}
