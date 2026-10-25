@@ -1,9 +1,11 @@
 package buffer
 
 import (
+	stdcontext "context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,6 +13,51 @@ import (
 	"github.com/vulcand/oxy/v2/roundrobin"
 	"github.com/vulcand/oxy/v2/testutils"
 )
+
+func TestBuffer_retryStopsWhenContextEnds(t *testing.T) {
+	for _, name := range []string{"canceled", "deadline", "active"} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := stdcontext.WithCancel(t.Context())
+			t.Cleanup(cancel)
+
+			if name == "deadline" {
+				var deadlineCancel stdcontext.CancelFunc
+
+				ctx, deadlineCancel = stdcontext.WithDeadline(ctx, time.Now().Add(-time.Second))
+				t.Cleanup(deadlineCancel)
+			}
+
+			attempts := 0
+			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				attempts++
+
+				if name == "canceled" {
+					cancel()
+				}
+
+				w.Header().Set("X-Upstream", "unavailable")
+				w.WriteHeader(http.StatusBadGateway)
+				_, _ = w.Write([]byte("upstream unavailable"))
+			})
+			st, err := New(handler, Retry(`IsNetworkError() && Attempts() < 3`))
+			require.NoError(t, err)
+
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, "http://example.com/", nil).WithContext(ctx)
+			st.ServeHTTP(response, request)
+
+			wantAttempts := 1
+			if name == "active" {
+				wantAttempts = 3
+			}
+
+			assert.Equal(t, wantAttempts, attempts)
+			assert.Equal(t, http.StatusBadGateway, response.Code)
+			assert.Equal(t, "unavailable", response.Header().Get("X-Upstream"))
+			assert.Equal(t, "upstream unavailable", response.Body.String())
+		})
+	}
+}
 
 func TestBuffer_success(t *testing.T) {
 	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
