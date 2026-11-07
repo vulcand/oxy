@@ -8,6 +8,8 @@ type options struct {
 	memBytes int64
 
 	maxBytes int64
+
+	tempDir string
 }
 
 type OptionSetter func(o *options) error
@@ -29,6 +31,15 @@ func MemBytes(m int64) OptionSetter {
 		}
 
 		o.memBytes = m
+
+		return nil
+	}
+}
+
+// TempDir sets a custom temp directory to store files.
+func TempDir(dir string) OptionSetter {
+	return func(o *options) error {
+		o.tempDir = dir
 
 		return nil
 	}

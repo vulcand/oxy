@@ -64,7 +64,7 @@ func New(input io.Reader, setters ...OptionSetter) (MultiReader, error) {
 	totalBytes := int64(len(buffer))
 
 	if memReader.N <= 0 {
-		file, err = os.CreateTemp("", tempFilePrefix)
+		file, err = os.CreateTemp(o.tempDir, tempFilePrefix)
 		if err != nil {
 			return nil, err
 		}

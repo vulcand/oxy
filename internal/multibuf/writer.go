@@ -106,7 +106,7 @@ func (w *writerOnce) Close() error {
 }
 
 func (w *writerOnce) initFile() error {
-	file, err := os.CreateTemp("", tempFilePrefix)
+	file, err := os.CreateTemp(w.o.tempDir, tempFilePrefix)
 	if err != nil {
 		return err
 	}
