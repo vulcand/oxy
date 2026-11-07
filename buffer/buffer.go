@@ -42,7 +42,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/mailgun/multibuf"
+	"github.com/vulcand/oxy/v2/internal/multibuf"
 	"github.com/vulcand/oxy/v2/utils"
 )
 

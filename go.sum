@@ -6,8 +6,6 @@ github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aN
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/gravitational/trace v1.5.4 h1:nMmF7alwvNiQJhC817Hhmgm95bzKOXbnxvkickTkRDY=
 github.com/gravitational/trace v1.5.4/go.mod h1:/uCbC3ukVU8Pdrh8+3vNLyyE1aGheBWpGGrMnwIK80E=
-github.com/mailgun/multibuf v0.2.0 h1:pGhv93r0GXBVTDu6RMlA9GUQjwwoy4yspIujtaT0AOA=
-github.com/mailgun/multibuf v0.2.0/go.mod h1:E+sUhIy69qgT6EM57kCPdUTlHnjTuxQBO/yf6af9Hes=
 github.com/segmentio/fasthash v1.0.3 h1:EI9+KE1EwvMLBWwjpRDc+fEM+prwxDYbslddQGtrmhM=
 github.com/segmentio/fasthash v1.0.3/go.mod h1:waKX8l2N8yckOgmSsXJi7x1ZfdKZ4x7KRMzBtS3oedY=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
