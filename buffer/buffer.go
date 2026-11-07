@@ -323,7 +323,16 @@ type bufferWriter struct {
 	log            utils.Logger
 }
 
+// Close releases the response buffer.
+// multibuf's WriterOnce.Close closes a temporary file without removing it,
+// and only the reader returned by Reader removes it on Close.
+// When no reader was taken (an aborted handler, a response over the limit, or a response without a body),
+// take one now so the temporary file is removed.
 func (b *bufferWriter) Close() error {
+	if rdr, err := b.buffer.Reader(); err == nil {
+		return rdr.Close()
+	}
+
 	return b.buffer.Close()
 }
 
