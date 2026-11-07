@@ -78,6 +78,8 @@ func New(input io.Reader, setters ...OptionSetter) (MultiReader, error) {
 
 		writtenBytes, err := io.Copy(file, readSrc)
 		if err != nil {
+			_ = file.Close()
+
 			return nil, err
 		}
 

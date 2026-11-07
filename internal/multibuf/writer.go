@@ -98,11 +98,15 @@ func (w *writerOnce) Write(p []byte) (int, error) {
 }
 
 func (w *writerOnce) Close() error {
-	if w.file != nil {
-		return w.file.Close()
+	if w.file == nil {
+		return nil
 	}
 
-	return nil
+	if w.cleanupFn != nil {
+		return w.cleanupFn()
+	}
+
+	return w.file.Close()
 }
 
 func (w *writerOnce) initFile() error {
@@ -185,6 +189,7 @@ func (w *writerOnce) write(p []byte) (int, error) {
 
 	case writerFile:
 		wrote, err := w.file.Write(p)
+
 		w.total += int64(wrote)
 
 		return wrote, err

@@ -1,6 +1,7 @@
 package multibuf
 
 import (
+	"bytes"
 	"io"
 	"testing"
 
@@ -120,4 +121,61 @@ func TestWriterNoData(t *testing.T) {
 
 	_, err = w.Reader()
 	require.EqualError(t, err, ErrNoDataReady.Error())
+}
+
+func TestWriterOnce_cleanup(t *testing.T) {
+	testCases := []struct {
+		desc      string
+		operation func(t *testing.T, w WriterOnce)
+	}{
+		{
+			desc: "close",
+			operation: func(t *testing.T, w WriterOnce) {
+				t.Helper()
+
+				assert.NoError(t, w.Close())
+			},
+		},
+		{
+			desc: "limit",
+			operation: func(t *testing.T, w WriterOnce) {
+				t.Helper()
+
+				_, err := w.Write(bytes.Repeat([]byte("x"), 4096))
+				require.Error(t, err)
+
+				require.NoError(t, w.Close())
+			},
+		},
+		{
+			desc: "panic",
+			operation: func(t *testing.T, w WriterOnce) {
+				t.Helper()
+
+				assert.Panics(t, func() {
+					defer w.Close()
+
+					panic("oops")
+				})
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			w, err := NewWriterOnce(MemBytes(1024), MaxBytes(4096), TempDir(t.TempDir()))
+			require.NoError(t, err)
+
+			_, err = w.Write(bytes.Repeat([]byte("x"), 2048))
+			require.NoError(t, err)
+
+			file := w.(*writerOnce).file
+			require.NotNil(t, file)
+			require.FileExists(t, file.Name())
+
+			test.operation(t, w)
+
+			assert.NoFileExists(t, file.Name())
+		})
+	}
 }
