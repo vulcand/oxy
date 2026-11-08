@@ -137,8 +137,8 @@ linters:
         text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
         linters:
           - testifylint
-      - path: (.+)\.go$ # TODO(ldez) must be fixed
-        text: 'SA1019: \(net/http.Request\)\.Cancel has been deprecated'
+      - path: forward/(.+)\.go$ # TODO(ldez) must be fixed
+        text: 'SA1019: \(net/http/httputil.ReverseProxy\).Director has been deprecated since Go 1.26 and an alternative has been available since Go 1.20: Use Rewrite instead.'
         linters:
           - staticcheck
       - path: (.+)\.go$ # TODO(ldez) must be fixed
