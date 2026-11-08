@@ -141,6 +141,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 	if c.isStandby() {
 		return false
 	}
+
 	// Circuit breaker is in tripped or recovering state
 	c.m.Lock()
 	defer c.m.Unlock()
@@ -151,6 +152,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 	case stateStandby:
 		// someone else has set it to standby just now
 		return false
+
 	case stateTripped:
 		if clock.Now().UTC().Before(c.until) {
 			return true
@@ -159,6 +161,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 		c.setRecovering()
 
 		fallthrough
+
 	case stateRecovering:
 		// We have been in recovering state enough, enter standby and allow request
 		if clock.Now().UTC().After(c.until) {

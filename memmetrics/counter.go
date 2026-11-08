@@ -55,12 +55,14 @@ func (c *RollingCounter) Append(o *RollingCounter) error {
 // Clone clones a counter.
 func (c *RollingCounter) Clone() *RollingCounter {
 	c.cleanup()
+
 	other := &RollingCounter{
 		resolution:  c.resolution,
 		values:      make([]int, len(c.values)),
 		lastBucket:  c.lastBucket,
 		lastUpdated: c.lastUpdated,
 	}
+
 	copy(other.values, c.values)
 
 	return other
@@ -72,6 +74,7 @@ func (c *RollingCounter) Reset() {
 	c.countedBuckets = 0
 
 	c.lastUpdated = clock.Time{}
+
 	for i := range c.values {
 		c.values[i] = 0
 	}
@@ -111,9 +114,12 @@ func (c *RollingCounter) Inc(v int) {
 
 func (c *RollingCounter) incBucketValue(v int) {
 	now := clock.Now().UTC()
+
 	bucket := c.getBucket(now)
+
 	c.values[bucket] += v
 	c.lastUpdated = now
+
 	// Update usage stats if we haven't collected enough data
 	if c.countedBuckets < len(c.values) {
 		// Only update if we have advanced to the next bucket and not incremented the value
@@ -133,8 +139,10 @@ func (c *RollingCounter) getBucket(t time.Time) int {
 // Reset buckets that were not updated.
 func (c *RollingCounter) cleanup() {
 	now := clock.Now().UTC()
+
 	for i := 0; i < len(c.values); i++ {
 		checkPoint := now.Add(time.Duration(-1*i) * c.resolution)
+
 		if checkPoint.Truncate(c.resolution).After(c.lastUpdated.Truncate(c.resolution)) {
 			c.values[c.getBucket(checkPoint)] = 0
 		} else {
@@ -145,6 +153,7 @@ func (c *RollingCounter) cleanup() {
 
 func (c *RollingCounter) sum() int64 {
 	out := int64(0)
+
 	for _, v := range c.values {
 		out += int64(v)
 	}

@@ -133,16 +133,18 @@ func NewRollingHDRHistogram(low, high int64, sigfigs int, period time.Duration, 
 
 // Export exports a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Export() *RollingHDRHistogram {
-	export := &RollingHDRHistogram{}
-	export.idx = r.idx
-	export.lastRoll = r.lastRoll
-	export.period = r.period
-	export.bucketCount = r.bucketCount
-	export.low = r.low
-	export.high = r.high
-	export.sigfigs = r.sigfigs
+	export := &RollingHDRHistogram{
+		idx:         r.idx,
+		lastRoll:    r.lastRoll,
+		period:      r.period,
+		bucketCount: r.bucketCount,
+		low:         r.low,
+		high:        r.high,
+		sigfigs:     r.sigfigs,
+	}
 
 	exportBuckets := make([]*HDRHistogram, len(r.buckets))
+
 	for i, hist := range r.buckets {
 		exportBuckets[i] = hist.Export()
 	}
@@ -170,8 +172,8 @@ func (r *RollingHDRHistogram) Append(o *RollingHDRHistogram) error {
 // Reset resets a RollingHDRHistogram.
 func (r *RollingHDRHistogram) Reset() {
 	r.idx = 0
-
 	r.lastRoll = clock.Now().UTC()
+
 	for _, b := range r.buckets {
 		b.Reset()
 	}
@@ -211,6 +213,7 @@ func (r *RollingHDRHistogram) rotate() {
 func (r *RollingHDRHistogram) getHist() *HDRHistogram {
 	if clock.Now().UTC().Sub(r.lastRoll) >= r.period {
 		r.rotate()
+
 		r.lastRoll = clock.Now().UTC()
 	}
 

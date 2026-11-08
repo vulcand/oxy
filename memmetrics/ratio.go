@@ -79,6 +79,7 @@ func (r *RatioCounter) ProcessedCount() int64 {
 func (r *RatioCounter) Ratio() float64 {
 	a := r.a.Count()
 	b := r.b.Count()
+
 	// No data, return ok
 	if a+b == 0 {
 		return 0

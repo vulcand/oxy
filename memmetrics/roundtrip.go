@@ -41,6 +41,7 @@ func NewRTMetrics(settings ...RTOption) (*RTMetrics, error) {
 		statusCodes:     make(map[int]*RollingCounter),
 		statusCodesLock: sync.RWMutex{},
 	}
+
 	for _, s := range settings {
 		if err := s(m); err != nil {
 			return nil, err

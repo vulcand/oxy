@@ -14,6 +14,7 @@ type Option func(*CircuitBreaker) error
 func Logger(l utils.Logger) Option {
 	return func(c *CircuitBreaker) error {
 		c.log = l
+
 		return nil
 	}
 }
@@ -22,6 +23,7 @@ func Logger(l utils.Logger) Option {
 func Verbose(verbose bool) Option {
 	return func(c *CircuitBreaker) error {
 		c.verbose = verbose
+
 		return nil
 	}
 }
@@ -31,6 +33,7 @@ func Verbose(verbose bool) Option {
 func FallbackDuration(d time.Duration) Option {
 	return func(c *CircuitBreaker) error {
 		c.fallbackDuration = d
+
 		return nil
 	}
 }
@@ -40,6 +43,7 @@ func FallbackDuration(d time.Duration) Option {
 func RecoveryDuration(d time.Duration) Option {
 	return func(c *CircuitBreaker) error {
 		c.recoveryDuration = d
+
 		return nil
 	}
 }
@@ -49,6 +53,7 @@ func RecoveryDuration(d time.Duration) Option {
 func CheckPeriod(d time.Duration) Option {
 	return func(c *CircuitBreaker) error {
 		c.checkPeriod = d
+
 		return nil
 	}
 }
@@ -58,6 +63,7 @@ func CheckPeriod(d time.Duration) Option {
 func OnTripped(s SideEffect) Option {
 	return func(c *CircuitBreaker) error {
 		c.onTripped = s
+
 		return nil
 	}
 }
@@ -67,6 +73,7 @@ func OnTripped(s SideEffect) Option {
 func OnStandby(s SideEffect) Option {
 	return func(c *CircuitBreaker) error {
 		c.onStandby = s
+
 		return nil
 	}
 }
@@ -76,6 +83,7 @@ func OnStandby(s SideEffect) Option {
 func Fallback(h http.Handler) Option {
 	return func(c *CircuitBreaker) error {
 		c.fallback = h
+
 		return nil
 	}
 }
@@ -87,6 +95,7 @@ type ResponseFallbackOption func(*ResponseFallback) error
 func ResponseFallbackLogger(l utils.Logger) ResponseFallbackOption {
 	return func(c *ResponseFallback) error {
 		c.log = l
+
 		return nil
 	}
 }
@@ -95,6 +104,7 @@ func ResponseFallbackLogger(l utils.Logger) ResponseFallbackOption {
 func ResponseFallbackDebug(debug bool) ResponseFallbackOption {
 	return func(c *ResponseFallback) error {
 		c.debug = debug
+
 		return nil
 	}
 }
@@ -106,6 +116,7 @@ type RedirectFallbackOption func(*RedirectFallback) error
 func RedirectFallbackLogger(l utils.Logger) RedirectFallbackOption {
 	return func(c *RedirectFallback) error {
 		c.log = l
+
 		return nil
 	}
 }
@@ -114,6 +125,7 @@ func RedirectFallbackLogger(l utils.Logger) RedirectFallbackOption {
 func RedirectFallbackDebug(debug bool) RedirectFallbackOption {
 	return func(c *RedirectFallback) error {
 		c.debug = debug
+
 		return nil
 	}
 }

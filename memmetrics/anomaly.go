@@ -101,6 +101,7 @@ func medianAbsoluteDeviation(values []float64) float64 {
 
 func maxTime(vals []time.Duration) time.Duration {
 	val := vals[0]
+
 	for _, v := range vals {
 		if v > val {
 			val = v

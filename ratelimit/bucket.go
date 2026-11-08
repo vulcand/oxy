@@ -26,17 +26,22 @@ func (r *rate) String() string {
 type tokenBucket struct {
 	// The time period controlled by the bucket in nanoseconds.
 	period time.Duration
+
 	// The number of nanoseconds that takes to add one more token to the total
 	// number of available tokens. It effectively caches the value that could
 	// have been otherwise deduced from refillRate.
 	timePerToken time.Duration
+
 	// The maximum number of tokens that can be accumulated in the bucket.
 	burst int64
+
 	// The number of tokens available for consumption at the moment.
 	// It can nether be larger than capacity.
 	availableTokens int64
+
 	// Tells when tokensAvailable was updated the last time.
 	lastRefresh clock.Time
+
 	// The number of tokens consumed the last time.
 	lastConsumed int64
 }
@@ -112,6 +117,7 @@ func (tb *tokenBucket) update(rate *rate) error {
 // wait until the specified number of tokens becomes available for consumption.
 func (tb *tokenBucket) timeTillAvailable(tokens int64) time.Duration {
 	missingTokens := tokens - tb.availableTokens
+
 	return time.Duration(missingTokens) * tb.timePerToken
 }
 

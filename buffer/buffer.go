@@ -241,6 +241,7 @@ func (b *Buffer) serveAttempt(w http.ResponseWriter, req, outReq *http.Request, 
 
 	if bw.hijacked {
 		b.log.Debug("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
+
 		return outReq, true
 	}
 
@@ -277,6 +278,7 @@ func (b *Buffer) serveAttempt(w http.ResponseWriter, req, outReq *http.Request, 
 		req.Context().Err() != nil ||
 		!b.retryPredicate(&context{r: req, attempt: attempt, responseCode: bw.code}) {
 		utils.CopyHeaders(w.Header(), bw.Header())
+
 		w.WriteHeader(bw.code)
 
 		if reader != nil {
@@ -361,6 +363,7 @@ func (b *bufferWriter) Write(buf []byte) (int, error) {
 		b.log.Error("write: %v", err)
 
 		length = len(buf)
+
 		b.writeError = err
 	}
 
@@ -407,6 +410,7 @@ func (b *bufferWriter) expectBody(r *http.Request) bool {
 	if (b.code >= 100 && b.code < 200) || b.code == 204 || b.code == 304 {
 		return false
 	}
+
 	// refer to https://github.com/vulcand/oxy/issues/113
 	// if b.header.Get("Content-Length") == "" && b.header.Get("Transfer-Encoding") == "" {
 	// 	return false
@@ -414,6 +418,7 @@ func (b *bufferWriter) expectBody(r *http.Request) bool {
 	if b.header.Get("Content-Length") == "0" {
 		return false
 	}
+
 	// Support for gRPC, gRPC Web.
 	if grpcStatus := b.header.Get("Grpc-Status"); grpcStatus != "" && grpcStatus != "0" {
 		return false
