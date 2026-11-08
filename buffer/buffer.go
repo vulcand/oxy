@@ -262,6 +262,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if b.retryPredicate == nil || attempt > DefaultMaxRetryAttempts ||
+			req.Context().Err() != nil ||
 			!b.retryPredicate(&context{r: req, attempt: attempt, responseCode: bw.code}) {
 			utils.CopyHeaders(w.Header(), bw.Header())
 			w.WriteHeader(bw.code)
