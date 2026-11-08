@@ -121,18 +121,6 @@ linters:
         linters:
           - gocognit
           - gocyclo
-      - path: memmetrics/ratio_test.go # TODO(ldez) must be fixed
-        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
-        linters:
-          - testifylint
-      - path: memmetrics/roundtrip_test.go # TODO(ldez) must be fixed
-        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
-        linters:
-          - testifylint
-      - path: memmetrics/anomaly_test.go # TODO(ldez) must be fixed
-        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
-        linters:
-          - testifylint
       - path: forward/(.+)\.go$ # TODO(ldez) must be fixed
         text: 'SA1019: \(net/http/httputil.ReverseProxy\).Director has been deprecated since Go 1.26 and an alternative has been available since Go 1.20: Use Rewrite instead.'
         linters:
