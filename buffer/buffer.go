@@ -42,7 +42,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/mailgun/multibuf"
+	"github.com/vulcand/oxy/v2/internal/multibuf"
 	"github.com/vulcand/oxy/v2/utils"
 )
 
@@ -71,6 +71,8 @@ type Buffer struct {
 	defaultStatusCode int
 
 	retryPredicate hpredicate
+
+	tempDir string
 
 	next       http.Handler
 	errHandler utils.ErrorHandler
@@ -201,7 +203,11 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	for {
 		// We create a special writer that will limit the response size, buffer it to disk if necessary
-		writer, err := multibuf.NewWriterOnce(multibuf.MaxBytes(b.maxResponseBodyBytes), multibuf.MemBytes(b.memResponseBodyBytes))
+		writer, err := multibuf.NewWriterOnce(
+			multibuf.MaxBytes(b.maxResponseBodyBytes),
+			multibuf.MemBytes(b.memResponseBodyBytes),
+			multibuf.TempDir(b.tempDir),
+		)
 		if err != nil {
 			b.log.Error("vulcand/oxy/buffer: failed create response writer, err: %v", err)
 			b.errHandler.ServeHTTP(w, req, err)
