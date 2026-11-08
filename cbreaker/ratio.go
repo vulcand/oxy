@@ -35,17 +35,21 @@ func (r *ratioController) String() string {
 
 func (r *ratioController) allowRequest() bool {
 	r.log.Debug("%v", r)
+
 	t := r.targetRatio()
+
 	// This condition answers the question - would we satisfy the target ratio if we allow this request?
 	e := r.computeRatio(r.allowed+1, r.denied)
 	if e < t {
 		r.allowed++
+
 		r.log.Debug("%v allowed", r)
 
 		return true
 	}
 
 	r.denied++
+
 	r.log.Debug("%v denied", r)
 
 	return false
@@ -70,5 +74,6 @@ func (r *ratioController) targetRatio() float64 {
 	// after this point to achieve ratio of 1 (that can never be reached unless d is 0)
 	// so we stop from there
 	multiplier := 0.5 / float64(r.duration)
+
 	return multiplier * float64(clock.Now().UTC().Sub(r.start))
 }

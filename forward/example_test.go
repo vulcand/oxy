@@ -11,6 +11,7 @@ import (
 
 func ExampleNew_customErrHandler() {
 	f := New(true)
+
 	f.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, _ error) {
 		w.WriteHeader(http.StatusTeapot)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusTeapot)))
@@ -49,6 +50,7 @@ func ExampleNew_responseModifier() {
 	defer srv.Close()
 
 	f := New(true)
+
 	f.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Add("X-Test", "CUSTOM")
 		return nil
@@ -119,6 +121,7 @@ func ExampleNewStateListener() {
 	defer srv.Close()
 
 	f := New(true)
+
 	f.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Add("X-Test", "CUSTOM")
 		return nil

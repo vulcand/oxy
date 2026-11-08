@@ -133,7 +133,7 @@ func TestConsumeLimitedBy2st(t *testing.T) {
 	assert.Equal(t, "{10s: 5}, {1m40s: 3}", tbs.debugState())
 }
 
-// An attempt to consume more tokens then the smallest bucket capacity results
+// An attempt to consume more tokens than the smallest bucket capacity results
 // in error.
 func TestConsumeMoreThenBurst(t *testing.T) {
 	// Given

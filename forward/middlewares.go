@@ -27,6 +27,8 @@ func NewStateListener(next http.Handler, stateListener URLForwardingStateListene
 
 func (s *StateListener) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	s.stateListener(req.URL, StateConnected)
+
 	s.next.ServeHTTP(rw, req)
+
 	s.stateListener(req.URL, StateDisconnected)
 }

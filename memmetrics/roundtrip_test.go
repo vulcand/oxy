@@ -27,8 +27,8 @@ func TestNewRTMetrics_defaults(t *testing.T) {
 	assert.EqualValues(t, 1, rr.NetworkErrorCount())
 	assert.EqualValues(t, 4, rr.TotalCount())
 	assert.Equal(t, map[int]int64{502: 1, 200: 3}, rr.StatusCodesCounts())
-	assert.Equal(t, float64(1)/float64(4), rr.NetworkErrorRatio())
-	assert.Equal(t, 1.0/3.0, rr.ResponseCodeRatio(500, 503, 200, 300))
+	assert.InEpsilon(t, float64(1)/float64(4), rr.NetworkErrorRatio(), 0)
+	assert.InEpsilon(t, 1.0/3.0, rr.ResponseCodeRatio(500, 503, 200, 300), 0)
 
 	h, err := rr.LatencyHistogram()
 	require.NoError(t, err)
@@ -38,8 +38,8 @@ func TestNewRTMetrics_defaults(t *testing.T) {
 	assert.EqualValues(t, 0, rr.NetworkErrorCount())
 	assert.EqualValues(t, 0, rr.TotalCount())
 	assert.Equal(t, map[int]int64{}, rr.StatusCodesCounts())
-	assert.Equal(t, float64(0), rr.NetworkErrorRatio())
-	assert.Equal(t, float64(0), rr.ResponseCodeRatio(500, 503, 200, 300))
+	assert.Zero(t, rr.NetworkErrorRatio())
+	assert.Zero(t, rr.ResponseCodeRatio(500, 503, 200, 300))
 
 	h, err = rr.LatencyHistogram()
 	require.NoError(t, err)

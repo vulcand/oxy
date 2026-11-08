@@ -16,10 +16,13 @@ type TokenBucketSet struct {
 // NewTokenBucketSet creates a `TokenBucketSet` from the specified `rates`.
 func NewTokenBucketSet(rates *RateSet) *TokenBucketSet {
 	tbs := new(TokenBucketSet)
+
 	// In the majority of cases we will have only one bucket.
 	tbs.buckets = make(map[time.Duration]*tokenBucket, len(rates.m))
+
 	for _, rate := range rates.m {
 		newBucket := newTokenBucket(rate)
+
 		tbs.buckets[rate.period] = newBucket
 		tbs.maxPeriod = maxDuration(tbs.maxPeriod, rate.period)
 	}
@@ -37,6 +40,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 			delete(tbs.buckets, bucket.period)
 		}
 	}
+
 	// Add missing buckets.
 	for _, rate := range rates.m {
 		if _, ok := tbs.buckets[rate.period]; !ok {
@@ -44,6 +48,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 			tbs.buckets[rate.period] = newBucket
 		}
 	}
+
 	// Identify the maximum period in the set
 	tbs.maxPeriod = 0
 	for _, bucket := range tbs.buckets {
@@ -51,7 +56,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 	}
 }
 
-// Consume consume tokens.
+// Consume consumes tokens.
 func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	var (
 		maxDelay time.Duration = UndefinedDelay
@@ -59,7 +64,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	)
 
 	for _, tokenBucket := range tbs.buckets {
-		// We keep calling `Consume` even after a error is returned for one of
+		// We keep calling `Consume` even after an error is returned for one of
 		// buckets because that allows us to simplify the rollback procedure,
 		// that is to just call `Rollback` for all buckets.
 		delay, err := tokenBucket.consume(tokens)
@@ -71,6 +76,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 			}
 		}
 	}
+
 	// If we could not make ALL buckets consume tokens for whatever reason,
 	// then rollback consumption for all of them.
 	if firstErr != nil || maxDelay > 0 {

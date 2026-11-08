@@ -65,7 +65,7 @@ func (p *ProxyWriter) WriteHeader(code int) {
 	p.w.WriteHeader(code)
 }
 
-// Flush flush the writer.
+// Flush flushes the writer.
 func (p *ProxyWriter) Flush() {
 	_ = p.FlushError()
 }
@@ -107,7 +107,7 @@ func NewBufferWriter(w io.WriteCloser, l Logger) *BufferWriter {
 	}
 }
 
-// Close close the writer.
+// Close closes the writer.
 func (b *BufferWriter) Close() error {
 	return b.W.Close()
 }

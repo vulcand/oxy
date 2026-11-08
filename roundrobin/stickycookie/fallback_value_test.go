@@ -100,7 +100,7 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 			want:     servers[0],
 		},
 		{
-			name:     "From RawValue To HashValue with RawValue non matching value",
+			name:     "From RawValue To HashValue with RawValue non-matching value",
 			From:     rawValue,
 			To:       hashValue,
 			rawValue: "http://24.10.10.10/",
@@ -113,7 +113,7 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 			want:     servers[0],
 		},
 		{
-			name:     "From RawValue To HashValue with HashValue non matching value",
+			name:     "From RawValue To HashValue with HashValue non-matching value",
 			From:     rawValue,
 			To:       hashValue,
 			rawValue: hashValue.Get(mustParse(t, "http://24.10.10.10/")),
@@ -126,7 +126,7 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 			want:     servers[0],
 		},
 		{
-			name:     "From HashValue To AESValue with AESValue non matching value",
+			name:     "From HashValue To AESValue with AESValue non-matching value",
 			From:     hashValue,
 			To:       aesValue,
 			rawValue: aesValue.Get(mustParse(t, "http://24.10.10.10/")),
@@ -139,7 +139,7 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 			want:     servers[0],
 		},
 		{
-			name:     "From HashValue To AESValue with AESValue non matching value",
+			name:     "From HashValue To AESValue with AESValue non-matching value",
 			From:     hashValue,
 			To:       aesValue,
 			rawValue: aesValue.Get(mustParse(t, "http://24.10.10.10/")),
@@ -152,13 +152,13 @@ func TestFallbackValue_FindURL_error(t *testing.T) {
 			want:     servers[0],
 		},
 		{
-			name:     "From AESValue To AESValue with AESValue non matching value",
+			name:     "From AESValue To AESValue with AESValue non-matching value",
 			From:     aesValue,
 			To:       aesValue,
 			rawValue: aesValue.Get(mustParse(t, "http://24.10.10.10/")),
 		},
 		{
-			name:     "From AESValue To HashValue with HashValue non matching value",
+			name:     "From AESValue To HashValue with HashValue non-matching value",
 			From:     aesValue,
 			To:       hashValue,
 			rawValue: hashValue.Get(mustParse(t, "http://24.10.10.10/")),

@@ -47,7 +47,7 @@ func (v *AESValue) Get(raw *url.URL) string {
 	}
 
 	// Nonce is the 64bit nanosecond-resolution time, plus 32bits of crypto/rand, for 96bits (12Bytes).
-	// Theoretically, if 2^32 calls were made in 1 nanoseconds, there might be a repeat.
+	// Theoretically, if 2^32 calls were made in 1 nanosecond, there might be a repeat.
 	// Adds ~765ns, and 4B heap in 1 alloc
 	nonce := make([]byte, 12)
 	binary.PutVarint(nonce, clock.Now().UnixNano())

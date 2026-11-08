@@ -16,7 +16,7 @@ type SourceExtractor interface {
 // ExtractorFunc extractor function type.
 type ExtractorFunc func(req *http.Request) (token string, amount int64, err error)
 
-// Extract extract from request.
+// Extract extracts from request.
 func (f ExtractorFunc) Extract(req *http.Request) (string, int64, error) {
 	return f(req)
 }

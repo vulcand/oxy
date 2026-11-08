@@ -29,7 +29,7 @@ type SerializableHTTPRequest struct {
 	TLS              *tls.ConnectionState
 }
 
-// Clone clone a request.
+// Clone clones a request.
 func Clone(r *http.Request) *SerializableHTTPRequest {
 	if r == nil {
 		return nil
@@ -54,13 +54,13 @@ func Clone(r *http.Request) *SerializableHTTPRequest {
 func (s *SerializableHTTPRequest) ToJSON() string {
 	jsonVal, err := json.Marshal(s)
 	if err != nil || jsonVal == nil {
-		return fmt.Sprintf("error marshaling SerializableHTTPRequest to json: %s", err)
+		return fmt.Sprintf("error marshaling SerializableHTTPRequest to JSON: %s", err)
 	}
 
 	return string(jsonVal)
 }
 
-// DumpHTTPRequest dump a HTTP request to JSON.
+// DumpHTTPRequest dump an HTTP request to JSON.
 func DumpHTTPRequest(req *http.Request) string {
 	return Clone(req).ToJSON()
 }

@@ -32,7 +32,7 @@ func TestMedian(t *testing.T) {
 			t.Parallel()
 
 			actual := median(test.values)
-			assert.Equal(t, test.expected, actual)
+			assert.InEpsilon(t, test.expected, actual, 0)
 		})
 	}
 }

@@ -104,10 +104,8 @@ func (w *writerOnce) Close() error {
 	}
 
 	// We are still responsible for the file.
-	if w.state != writerCalledRead {
-		if w.cleanupFn != nil {
-			return w.cleanupFn()
-		}
+	if w.state != writerCalledRead && w.cleanupFn != nil {
+		return w.cleanupFn()
 	}
 
 	return w.file.Close()

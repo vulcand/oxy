@@ -29,7 +29,7 @@ func TestNewRatioCounter_notReady(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.False(t, fr.IsReady())
-	assert.Equal(t, 0.0, fr.Ratio())
+	assert.Zero(t, fr.Ratio())
 
 	// Not enough data
 	fr, err = NewRatioCounter(10, clock.Second)
@@ -48,7 +48,7 @@ func TestRatioCounter_noB(t *testing.T) {
 	fr.IncA(1)
 
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, 1.0, fr.Ratio())
+	assert.InEpsilon(t, 1.0, fr.Ratio(), 0)
 }
 
 func TestRatioCounter_noA(t *testing.T) {
@@ -60,7 +60,7 @@ func TestRatioCounter_noA(t *testing.T) {
 	fr.IncB(1)
 
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, 0.0, fr.Ratio())
+	assert.Zero(t, fr.Ratio())
 }
 
 // Make sure that data is properly calculated over several buckets.
@@ -78,7 +78,7 @@ func TestRatioCounter_multipleBuckets(t *testing.T) {
 	fr.IncA(1)
 
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, float64(2)/float64(3), fr.Ratio())
+	assert.InEpsilon(t, float64(2)/float64(3), fr.Ratio(), 0)
 }
 
 // Make sure that data is properly calculated over several buckets
@@ -103,10 +103,10 @@ func TestRatioCounter_overwriteBuckets(t *testing.T) {
 	fr.IncB(2)
 
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, float64(3)/float64(5), fr.Ratio())
+	assert.InEpsilon(t, float64(3)/float64(5), fr.Ratio(), 0)
 }
 
-// Make sure we cleanup the data after periods of inactivity
+// Make sure we clean up the data after periods of inactivity
 // So it does not mess up the stats.
 func TestRatioCounter_inactiveBuckets(t *testing.T) {
 	testutils.FreezeTime(t)
@@ -132,7 +132,7 @@ func TestRatioCounter_inactiveBuckets(t *testing.T) {
 	fr.IncB(1)
 
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, float64(1)/float64(4), fr.Ratio())
+	assert.InEpsilon(t, float64(1)/float64(4), fr.Ratio(), 0)
 }
 
 func TestRatioCounter_longPeriodsOfInactivity(t *testing.T) {
@@ -147,12 +147,12 @@ func TestRatioCounter_longPeriodsOfInactivity(t *testing.T) {
 	fr.IncA(1)
 
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, 0.5, fr.Ratio())
+	assert.InEpsilon(t, 0.5, fr.Ratio(), 0)
 
 	// This time we should overwrite all data points
 	clock.Advance(100 * clock.Second)
 	fr.IncA(1)
-	assert.Equal(t, 1.0, fr.Ratio())
+	assert.InEpsilon(t, 1.0, fr.Ratio(), 0)
 }
 
 func TestRatioCounter_Reset(t *testing.T) {
@@ -165,7 +165,7 @@ func TestRatioCounter_Reset(t *testing.T) {
 	fr.IncA(1)
 
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, 0.5, fr.Ratio())
+	assert.InEpsilon(t, 0.5, fr.Ratio(), 0)
 
 	// Reset the counter
 	fr.Reset()
@@ -176,5 +176,5 @@ func TestRatioCounter_Reset(t *testing.T) {
 
 	// We are game again!
 	assert.True(t, fr.IsReady())
-	assert.Equal(t, 1.0, fr.Ratio())
+	assert.InEpsilon(t, 1.0, fr.Ratio(), 0)
 }

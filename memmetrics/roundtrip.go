@@ -41,6 +41,7 @@ func NewRTMetrics(settings ...RTOption) (*RTMetrics, error) {
 		statusCodes:     make(map[int]*RollingCounter),
 		statusCodesLock: sync.RWMutex{},
 	}
+
 	for _, s := range settings {
 		if err := s(m); err != nil {
 			return nil, err
@@ -116,7 +117,7 @@ func (m *RTMetrics) CounterWindowSize() time.Duration {
 	return m.total.WindowSize()
 }
 
-// NetworkErrorRatio calculates the amont of network errors such as time outs and dropped connection
+// NetworkErrorRatio calculates the amount of network errors such as timeouts and dropped connection
 // that occurred in the given time window compared to the total requests count.
 func (m *RTMetrics) NetworkErrorRatio() float64 {
 	if m.total.Count() == 0 {
@@ -151,7 +152,7 @@ func (m *RTMetrics) ResponseCodeRatio(startA, endA, startB, endB int) float64 {
 	return 0
 }
 
-// Append append a metric.
+// Append appends a metric.
 func (m *RTMetrics) Append(other *RTMetrics) error {
 	if m == other {
 		return errors.New("RTMetrics cannot append to self")
@@ -233,7 +234,7 @@ func (m *RTMetrics) LatencyHistogram() (*HDRHistogram, error) {
 	return m.histogram.Merged()
 }
 
-// Reset reset metrics.
+// Reset resets metrics.
 func (m *RTMetrics) Reset() {
 	m.statusCodesLock.Lock()
 	defer m.statusCodesLock.Unlock()

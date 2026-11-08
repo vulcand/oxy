@@ -136,7 +136,7 @@ func Test_tokenBucket_consume_burst(t *testing.T) {
 	// In two seconds we would have 5 tokens
 	clock.Advance(2 * clock.Second)
 
-	// Lets consume 5 at once
+	// Let's consume 5 at once
 	delay, err := tb.consume(5)
 	require.NoError(t, err)
 	assert.Equal(t, time.Duration(0), delay)
@@ -308,7 +308,7 @@ func Test_tokenBucket_rollback_severalTimes(t *testing.T) {
 }
 
 // If previous consumption returned a delay due to an attempt to consume more
-// tokens then there are available, then `Rollback` has no effect.
+// tokens than there are available, then `Rollback` has no effect.
 func Test_tokenBucket_rollback_afterAvailableExceeded(t *testing.T) {
 	testutils.FreezeTime(t)
 
@@ -333,8 +333,8 @@ func Test_tokenBucket_rollback_afterAvailableExceeded(t *testing.T) {
 	assert.Equal(t, 100*clock.Millisecond, delay)
 }
 
-// If previous consumption returned a error due to an attempt to consume more
-// tokens then the bucket's burst size, then `Rollback` has no effect.
+// If previous consumption returned an error due to an attempt to consume more
+// tokens than the bucket's burst size, then `Rollback` has no effect.
 func Test_tokenBucket_rollback_afterError(t *testing.T) {
 	testutils.FreezeTime(t)
 

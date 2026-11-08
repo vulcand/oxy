@@ -13,6 +13,7 @@ type TokenLimiterOption func(l *TokenLimiter) error
 func ErrorHandler(h utils.ErrorHandler) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.errHandler = h
+
 		return nil
 	}
 }
@@ -21,6 +22,7 @@ func ErrorHandler(h utils.ErrorHandler) TokenLimiterOption {
 func ExtractRates(e RateExtractor) TokenLimiterOption {
 	return func(cl *TokenLimiter) error {
 		cl.extractRates = e
+
 		return nil
 	}
 }
@@ -42,6 +44,7 @@ func Capacity(capacity int) TokenLimiterOption {
 func Logger(l utils.Logger) TokenLimiterOption {
 	return func(tl *TokenLimiter) error {
 		tl.log = l
+
 		return nil
 	}
 }

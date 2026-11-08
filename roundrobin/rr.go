@@ -1,4 +1,4 @@
-// Package roundrobin implements dynamic weighted round robin load balancer http handler
+// Package roundrobin implements dynamic weighted round-robin load balancer http handler
 package roundrobin
 
 import (
@@ -66,7 +66,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer r.log.Debug("vulcand/oxy/roundrobin/rr: completed ServeHttp on request: %s", dump)
 	}
 
-	// make shallow copy of request before chaning anything to avoid side effects
+	// make shallow copy of request before changing anything to avoid side effects.
 	newReq := *req
 	stuck := false
 
@@ -293,7 +293,7 @@ func gcd(a, b int) int {
 // Set additional parameters for the server can be supplied when adding server.
 type server struct {
 	url *url.URL
-	// Relative weight for the enpoint to other enpoints in the load balancer
+	// Relative weight for the endpoint to other endpoints in the load balancer
 	weight int
 }
 

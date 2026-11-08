@@ -8,7 +8,7 @@ import (
 
 type hpredicate func(*CircuitBreaker) bool
 
-// parseExpression parses expression in the go language into predicates.
+// parseExpression parses expression in the Go language into predicates.
 func parseExpression(in string) (hpredicate, error) {
 	p, err := predicate.NewParser(predicate.Def{
 		Operators: predicate.Operators{

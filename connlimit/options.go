@@ -11,6 +11,7 @@ type Option func(l *ConnLimiter) error
 func Logger(l utils.Logger) Option {
 	return func(cl *ConnLimiter) error {
 		cl.log = l
+
 		return nil
 	}
 }
@@ -19,6 +20,7 @@ func Logger(l utils.Logger) Option {
 func Verbose(verbose bool) Option {
 	return func(cl *ConnLimiter) error {
 		cl.verbose = verbose
+
 		return nil
 	}
 }
@@ -27,6 +29,7 @@ func Verbose(verbose bool) Option {
 func ErrorHandler(h utils.ErrorHandler) Option {
 	return func(cl *ConnLimiter) error {
 		cl.errHandler = h
+
 		return nil
 	}
 }

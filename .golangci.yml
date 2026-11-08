@@ -65,7 +65,6 @@ linters:
         - paramTypeCombine # already handle by gofumpt.extra-rules
         - httpNoBody
         - unnamedResult
-        - deferInLoop # TODO(ldez) should be use on the project
       enabled-tags:
         - diagnostic
         - style
@@ -109,6 +108,10 @@ linters:
           - goconst
           - gosec
         path: .*_test.go
+      - linters: # TODO(ldez) must be fixed
+          - gocritic
+        path: .*_test.go
+        text: "deferInLoop: Possible resource leak, 'defer' is called in the 'for' loop"
       - linters:
           - gosec
         path: testutils/.+
@@ -121,18 +124,6 @@ linters:
         linters:
           - gocognit
           - gocyclo
-      - path: memmetrics/ratio_test.go # TODO(ldez) must be fixed
-        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
-        linters:
-          - testifylint
-      - path: memmetrics/roundtrip_test.go # TODO(ldez) must be fixed
-        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
-        linters:
-          - testifylint
-      - path: memmetrics/anomaly_test.go # TODO(ldez) must be fixed
-        text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
-        linters:
-          - testifylint
       - path: forward/(.+)\.go$ # TODO(ldez) must be fixed
         text: 'SA1019: \(net/http/httputil.ReverseProxy\).Director has been deprecated since Go 1.26 and an alternative has been available since Go 1.20: Use Rewrite instead.'
         linters:

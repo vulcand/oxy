@@ -61,7 +61,7 @@ type RateExtractor interface {
 // RateExtractorFunc rate extractor function type.
 type RateExtractorFunc func(r *http.Request) (*RateSet, error)
 
-// Extract extract from request.
+// Extract extracts from request.
 func (e RateExtractorFunc) Extract(r *http.Request) (*RateSet, error) {
 	return e(r)
 }
@@ -119,6 +119,7 @@ func (tl *TokenLimiter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	source, amount, err := tl.extract.Extract(req)
 	if err != nil {
 		tl.errHandler.ServeHTTP(w, req, err)
+
 		return
 	}
 
@@ -146,6 +147,7 @@ func (tl *TokenLimiter) consumeRates(req *http.Request, source string, amount in
 		bucketSet.Update(effectiveRates)
 	} else {
 		bucketSet = NewTokenBucketSet(effectiveRates)
+
 		// We set ttl as 10 times rate period. E.g. if rate is 100 requests/second per client ip
 		// the counters for this ip will expire after 10 seconds of inactivity
 		err := tl.bucketSets.Set(source, bucketSet, int(bucketSet.maxPeriod/clock.Second)*10+1)
@@ -177,6 +179,7 @@ func (tl *TokenLimiter) resolveRates(req *http.Request) *RateSet {
 	rates, err := tl.extractRates.Extract(req)
 	if err != nil {
 		tl.log.Error("Failed to retrieve rates: %v", err)
+
 		return tl.defaultRates
 	}
 
@@ -201,10 +204,10 @@ func (m *MaxRateError) Error() string {
 type RateErrHandler struct{}
 
 func (e *RateErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	//nolint:errorlint // must be changed
-	if rerr, ok := err.(*MaxRateError); ok {
+	if rerr, ok := errors.AsType[*MaxRateError](err); ok {
 		w.Header().Set("Retry-After", fmt.Sprintf("%.0f", rerr.Delay.Seconds()))
 		w.Header().Set("X-Retry-In", rerr.Delay.String())
+
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte(err.Error()))
 

@@ -1,6 +1,6 @@
 // Package cbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
 //
-// Vulcan circuit breaker watches the error condtion to match
+// Vulcan circuit breaker watches the error condition to match
 // after which it activates the fallback scenario, e.g. returns the response code
 // or redirects the request to another location
 //
@@ -141,6 +141,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 	if c.isStandby() {
 		return false
 	}
+
 	// Circuit breaker is in tripped or recovering state
 	c.m.Lock()
 	defer c.m.Unlock()
@@ -151,6 +152,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 	case stateStandby:
 		// someone else has set it to standby just now
 		return false
+
 	case stateTripped:
 		if clock.Now().UTC().Before(c.until) {
 			return true
@@ -159,6 +161,7 @@ func (c *CircuitBreaker) activateFallback(_ http.ResponseWriter, _ *http.Request
 		c.setRecovering()
 
 		fallthrough
+
 	case stateRecovering:
 		// We have been in recovering state enough, enter standby and allow request
 		if clock.Now().UTC().After(c.until) {
