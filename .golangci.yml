@@ -65,7 +65,6 @@ linters:
         - paramTypeCombine # already handle by gofumpt.extra-rules
         - httpNoBody
         - unnamedResult
-        - deferInLoop # TODO(ldez) should be use on the project
       enabled-tags:
         - diagnostic
         - style
@@ -109,6 +108,10 @@ linters:
           - goconst
           - gosec
         path: .*_test.go
+      - linters: # TODO(ldez) must be fixed
+          - gocritic
+        path: .*_test.go
+        text: "deferInLoop: Possible resource leak, 'defer' is called in the 'for' loop"
       - linters:
           - gosec
         path: testutils/.+
