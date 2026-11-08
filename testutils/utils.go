@@ -201,10 +201,10 @@ func Post(uri string, opts ...ReqOption) (*http.Response, []byte, error) {
 
 // FreezeTime to the predetermined time. Returns a function that should be
 // deferred to unfreeze time. Meant for testing.
-func FreezeTime(t *testing.T) {
-	t.Helper()
+func FreezeTime(tb testing.TB) {
+	tb.Helper()
 
 	clock.Freeze(clock.Date(2012, 3, 4, 5, 6, 7, 0, clock.UTC))
 
-	t.Cleanup(clock.Unfreeze)
+	tb.Cleanup(clock.Unfreeze)
 }
