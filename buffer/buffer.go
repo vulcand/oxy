@@ -58,7 +58,7 @@ const (
 var errHandler utils.ErrorHandler = &SizeErrHandler{}
 
 // Buffer is responsible for buffering requests and responses
-// It buffers large requests and responses to disk,.
+// It buffers large requests and responses to disk.
 type Buffer struct {
 	disableRequest      bool
 	maxRequestBodyBytes int64
@@ -166,7 +166,7 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Set request body to buffered reader that can replay the read and execute Seek
-		// Note that we don't change the original request body as it's handled by the http server
+		// Note that we don't change the original request body as it's handled by the http server,
 		// and we don't want to mess with standard library
 		defer func() {
 			if body != nil {
@@ -292,12 +292,17 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (b *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int64) *http.Request {
 	o := *req
+
 	o.URL = utils.CopyURL(req.URL)
+
 	o.Header = make(http.Header)
 	utils.CopyHeaders(o.Header, req.Header)
+
 	o.ContentLength = bodySize
+
 	// remove TransferEncoding that could have been previously set because we have transformed the request from chunked encoding
 	o.TransferEncoding = []string{}
+
 	// http.Transport will close the request body on any error, we are controlling the close process ourselves, so we override the closer here
 	if body == nil {
 		o.Body = io.NopCloser(req.Body)
@@ -411,8 +416,7 @@ func (b *bufferWriter) expectBody(r *http.Request) bool {
 type SizeErrHandler struct{}
 
 func (e *SizeErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err error) {
-	//nolint:errorlint // must be changed
-	if _, ok := err.(*multibuf.MaxSizeReachedError); ok {
+	if _, ok := errors.AsType[*multibuf.MaxSizeReachedError](err); ok {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		_, _ = w.Write([]byte(http.StatusText(http.StatusRequestEntityTooLarge)))
 

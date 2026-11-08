@@ -14,21 +14,22 @@ const (
 	writerErr
 )
 
-// WriterOnce implements write once, read many times writer. Create a WriterOnce and write to it, once Reader() function has been
-// called, the internal data is transferred to MultiReader and this instance of WriterOnce should be no longer used.
+// WriterOnce implements write once, read many times writer.
+// Create a WriterOnce and write to it, once Reader() function has been called,
+// the internal data is transferred to MultiReader and this instance of WriterOnce should be no longer used.
 type WriterOnce interface {
 	// Write implements io.Writer
 	Write(p []byte) (int, error)
 	// Reader transfers all data written to this writer to MultiReader. If there was no data written it returns an error
 	Reader() (MultiReader, error)
-	// WriterOnce owns the data before Reader has been called, so Close will close all the underlying files if Reader has not been called.
+	// Close WriterOnce owns the data before Reader has been called, so Close will close all the underlying files if Reader has not been called.
 	Close() error
 }
 
 // NewWriterOnce returns io.ReadWrite compatible object that can limit the size of the buffer and persist large buffers to disk.
 // WriterOnce implements write once, read many times writer. Create a WriterOnce and write to it, once Reader() function has been
 // called, the internal data is transferred to MultiReader and this instance of WriterOnce should be no longer used.
-// By default NewWriterOnce returns unbound buffer that will allow to write up to 1MB in RAM and will start buffering to disk
+// By default, NewWriterOnce returns unbound buffer that will allow to write up to 1MB in RAM and will start buffering to disk
 // It supports multiple functional optional arguments:
 //
 //	// Buffer up to 1MB in RAM and limit max buffer size to 20MB
@@ -79,7 +80,7 @@ func (w *writerOnce) Reader() (MultiReader, error) {
 			return nil, err
 		}
 
-		// we are not responsible for file and buffer any more
+		// we are not responsible for file and buffer anymore.
 		w.state = writerCalledRead
 
 		br, fr := bytes.NewReader(w.mem.Bytes()), w.file

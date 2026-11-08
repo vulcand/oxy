@@ -19,7 +19,7 @@ type MultiReader interface {
 }
 
 // New returns MultiReader that can limit the size of the buffer and persist large buffers to disk.
-// By default New returns unbound buffer that will read up to 1MB in RAM and will start buffering to disk
+// By default, New returns unbound buffer that will read up to 1MB in RAM and will start buffering to disk
 // It supports multiple functional optional arguments:
 //
 //	// Buffer up to 1MB in RAM and limit max buffer size to 20MB
@@ -60,7 +60,7 @@ func New(input io.Reader, setters ...OptionSetter) (MultiReader, error) {
 
 	var file *os.File
 
-	// This means that we have exceeded all the memory capacity and we will start buffering the body to disk.
+	// This means that we have exceeded all the memory capacity, and we will start buffering the body to disk.
 	totalBytes := int64(len(buffer))
 
 	if memReader.N <= 0 {

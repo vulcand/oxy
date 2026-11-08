@@ -786,12 +786,14 @@ func TestBuffer_cleanFiles(t *testing.T) {
 				}
 			})
 
-			options := append([]Option{MemResponseBodyBytes(1024)}, test.options...)
+			options := append(
+				[]Option{tempBufferDir(dir), MemResponseBodyBytes(1024)},
+				test.options...,
+			)
+
 			if test.retry {
 				options = append(options, Retry(`ResponseCode() == 502 && Attempts() <= 1`))
 			}
-
-			options = append(options, tempBufferDir(dir))
 
 			st, err := New(handler, options...)
 			require.NoError(t, err)
@@ -803,6 +805,7 @@ func TestBuffer_cleanFiles(t *testing.T) {
 				assert.PanicsWithValue(t, http.ErrAbortHandler, func() { st.ServeHTTP(recorder, request) })
 			} else {
 				st.ServeHTTP(recorder, request)
+
 				assert.Equal(t, test.code, recorder.Code)
 			}
 

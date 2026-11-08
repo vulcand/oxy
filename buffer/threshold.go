@@ -15,7 +15,7 @@ func IsValidExpression(expr string) bool {
 	return err == nil
 }
 
-// Parses expression in the go language into Failover predicates.
+// Parses expression in the Go language into Failover predicates.
 func parseExpression(in string) (hpredicate, error) {
 	p, err := predicate.NewParser(predicate.Def{
 		Operators: predicate.Operators{
