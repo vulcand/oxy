@@ -202,92 +202,102 @@ func (b *Buffer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	attempt := 1
 
 	for {
-		// We create a special writer that will limit the response size, buffer it to disk if necessary
-		writer, err := multibuf.NewWriterOnce(
-			multibuf.MaxBytes(b.maxResponseBodyBytes),
-			multibuf.MemBytes(b.memResponseBodyBytes),
-			multibuf.TempDir(b.tempDir),
-		)
-		if err != nil {
-			b.log.Error("vulcand/oxy/buffer: failed create response writer, err: %v", err)
-			b.errHandler.ServeHTTP(w, req, err)
+		var done bool
 
-			return
-		}
-
-		// We are mimicking http.ResponseWriter to replace writer with our special writer
-		bw := &bufferWriter{
-			header:         make(http.Header),
-			code:           b.defaultStatusCode,
-			buffer:         writer,
-			responseWriter: w,
-			log:            b.log,
-		}
-		defer bw.Close()
-
-		b.next.ServeHTTP(bw, outReq)
-
-		if bw.hijacked {
-			b.log.Debug("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
-			return
-		}
-
-		if bw.writeError != nil {
-			b.log.Error("vulcand/oxy/buffer: failed to copy response, err: %v", bw.writeError)
-			b.errHandler.ServeHTTP(w, req, bw.writeError)
-
-			return
-		}
-
-		var reader multibuf.MultiReader
-
-		if bw.expectBody(outReq) {
-			if _, err := writer.Write([]byte{}); err != nil {
-				b.log.Error("vulcand/oxy/buffer: failed to initialize response writer, err: %v", err)
-				b.errHandler.ServeHTTP(w, req, err)
-
-				return
-			}
-
-			rdr, err := writer.Reader()
-			if err != nil {
-				b.log.Error("vulcand/oxy/buffer: failed to read response, err: %v", err)
-				b.errHandler.ServeHTTP(w, req, err)
-
-				return
-			}
-			defer rdr.Close()
-
-			reader = rdr
-		}
-
-		if b.retryPredicate == nil || attempt > DefaultMaxRetryAttempts ||
-			req.Context().Err() != nil ||
-			!b.retryPredicate(&context{r: req, attempt: attempt, responseCode: bw.code}) {
-			utils.CopyHeaders(w.Header(), bw.Header())
-			w.WriteHeader(bw.code)
-
-			if reader != nil {
-				_, _ = io.Copy(w, reader)
-			}
-
+		outReq, done = b.serveAttempt(w, req, outReq, body, totalSize, attempt)
+		if done {
 			return
 		}
 
 		attempt++
+	}
+}
 
-		if body != nil {
-			if _, err := body.Seek(0, 0); err != nil {
-				b.log.Error("vulcand/oxy/buffer: failed to rewind request body, err: %v", err)
-				b.errHandler.ServeHTTP(w, req, err)
+func (b *Buffer) serveAttempt(w http.ResponseWriter, req, outReq *http.Request, body multibuf.MultiReader, totalSize int64, attempt int) (*http.Request, bool) {
+	// We create a special writer that will limit the response size, buffer it to disk if necessary
+	writer, err := multibuf.NewWriterOnce(
+		multibuf.MaxBytes(b.maxResponseBodyBytes),
+		multibuf.MemBytes(b.memResponseBodyBytes),
+		multibuf.TempDir(b.tempDir),
+	)
+	if err != nil {
+		b.log.Error("vulcand/oxy/buffer: failed create response writer, err: %v", err)
+		b.errHandler.ServeHTTP(w, req, err)
 
-				return
-			}
+		return outReq, true
+	}
+
+	// We are mimicking http.ResponseWriter to replace writer with our special writer
+	bw := &bufferWriter{
+		header:         make(http.Header),
+		code:           b.defaultStatusCode,
+		buffer:         writer,
+		responseWriter: w,
+		log:            b.log,
+	}
+	defer bw.Close()
+
+	b.next.ServeHTTP(bw, outReq)
+
+	if bw.hijacked {
+		b.log.Debug("vulcand/oxy/buffer: connection was hijacked downstream. Not taking any action in buffer.")
+		return outReq, true
+	}
+
+	if bw.writeError != nil {
+		b.log.Error("vulcand/oxy/buffer: failed to copy response, err: %v", bw.writeError)
+		b.errHandler.ServeHTTP(w, req, bw.writeError)
+
+		return outReq, true
+	}
+
+	var reader multibuf.MultiReader
+
+	if bw.expectBody(outReq) {
+		if _, err := writer.Write([]byte{}); err != nil {
+			b.log.Error("vulcand/oxy/buffer: failed to initialize response writer, err: %v", err)
+			b.errHandler.ServeHTTP(w, req, err)
+
+			return outReq, true
 		}
 
-		outReq = b.copyRequest(req, body, totalSize)
-		b.log.Debug("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt)
+		rdr, err := writer.Reader()
+		if err != nil {
+			b.log.Error("vulcand/oxy/buffer: failed to read response, err: %v", err)
+			b.errHandler.ServeHTTP(w, req, err)
+
+			return outReq, true
+		}
+		defer rdr.Close()
+
+		reader = rdr
 	}
+
+	if b.retryPredicate == nil || attempt > DefaultMaxRetryAttempts ||
+		req.Context().Err() != nil ||
+		!b.retryPredicate(&context{r: req, attempt: attempt, responseCode: bw.code}) {
+		utils.CopyHeaders(w.Header(), bw.Header())
+		w.WriteHeader(bw.code)
+
+		if reader != nil {
+			_, _ = io.Copy(w, reader)
+		}
+
+		return outReq, true
+	}
+
+	if body != nil {
+		if _, err := body.Seek(0, 0); err != nil {
+			b.log.Error("vulcand/oxy/buffer: failed to rewind request body, err: %v", err)
+			b.errHandler.ServeHTTP(w, req, err)
+
+			return outReq, true
+		}
+	}
+
+	b.log.Debug("vulcand/oxy/buffer: retry Request(%v %v) attempt %v", req.Method, req.URL, attempt+1)
+
+	return b.copyRequest(req, body, totalSize), false
 }
 
 func (b *Buffer) copyRequest(req *http.Request, body io.ReadCloser, bodySize int64) *http.Request {
