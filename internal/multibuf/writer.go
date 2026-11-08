@@ -80,7 +80,7 @@ func (w *writerOnce) Reader() (MultiReader, error) {
 			return nil, err
 		}
 
-		// we are not responsible for file and buffer anymore.
+		// We are not responsible for file and buffer anymore.
 		w.state = writerCalledRead
 
 		br, fr := bytes.NewReader(w.mem.Bytes()), w.file
@@ -103,8 +103,11 @@ func (w *writerOnce) Close() error {
 		return nil
 	}
 
-	if w.cleanupFn != nil {
-		return w.cleanupFn()
+	// We are still responsible for the file.
+	if w.state != writerCalledRead {
+		if w.cleanupFn != nil {
+			return w.cleanupFn()
+		}
 	}
 
 	return w.file.Close()
