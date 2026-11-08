@@ -2,7 +2,6 @@ package utils
 
 import (
 	"net/http"
-	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,12 +20,7 @@ func (r *readCloserTestImpl) Close() error {
 // Just to make sure we don't panic, return err and not
 // username and pass and cover the function.
 func TestHttpReqToString(t *testing.T) {
-	req := &http.Request{
-		URL:    &url.URL{Host: "localhost:2374", Path: "/unittest"},
-		Method: http.MethodDelete,
-		Cancel: make(chan struct{}),
-		Body:   &readCloserTestImpl{},
-	}
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodDelete, "http://localhost:2374/unittest", &readCloserTestImpl{})
 
 	assert.NotEmpty(t, DumpHTTPRequest(req))
 }
