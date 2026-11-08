@@ -134,8 +134,7 @@ func (e *ConnErrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request, err
 		defer e.log.Debug("vulcand/oxy/connlimit: completed ServeHttp on request: %s", dump)
 	}
 
-	//nolint:errorlint // must be changed
-	if _, ok := err.(*MaxConnError); ok {
+	if _, ok := errors.AsType[*MaxConnError](err); ok {
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = w.Write([]byte(err.Error()))
 
