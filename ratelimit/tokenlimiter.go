@@ -61,7 +61,7 @@ type RateExtractor interface {
 // RateExtractorFunc rate extractor function type.
 type RateExtractorFunc func(r *http.Request) (*RateSet, error)
 
-// Extract extract from request.
+// Extract extracts from request.
 func (e RateExtractorFunc) Extract(r *http.Request) (*RateSet, error) {
 	return e(r)
 }

@@ -30,10 +30,10 @@ type tokenBucket struct {
 	// number of available tokens. It effectively caches the value that could
 	// have been otherwise deduced from refillRate.
 	timePerToken time.Duration
-	// The maximum number of tokens that can be accumulate in the bucket.
+	// The maximum number of tokens that can be accumulated in the bucket.
 	burst int64
-	// The number of tokens available for consumption at the moment. It can
-	// nether be larger then capacity.
+	// The number of tokens available for consumption at the moment.
+	// It can nether be larger than capacity.
 	availableTokens int64
 	// Tells when tokensAvailable was updated the last time.
 	lastRefresh clock.Time

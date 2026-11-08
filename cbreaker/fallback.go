@@ -8,7 +8,7 @@ import (
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-// Response response model.
+// Response the response model.
 type Response struct {
 	StatusCode  int
 	ContentType string
@@ -57,7 +57,7 @@ func (f *ResponseFallback) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Redirect redirect model.
+// Redirect the redirect model.
 type Redirect struct {
 	URL          string
 	PreservePath bool

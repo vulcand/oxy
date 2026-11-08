@@ -122,7 +122,7 @@ func TestRebalancer_recovery(t *testing.T) {
 	assert.Equal(t, 1, lb.servers[0].weight)
 	assert.Equal(t, FSMMaxWeight, lb.servers[1].weight)
 
-	// server a is now recovering, the weights should go back to the original state
+	// server "a" is now recovering, the weights should go back to the original state
 	rb.servers[0].meter.(*testMeter).rating = 0
 
 	for range 6 {
@@ -141,7 +141,7 @@ func TestRebalancer_recovery(t *testing.T) {
 	assert.Equal(t, 1, lb.servers[1].weight)
 }
 
-// Test scenario when increaing the weight on good endpoints made it worse.
+// Test scenario when increasing the weight on good endpoints made it worse.
 func TestRebalancer_cascading(t *testing.T) {
 	a := testutils.NewResponder(t, "a")
 	b := testutils.NewResponder(t, "b")
@@ -186,7 +186,7 @@ func TestRebalancer_cascading(t *testing.T) {
 	assert.Equal(t, FSMMaxWeight, rb.servers[1].curWeight)
 	assert.Equal(t, FSMMaxWeight, rb.servers[2].curWeight)
 
-	// server a is now recovering, the weights should go back to the original state
+	// server "a" is now recovering, the weights should go back to the original state
 	rb.servers[0].meter.(*testMeter).rating = 0.3
 	rb.servers[1].meter.(*testMeter).rating = 0.2
 	rb.servers[2].meter.(*testMeter).rating = 0.2

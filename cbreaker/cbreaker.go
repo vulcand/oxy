@@ -1,6 +1,6 @@
 // Package cbreaker implements circuit breaker similar to  https://github.com/Netflix/Hystrix/wiki/How-it-Works
 //
-// Vulcan circuit breaker watches the error condtion to match
+// Vulcan circuit breaker watches the error condition to match
 // after which it activates the fallback scenario, e.g. returns the response code
 // or redirects the request to another location
 //

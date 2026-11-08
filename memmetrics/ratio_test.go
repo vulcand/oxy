@@ -106,7 +106,7 @@ func TestRatioCounter_overwriteBuckets(t *testing.T) {
 	assert.Equal(t, float64(3)/float64(5), fr.Ratio())
 }
 
-// Make sure we cleanup the data after periods of inactivity
+// Make sure we clean up the data after periods of inactivity
 // So it does not mess up the stats.
 func TestRatioCounter_inactiveBuckets(t *testing.T) {
 	testutils.FreezeTime(t)

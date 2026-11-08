@@ -54,7 +54,7 @@ s := &http.Server{
 s.ListenAndServe()
 ```
 
-As a next step, let us add a round robin load-balancer:
+As a next step, let us add a round-robin load-balancer:
 
 
 ```go
@@ -97,7 +97,7 @@ fwd := forward.New(false)
 lb, _ := roundrobin.New(fwd)
 
 // buffer will read the request body and will replay the request again in case if forward returned status
-// corresponding to nework error (e.g. Gateway Timeout)
+// corresponding to network error (e.g. Gateway Timeout)
 buffer, _ := buffer.New(lb, buffer.Retry(`IsNetworkError() && Attempts() < 2`))
 
 lb.UpsertServer(url1)

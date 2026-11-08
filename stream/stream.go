@@ -40,7 +40,7 @@ import (
 const DefaultMaxBodyBytes = -1
 
 // Stream is responsible for buffering requests and responses
-// It buffers large requests and responses to disk,.
+// It buffers large requests and responses to disk.
 type Stream struct {
 	maxRequestBodyBytes int64
 

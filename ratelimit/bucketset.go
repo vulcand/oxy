@@ -51,7 +51,7 @@ func (tbs *TokenBucketSet) Update(rates *RateSet) {
 	}
 }
 
-// Consume consume tokens.
+// Consume consumes tokens.
 func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	var (
 		maxDelay time.Duration = UndefinedDelay
@@ -59,7 +59,7 @@ func (tbs *TokenBucketSet) Consume(tokens int64) (time.Duration, error) {
 	)
 
 	for _, tokenBucket := range tbs.buckets {
-		// We keep calling `Consume` even after a error is returned for one of
+		// We keep calling `Consume` even after an error is returned for one of
 		// buckets because that allows us to simplify the rollback procedure,
 		// that is to just call `Rollback` for all buckets.
 		delay, err := tokenBucket.consume(tokens)
