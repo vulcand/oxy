@@ -121,10 +121,6 @@ linters:
         linters:
           - gocognit
           - gocyclo
-      - path: buffer/buffer.go # TODO(ldez) must be fixed
-        text: Function 'ServeHTTP' has too many statements
-        linters:
-          - funlen
       - path: memmetrics/ratio_test.go # TODO(ldez) must be fixed
         text: 'float-compare: use assert\.InEpsilon \(or InDelta\)'
         linters:
