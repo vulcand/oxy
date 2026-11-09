@@ -23,7 +23,8 @@ func TestWebSocketTCPClose(t *testing.T) {
 
 	errChan := make(chan error, 1)
 	upgrader := gorillawebsocket.Upgrader{}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -37,10 +38,9 @@ func TestWebSocketTCPClose(t *testing.T) {
 				break
 			}
 		}
-	}))
-	t.Cleanup(srv.Close)
+	})
 
-	proxy := createProxyWithForwarder(f, srv.URL)
+	proxy := createProxyWithForwarder(t, f, srv.URL)
 
 	proxyAddr := proxy.Listener.Addr().String()
 	_, conn, err := newWebsocketRequest(
@@ -84,11 +84,10 @@ func TestWebSocketPingPong(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.MustParseRequestURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
-	t.Cleanup(proxy.Close)
 
 	serverAddr := proxy.Listener.Addr().String()
 
@@ -99,7 +98,7 @@ func TestWebSocketPingPong(t *testing.T) {
 	conn, resp, err := gorillawebsocket.DefaultDialer.Dial(webSocketURL, headers)
 	require.NoError(t, err, "Error during Dial with response: %+v", resp)
 
-	defer conn.Close()
+	t.Cleanup(func() { _ = conn.Close() })
 
 	goodErr := fmt.Errorf("signal: %s", "Good data")
 	badErr := fmt.Errorf("signal: %s", "Bad data")
@@ -135,11 +134,10 @@ func TestWebSocketEcho(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.MustParseRequestURI(srv.URL)
 		f.ServeHTTP(w, req)
 	})
-	t.Cleanup(proxy.Close)
 
 	serverAddr := proxy.Listener.Addr().String()
 
@@ -197,11 +195,10 @@ func TestWebSocketPassHost(t *testing.T) {
 			srv := httptest.NewServer(mux)
 			t.Cleanup(srv.Close)
 
-			proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+			proxy := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 				req.URL = testutils.MustParseRequestURI(srv.URL)
 				f.ServeHTTP(w, req)
 			})
-			t.Cleanup(proxy.Close)
 
 			serverAddr := proxy.Listener.Addr().String()
 
@@ -227,7 +224,8 @@ func TestWebSocketServerWithoutCheckOrigin(t *testing.T) {
 	upgrader := gorillawebsocket.Upgrader{CheckOrigin: func(_ *http.Request) bool {
 		return true
 	}}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -245,11 +243,9 @@ func TestWebSocketServerWithoutCheckOrigin(t *testing.T) {
 				break
 			}
 		}
-	}))
-	t.Cleanup(srv.Close)
+	})
 
-	proxy := createProxyWithForwarder(f, srv.URL)
-	t.Cleanup(proxy.Close)
+	proxy := createProxyWithForwarder(t, f, srv.URL)
 
 	proxyAddr := proxy.Listener.Addr().String()
 	resp, err := newWebsocketRequest(
@@ -267,7 +263,8 @@ func TestWebSocketRequestWithOrigin(t *testing.T) {
 	f := New(true)
 
 	upgrader := gorillawebsocket.Upgrader{}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, r *http.Request) {
 		c, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -285,11 +282,9 @@ func TestWebSocketRequestWithOrigin(t *testing.T) {
 				break
 			}
 		}
-	}))
-	t.Cleanup(srv.Close)
+	})
 
-	proxy := createProxyWithForwarder(f, srv.URL)
-	t.Cleanup(proxy.Close)
+	proxy := createProxyWithForwarder(t, f, srv.URL)
 
 	proxyAddr := proxy.Listener.Addr().String()
 	_, err := newWebsocketRequest(
@@ -314,7 +309,8 @@ func TestWebSocketRequestWithQueryParams(t *testing.T) {
 	f := New(true)
 
 	upgrader := gorillawebsocket.Upgrader{}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -334,11 +330,9 @@ func TestWebSocketRequestWithQueryParams(t *testing.T) {
 				break
 			}
 		}
-	}))
-	t.Cleanup(srv.Close)
+	})
 
-	proxy := createProxyWithForwarder(f, srv.URL)
-	t.Cleanup(proxy.Close)
+	proxy := createProxyWithForwarder(t, f, srv.URL)
 
 	proxyAddr := proxy.Listener.Addr().String()
 
@@ -362,13 +356,12 @@ func TestWebSocketRequestWithHeadersInResponseWriter(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.MustParseRequestURI(srv.URL)
 
 		w.Header().Set("HEADER-KEY", "HEADER-VALUE")
 		f.ServeHTTP(w, req)
 	})
-	t.Cleanup(proxy.Close)
 
 	serverAddr := proxy.Listener.Addr().String()
 
@@ -386,7 +379,8 @@ func TestWebSocketRequestWithEncodedChar(t *testing.T) {
 	f := New(true)
 
 	upgrader := gorillawebsocket.Upgrader{}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
@@ -406,11 +400,9 @@ func TestWebSocketRequestWithEncodedChar(t *testing.T) {
 				break
 			}
 		}
-	}))
-	t.Cleanup(srv.Close)
+	})
 
-	proxy := createProxyWithForwarder(f, srv.URL)
-	t.Cleanup(proxy.Close)
+	proxy := createProxyWithForwarder(t, f, srv.URL)
 
 	proxyAddr := proxy.Listener.Addr().String()
 
@@ -435,7 +427,7 @@ func TestWebSocketUpgradeFailed(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	proxy := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		path := req.URL.Path // keep the original path
 
 		if path == "/ws" {
@@ -445,14 +437,12 @@ func TestWebSocketUpgradeFailed(t *testing.T) {
 			f.ServeHTTP(w, req)
 		}
 	})
-	t.Cleanup(proxy.Close)
 
 	proxyAddr := proxy.Listener.Addr().String()
 	conn, err := net.DialTimeout("tcp", proxyAddr, dialTimeout)
-
 	require.NoError(t, err)
 
-	defer conn.Close()
+	t.Cleanup(func() { _ = conn.Close() })
 
 	req, err := http.NewRequest(http.MethodGet, "ws://127.0.0.1/ws", nil)
 	require.NoError(t, err)
@@ -481,8 +471,7 @@ func TestForwardsWebsocketTraffic(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	proxy := createProxyWithForwarder(f, srv.URL)
-	t.Cleanup(proxy.Close)
+	proxy := createProxyWithForwarder(t, f, srv.URL)
 
 	proxyAddr := proxy.Listener.Addr().String()
 	resp, err := newWebsocketRequest(
@@ -520,8 +509,10 @@ func createTLSWebsocketServer() *httptest.Server {
 	return srv
 }
 
-func createProxyWithForwarder(forwarder http.Handler, uri string) *httptest.Server {
-	return testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+func createProxyWithForwarder(tb testing.TB, forwarder http.Handler, uri string) *httptest.Server {
+	tb.Helper()
+
+	return testutils.NewServer(tb, func(w http.ResponseWriter, req *http.Request) {
 		path := req.URL.Path // keep the original path
 		// Set new backend URL
 		req.URL = testutils.MustParseRequestURI(uri)
@@ -537,8 +528,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 
 	forwarderWithoutTLSConfig := New(true)
 
-	proxyWithoutTLSConfig := createProxyWithForwarder(forwarderWithoutTLSConfig, srv.URL)
-	defer proxyWithoutTLSConfig.Close()
+	proxyWithoutTLSConfig := createProxyWithForwarder(t, forwarderWithoutTLSConfig, srv.URL)
 
 	proxyAddr := proxyWithoutTLSConfig.Listener.Addr().String()
 
@@ -556,8 +546,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 	forwarderWithTLSConfig := New(true)
 	forwarderWithTLSConfig.Transport = transport
 
-	proxyWithTLSConfig := createProxyWithForwarder(forwarderWithTLSConfig, srv.URL)
-	defer proxyWithTLSConfig.Close()
+	proxyWithTLSConfig := createProxyWithForwarder(t, forwarderWithTLSConfig, srv.URL)
 
 	proxyAddr = proxyWithTLSConfig.Listener.Addr().String()
 
@@ -574,9 +563,7 @@ func TestWebSocketTransferTLSConfig(t *testing.T) {
 
 	forwarderWithTLSConfigFromDefaultTransport := New(true)
 
-	proxyWithTLSConfigFromDefaultTransport := createProxyWithForwarder(forwarderWithTLSConfigFromDefaultTransport, srv.URL)
-
-	defer proxyWithTLSConfig.Close()
+	proxyWithTLSConfigFromDefaultTransport := createProxyWithForwarder(t, forwarderWithTLSConfigFromDefaultTransport, srv.URL)
 
 	proxyAddr = proxyWithTLSConfigFromDefaultTransport.Listener.Addr().String()
 

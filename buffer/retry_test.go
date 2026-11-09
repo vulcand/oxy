@@ -13,10 +13,7 @@ import (
 )
 
 func TestBuffer_success(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
 
@@ -32,10 +29,7 @@ func TestBuffer_success(t *testing.T) {
 }
 
 func TestBuffer_retryOnError(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
 
@@ -52,10 +46,7 @@ func TestBuffer_retryOnError(t *testing.T) {
 }
 
 func TestBuffer_retryExceedAttempts(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	lb, rt := newBufferMiddleware(t, `IsNetworkError() && Attempts() <= 2`)
 

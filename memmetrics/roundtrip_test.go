@@ -77,8 +77,14 @@ func TestRTMetrics_Append(t *testing.T) {
 }
 
 func TestRTMetrics_concurrentRecords(t *testing.T) {
-	// This test asserts a race condition which requires parallelism
+	// This test asserts a race condition which requires concurrency.
+	// Set GOMAXPROCS high for this test, then restore after test completes.
+	n := runtime.GOMAXPROCS(0)
 	runtime.GOMAXPROCS(100)
+
+	t.Cleanup(func() {
+		runtime.GOMAXPROCS(n)
+	})
 
 	rr, err := NewRTMetrics()
 	require.NoError(t, err)

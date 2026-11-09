@@ -17,8 +17,8 @@ import (
 )
 
 func TestStickySession_basic(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -56,8 +56,8 @@ func TestStickySession_basic(t *testing.T) {
 }
 
 func TestStickySession_basicWithHashValue(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -110,8 +110,8 @@ func TestStickySession_basicWithHashValue(t *testing.T) {
 }
 
 func TestStickySession_basicWithAESValue(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -166,8 +166,8 @@ func TestStickySession_basicWithAESValue(t *testing.T) {
 }
 
 func TestStickySession_stickyCookie(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -194,8 +194,8 @@ func TestStickySession_stickyCookie(t *testing.T) {
 }
 
 func TestStickySession_stickyCookieWithOptions(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	testCases := []struct {
 		desc     string
@@ -343,8 +343,8 @@ func TestStickySession_stickyCookieWithOptions(t *testing.T) {
 }
 
 func TestStickySession_removeRespondingServer(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -411,8 +411,8 @@ func TestStickySession_removeRespondingServer(t *testing.T) {
 }
 
 func TestStickySession_removeAllServers(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -463,7 +463,7 @@ func TestStickySession_removeAllServers(t *testing.T) {
 }
 
 func TestStickySession_badCookieVal(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
+	a := testutils.NewServerWithResponse(t, "a")
 
 	fwd := forward.New(false)
 

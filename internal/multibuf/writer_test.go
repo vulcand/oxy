@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWriterOnceMemBytesDefault(t *testing.T) {
+func TestWriterOnce_memBytesDefault(t *testing.T) {
 	w, err := NewWriterOnce(MemBytes(0))
 	require.NoError(t, err)
 
@@ -19,47 +19,55 @@ func TestWriterOnceMemBytesDefault(t *testing.T) {
 	assert.Equal(t, DefaultMemBytes, int(wo.o.memBytes))
 }
 
-func TestWriterOnceSmallBuffer(t *testing.T) {
-	r, hash := createReaderOfSize(t, 1)
+func TestWriterOnce_size(t *testing.T) {
+	testCases := []struct {
+		desc string
+		size int64
+	}{
+		{
+			desc: "small buffer",
+			size: 1,
+		},
+		{
+			desc: "big buffer",
+			size: 13631488,
+		},
+	}
 
-	w, err := NewWriterOnce()
-	require.NoError(t, err)
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
 
-	total, err := io.Copy(w, r)
-	require.NoError(t, err)
-	assert.Equal(t, int64(1), total)
+			r, hash := createReaderOfSize(t, test.size)
 
-	bb, err := w.Reader()
-	require.NoError(t, err)
+			w, err := NewWriterOnce()
+			require.NoError(t, err)
 
-	assert.Equal(t, hash, hashOfReader(bb))
-	bb.Close()
+			t.Cleanup(func() { _ = w.Close() })
+
+			total, err := io.Copy(w, r)
+			require.NoError(t, err)
+			assert.Equal(t, test.size, total)
+
+			bb, err := w.Reader()
+			require.NoError(t, err)
+
+			t.Cleanup(func() { _ = bb.Close() })
+
+			assert.Equal(t, hash, hashOfReader(bb))
+		})
+	}
 }
 
-func TestWriterOnceBigBuffer(t *testing.T) {
+func TestWriterOnce_partialWrites(t *testing.T) {
 	size := int64(13631488)
+
 	r, hash := createReaderOfSize(t, size)
 
 	w, err := NewWriterOnce()
 	require.NoError(t, err)
 
-	total, err := io.Copy(w, r)
-	require.NoError(t, err)
-	assert.Equal(t, size, total)
-
-	bb, err := w.Reader()
-	require.NoError(t, err)
-
-	assert.Equal(t, hash, hashOfReader(bb))
-	bb.Close()
-}
-
-func TestWriterOncePartialWrites(t *testing.T) {
-	size := int64(13631488)
-	r, hash := createReaderOfSize(t, size)
-
-	w, err := NewWriterOnce()
-	require.NoError(t, err)
+	t.Cleanup(func() { _ = w.Close() })
 
 	total, err := io.CopyN(w, r, DefaultMemBytes+1)
 	require.NoError(t, err)
@@ -72,27 +80,31 @@ func TestWriterOncePartialWrites(t *testing.T) {
 
 	bb, err := w.Reader()
 	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = bb.Close() })
+
 	assert.Nil(t, w.(*writerOnce).mem)
 	assert.Nil(t, w.(*writerOnce).file)
 
 	assert.Equal(t, hash, hashOfReader(bb))
-	bb.Close()
 }
 
-func TestWriterOnceMaxSizeExceeded(t *testing.T) {
+func TestWriterOnce_maxSizeExceeded(t *testing.T) {
 	size := int64(1000)
+
 	r, _ := createReaderOfSize(t, size)
 
 	w, err := NewWriterOnce(MemBytes(10), MaxBytes(100))
 	require.NoError(t, err)
 
 	_, err = io.Copy(w, r)
-	require.Error(t, err)
+	require.EqualError(t, err, "total size of 1000 exceeded allowed 100")
 	require.NoError(t, w.Close())
 }
 
-func TestWriterReaderCalled(t *testing.T) {
+func TestWriterOnce_writerReaderCalled(t *testing.T) {
 	size := int64(1000)
+
 	r, hash := createReaderOfSize(t, size)
 
 	w, err := NewWriterOnce()
@@ -105,25 +117,29 @@ func TestWriterReaderCalled(t *testing.T) {
 	bb, err := w.Reader()
 	require.NoError(t, err)
 
+	t.Cleanup(func() { _ = bb.Close() })
+
 	assert.Equal(t, hash, hashOfReader(bb))
 
 	// Subsequent calls to write and get reader will fail
 	_, err = w.Reader()
-	require.EqualError(t, err, ErrReaderHasBeenCalled.Error())
+	require.ErrorIs(t, err, ErrReaderHasBeenCalled)
 
 	_, err = w.Write([]byte{1})
-	require.EqualError(t, err, ErrReaderHasBeenCalled.Error())
+	require.ErrorIs(t, err, ErrReaderHasBeenCalled)
 }
 
-func TestWriterNoData(t *testing.T) {
+func TestWriterOnce_writerNoData(t *testing.T) {
 	w, err := NewWriterOnce()
 	require.NoError(t, err)
 
+	t.Cleanup(func() { _ = w.Close() })
+
 	_, err = w.Reader()
-	require.EqualError(t, err, ErrNoDataReady.Error())
+	require.ErrorIs(t, err, ErrNoDataReady)
 }
 
-func TestWriterOnce_cleanup(t *testing.T) {
+func TestWriterOnce_Close_cleanup(t *testing.T) {
 	testCases := []struct {
 		desc      string
 		operation func(t *testing.T, w WriterOnce)

@@ -8,36 +8,98 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSmallBuffer(t *testing.T) {
-	r, hash := createReaderOfSize(t, 1)
+func TestMultiReader_Read(t *testing.T) {
+	testCases := []struct {
+		desc string
+		size int64
+	}{
+		{
+			desc: "small buffer",
+			size: 1,
+		},
+		{
+			desc: "big buffer",
+			size: 13631488,
+		},
+	}
 
-	bb, err := New(r)
-	require.NoError(t, err)
-	assert.Equal(t, hash, hashOfReader(bb))
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
 
-	bb.Close()
+			r, hash := createReaderOfSize(t, test.size)
+
+			bb, err := New(r)
+			require.NoError(t, err)
+
+			t.Cleanup(func() { _ = bb.Close() })
+
+			assert.Equal(t, hash, hashOfReader(bb))
+		})
+	}
 }
 
-func TestBigBuffer(t *testing.T) {
-	r, hash := createReaderOfSize(t, 13631488)
+func TestMultiReader_Seek(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		size    int64
+		options []OptionSetter
+	}{
+		{
+			desc: "memory",
+			size: 1057576,
+		},
+		{
+			desc: "with file",
+			size: DefaultMemBytes,
+			options: []OptionSetter{
+				MemBytes(1),
+			},
+		},
+	}
 
-	bb, err := New(r)
-	require.NoError(t, err)
-	assert.Equal(t, hash, hashOfReader(bb))
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+
+			r, hash := createReaderOfSize(t, test.size)
+
+			bb, err := New(r, test.options...)
+			require.NoError(t, err)
+
+			t.Cleanup(func() { _ = bb.Close() })
+
+			assert.Equal(t, hash, hashOfReader(bb))
+
+			l, err := bb.Size()
+			require.NoError(t, err)
+			assert.Equal(t, test.size, l)
+
+			_, _ = bb.Seek(0, 0)
+			assert.Equal(t, hash, hashOfReader(bb))
+
+			l, err = bb.Size()
+			require.NoError(t, err)
+			assert.Equal(t, test.size, l)
+		})
+	}
 }
 
-func TestSeek(t *testing.T) {
+func TestMultiReader_Seek_first(t *testing.T) {
 	tlen := int64(1057576)
 
 	r, hash := createReaderOfSize(t, tlen)
 
 	bb, err := New(r)
 	require.NoError(t, err)
-	assert.Equal(t, hash, hashOfReader(bb))
+
+	t.Cleanup(func() { _ = bb.Close() })
 
 	l, err := bb.Size()
 	require.NoError(t, err)
 	assert.Equal(t, tlen, l)
+
+	assert.Equal(t, hash, hashOfReader(bb))
 
 	_, _ = bb.Seek(0, 0)
 	assert.Equal(t, hash, hashOfReader(bb))
@@ -47,120 +109,95 @@ func TestSeek(t *testing.T) {
 	assert.Equal(t, tlen, l)
 }
 
-func TestSeekWithFile(t *testing.T) {
-	tlen := int64(DefaultMemBytes)
-
-	r, hash := createReaderOfSize(t, tlen)
-
-	bb, err := New(r, MemBytes(1))
-
-	require.NoError(t, err)
-	assert.Equal(t, hash, hashOfReader(bb))
-
-	l, err := bb.Size()
-	require.NoError(t, err)
-	assert.Equal(t, tlen, l)
-
-	_, _ = bb.Seek(0, 0)
-	assert.Equal(t, hash, hashOfReader(bb))
-
-	l, err = bb.Size()
-	require.NoError(t, err)
-	assert.Equal(t, tlen, l)
-}
-
-func TestSeekFirst(t *testing.T) {
-	tlen := int64(1057576)
-	r, hash := createReaderOfSize(t, tlen)
-	bb, err := New(r)
-	require.NoError(t, err)
-
-	l, err := bb.Size()
-	require.NoError(t, err)
-	assert.Equal(t, tlen, l)
-
-	assert.Equal(t, hash, hashOfReader(bb))
-
-	_, _ = bb.Seek(0, 0)
-
-	assert.Equal(t, hash, hashOfReader(bb))
-	l, err = bb.Size()
-	require.NoError(t, err)
-	assert.Equal(t, tlen, l)
-}
-
-func TestLimitDoesNotExceed(t *testing.T) {
+func TestMultiReader_limitDoesNotExceed(t *testing.T) {
 	requestSize := int64(1057576)
 
 	r, hash := createReaderOfSize(t, requestSize)
 
 	bb, err := New(r, MemBytes(1024), MaxBytes(requestSize+1))
 	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = bb.Close() })
+
 	assert.Equal(t, hash, hashOfReader(bb))
 
 	size, err := bb.Size()
 	require.NoError(t, err)
-
 	assert.Equal(t, requestSize, size)
-	bb.Close()
 }
 
-func TestLimitExceeds(t *testing.T) {
-	requestSize := int64(1057576)
+func TestMultiReader_limit_errors(t *testing.T) {
+	const defaultSize = 1057576
 
-	r, _ := createReaderOfSize(t, requestSize)
+	testCases := []struct {
+		desc        string
+		requestSize int64
+		memBytes    int64
+		maxBytes    int64
+	}{
+		{
+			desc:        "exceeds",
+			requestSize: defaultSize,
+			memBytes:    1024,
+			maxBytes:    defaultSize - 1,
+		},
+		{
+			desc:        "exceeds MemBytes",
+			requestSize: defaultSize,
+			memBytes:    defaultSize + 1,
+			maxBytes:    defaultSize - 1,
+		},
+	}
 
-	bb, err := New(r, MemBytes(1024), MaxBytes(requestSize-1))
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
 
-	var mErr *MaxSizeReachedError
-	require.ErrorAs(t, err, &mErr)
+			r, _ := createReaderOfSize(t, test.requestSize)
 
-	assert.Nil(t, bb)
+			bb, err := New(r, MemBytes(test.memBytes), MaxBytes(test.maxBytes))
+
+			var mErr *MaxSizeReachedError
+			require.ErrorAs(t, err, &mErr)
+
+			assert.Nil(t, bb)
+		})
+	}
 }
 
-func TestLimitExceedsMemBytes(t *testing.T) {
-	requestSize := int64(1057576)
+func TestMultiReader_WriteTo(t *testing.T) {
+	testCases := []struct {
+		desc string
+		size int64
+	}{
+		{
+			desc: "small buffer",
+			size: 1,
+		},
+		{
+			desc: "big buffer",
+			size: 13631488,
+		},
+	}
 
-	r, _ := createReaderOfSize(t, requestSize)
+	for _, test := range testCases {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
 
-	bb, err := New(r, MemBytes(requestSize+1), MaxBytes(requestSize-1))
+			r, hash := createReaderOfSize(t, test.size)
 
-	var mErr *MaxSizeReachedError
-	require.ErrorAs(t, err, &mErr)
+			bb, err := New(r)
+			require.NoError(t, err)
 
-	assert.Nil(t, bb)
-}
+			t.Cleanup(func() { _ = bb.Close() })
 
-func TestWriteToBigBuffer(t *testing.T) {
-	l := int64(13631488)
+			other := &bytes.Buffer{}
 
-	r, hash := createReaderOfSize(t, l)
+			wrote, err := bb.WriteTo(other)
+			require.NoError(t, err)
 
-	bb, err := New(r)
-	require.NoError(t, err)
-
-	other := &bytes.Buffer{}
-
-	wrote, err := bb.WriteTo(other)
-	require.NoError(t, err)
-
-	assert.Equal(t, l, wrote)
-	assert.Equal(t, hash, hashOfReader(other))
-}
-
-func TestWriteToSmallBuffer(t *testing.T) {
-	l := int64(1)
-
-	r, hash := createReaderOfSize(t, l)
-
-	bb, err := New(r)
-	require.NoError(t, err)
-
-	other := &bytes.Buffer{}
-
-	wrote, err := bb.WriteTo(other)
-	require.NoError(t, err)
-
-	assert.Equal(t, l, wrote)
-	assert.Equal(t, hash, hashOfReader(other))
+			assert.Equal(t, test.size, wrote)
+			assert.Equal(t, hash, hashOfReader(other))
+		})
+	}
 }

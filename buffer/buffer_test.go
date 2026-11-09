@@ -25,10 +25,7 @@ import (
 )
 
 func TestBuffer_simple(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -133,15 +130,15 @@ func TestBuffer_chunkedEncodingSuccess(t *testing.T) {
 		contentLength int64
 	)
 
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
 
 		reqBody = string(body)
 		contentLength = req.ContentLength
+
 		_, _ = w.Write([]byte("hello"))
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -172,10 +169,7 @@ func TestBuffer_chunkedEncodingSuccess(t *testing.T) {
 }
 
 func TestBuffer_chunkedEncodingLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -204,13 +198,12 @@ func TestBuffer_chunkedEncodingLimitReached(t *testing.T) {
 }
 
 func TestBuffer_chunkedResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
 		_, _ = fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n5\r\ntest1\r\n5\r\ntest2\r\n0\r\n\r\n")
 		_ = conn.Close()
 	})
-	t.Cleanup(srv.Close)
 
 	fwd := forward.New(false)
 
@@ -222,7 +215,6 @@ func TestBuffer_chunkedResponse(t *testing.T) {
 	require.NoError(t, err)
 
 	proxy := httptest.NewServer(st)
-
 	t.Cleanup(proxy.Close)
 
 	re, body, err := testutils.Get(proxy.URL)
@@ -233,13 +225,12 @@ func TestBuffer_chunkedResponse(t *testing.T) {
 }
 
 func TestBuffer_emptyChunkedResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		h := w.(http.Hijacker)
 		conn, _, _ := h.Hijack()
 		_, _ = fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n")
 		_ = conn.Close()
 	})
-	t.Cleanup(srv.Close)
 
 	fwd := forward.New(false)
 
@@ -260,10 +251,7 @@ func TestBuffer_emptyChunkedResponse(t *testing.T) {
 }
 
 func TestBuffer_requestLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -330,10 +318,7 @@ func TestBuffer_responseLimitReached(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-				_, _ = w.Write([]byte(tc.body))
-			})
-			t.Cleanup(srv.Close)
+			srv := testutils.NewServerWithResponse(t, tc.body)
 
 			// forwarder will proxy the request to whatever destination
 			fwd := forward.New(false)
@@ -359,10 +344,7 @@ func TestBuffer_responseLimitReached(t *testing.T) {
 }
 
 func TestBuffer_fileStreamingResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello, this response is too large to fit in memory")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -387,10 +369,7 @@ func TestBuffer_fileStreamingResponse(t *testing.T) {
 }
 
 func TestBuffer_customErrorHandler(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello, this response is too large"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello, this response is too large")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -418,10 +397,9 @@ func TestBuffer_customErrorHandler(t *testing.T) {
 }
 
 func TestBuffer_notModified(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -445,10 +423,9 @@ func TestBuffer_notModified(t *testing.T) {
 }
 
 func TestBuffer_noBody(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -473,11 +450,10 @@ func TestBuffer_noBody(t *testing.T) {
 
 // Make sure that stream handler preserves TLS settings.
 func TestBuffer_preservesTLS(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -505,10 +481,7 @@ func TestBuffer_preservesTLS(t *testing.T) {
 }
 
 func TestBuffer_notNilBody(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -541,14 +514,13 @@ func TestBuffer_notNilBody(t *testing.T) {
 }
 
 func TestBuffer_GRPC_ErrorResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Grpc-Status", "10" /* ABORTED */)
 		w.WriteHeader(http.StatusOK)
 
 		// To skip the "Content-Length" header.
 		w.(http.Flusher).Flush()
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -573,14 +545,13 @@ func TestBuffer_GRPC_ErrorResponse(t *testing.T) {
 }
 
 func TestBuffer_GRPC_OKResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Grpc-Status", "0" /* OK */)
 		_, _ = w.Write([]byte("grpc-body"))
 
 		// To skip the "Content-Length" header.
 		w.(http.Flusher).Flush()
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -611,7 +582,7 @@ func TestBuffer_disableRequestBuffer(t *testing.T) {
 		actuallyBuffered bool
 	)
 
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
 
@@ -621,7 +592,6 @@ func TestBuffer_disableRequestBuffer(t *testing.T) {
 		actuallyBuffered = contentLength > 0 || len(req.TransferEncoding) == 0
 		_, _ = w.Write([]byte("response"))
 	})
-	t.Cleanup(srv.Close)
 
 	fwd := forward.New(false)
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -639,9 +609,7 @@ func TestBuffer_disableRequestBuffer(t *testing.T) {
 	// Send a chunked request - when buffering is disabled, it should remain chunked.
 	conn, err := net.Dial("tcp", testutils.MustParseRequestURI(proxy.URL).Host)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = conn.Close()
-	})
+	t.Cleanup(func() { _ = conn.Close() })
 
 	_, _ = fmt.Fprintf(conn, "POST / HTTP/1.1\r\nHost: %s\r\nTransfer-Encoding: chunked\r\n\r\n4\r\ntest\r\n0\r\n\r\n", testutils.MustParseRequestURI(proxy.URL).Host)
 	status, err := bufio.NewReader(conn).ReadString('\n')
@@ -656,10 +624,8 @@ func TestBuffer_disableRequestBuffer(t *testing.T) {
 
 func TestBuffer_disableResponseBuffer(t *testing.T) {
 	largeResponseBody := strings.Repeat("A", 1000)
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(largeResponseBody))
-	})
-	t.Cleanup(srv.Close)
+
+	srv := testutils.NewServerWithResponse(t, largeResponseBody)
 
 	fwd := forward.New(false)
 	rdr := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -822,14 +788,13 @@ func TestBuffer_cleanFiles(t *testing.T) {
 func TestBuffer_cleanFiles_clientDisconnect(t *testing.T) {
 	dir := t.TempDir()
 
-	upstream := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	upstream := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write(bytes.Repeat([]byte("x"), 2048))
 		_ = http.NewResponseController(w).Flush()
 
 		// Never complete the response: the proxy is still buffering it when the client leaves.
 		<-req.Context().Done()
 	})
-	t.Cleanup(upstream.Close)
 
 	fwd := forward.New(false)
 
@@ -844,12 +809,11 @@ func TestBuffer_cleanFiles_clientDisconnect(t *testing.T) {
 
 	served := make(chan struct{})
 
-	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		defer close(served)
 
 		st.ServeHTTP(w, req)
-	}))
-	t.Cleanup(proxy.Close)
+	})
 
 	ctx, cancel := gocontext.WithCancel(t.Context())
 	t.Cleanup(cancel)
