@@ -15,8 +15,8 @@ import (
 )
 
 func TestRebalancer_normalOperation(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -55,8 +55,8 @@ func TestRebalancer_noServers(t *testing.T) {
 }
 
 func TestRebalancer_removeServer(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -81,8 +81,8 @@ func TestRebalancer_removeServer(t *testing.T) {
 
 // Test scenario when one server goes down after what it recovers.
 func TestRebalancer_recovery(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -143,9 +143,9 @@ func TestRebalancer_recovery(t *testing.T) {
 
 // Test scenario when increasing the weight on good endpoints made it worse.
 func TestRebalancer_cascading(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
-	d := testutils.NewResponder(t, "d")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
+	d := testutils.NewServerWithResponse(t, "d")
 
 	fwd := forward.New(false)
 
@@ -207,9 +207,9 @@ func TestRebalancer_cascading(t *testing.T) {
 
 // Test scenario when all servers started failing.
 func TestRebalancer_allBad(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
-	d := testutils.NewResponder(t, "d")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
+	d := testutils.NewServerWithResponse(t, "d")
 
 	fwd := forward.New(false)
 
@@ -255,9 +255,9 @@ func TestRebalancer_allBad(t *testing.T) {
 
 // Removing the server resets the state.
 func TestRebalancer_reset(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
-	d := testutils.NewResponder(t, "d")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
+	d := testutils.NewServerWithResponse(t, "d")
 
 	fwd := forward.New(false)
 
@@ -309,8 +309,8 @@ func TestRebalancer_reset(t *testing.T) {
 }
 
 func TestRebalancer_requestRewriteListenerLive(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -348,8 +348,8 @@ func TestRebalancer_requestRewriteListenerLive(t *testing.T) {
 }
 
 func TestRebalancer_requestRewriteListener(t *testing.T) {
-	testutils.NewResponder(t, "a")
-	testutils.NewResponder(t, "b")
+	testutils.NewServerWithResponse(t, "a")
+	testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -364,9 +364,9 @@ func TestRebalancer_requestRewriteListener(t *testing.T) {
 }
 
 func TestRebalancer_stickySession(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
-	x := testutils.NewResponder(t, "x")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
+	x := testutils.NewServerWithResponse(t, "x")
 
 	sticky := NewStickySession("test")
 	require.NotNil(t, sticky)

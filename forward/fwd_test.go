@@ -14,11 +14,10 @@ import (
 func TestDefaultErrHandler(t *testing.T) {
 	f := New(true)
 
-	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	proxy := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		req.URL = testutils.MustParseRequestURI("http://localhost:63450")
 		f.ServeHTTP(w, req)
-	}))
-	t.Cleanup(proxy.Close)
+	})
 
 	resp, err := http.Get(proxy.URL)
 	require.NoError(t, err)
@@ -72,11 +71,10 @@ func TestXForwardedHostHeader(t *testing.T) {
 func TestForwardedProto(t *testing.T) {
 	var proto string
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewServer(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		proto = req.Header.Get(XForwardedProto)
 		_, _ = w.Write([]byte("hello"))
 	}))
-	t.Cleanup(srv.Close)
 
 	f := New(true)
 

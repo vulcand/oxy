@@ -212,7 +212,7 @@ func TestCircuitBreaker_sideEffects(t *testing.T) {
 
 	var srv1Body []byte
 
-	srv1 := testutils.NewHandler(func(w http.ResponseWriter, r *http.Request) {
+	srv1 := testutils.NewServer(t, func(w http.ResponseWriter, r *http.Request) {
 		b, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
@@ -221,18 +221,16 @@ func TestCircuitBreaker_sideEffects(t *testing.T) {
 
 		srv1Chan <- r
 	})
-	defer srv1.Close()
 
 	srv2Chan := make(chan *http.Request, 1)
 
-	srv2 := testutils.NewHandler(func(w http.ResponseWriter, r *http.Request) {
+	srv2 := testutils.NewServer(t, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("srv2"))
 		err := r.ParseForm()
 		require.NoError(t, err)
 
 		srv2Chan <- r
 	})
-	defer srv2.Close()
 
 	onTripped, err := NewWebhookSideEffect(
 		Webhook{

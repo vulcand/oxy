@@ -15,31 +15,58 @@ import (
 	"github.com/vulcand/oxy/v2/utils"
 )
 
-// NewHandler creates a new Server.
+// Deprecated: use [NewServer] instead.
+//
+//go:fix inline
 func NewHandler(handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
-// NewResponder creates a new Server with a response.
+// Deprecated: use [NewServerWithResponse] instead.
 func NewResponder(t *testing.T, response string) *httptest.Server {
 	t.Helper()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(response))
-	}))
-
-	t.Cleanup(server.Close)
-
-	return server
+	return NewServerWithResponse(t, response)
 }
 
-// NewResponderWithCount creates a new Server with a call counter.
+// Deprecated: use [NewServerWithCount] instead.
 func NewResponderWithCount(count *atomic.Int32) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		count.Add(1)
 
 		_, _ = w.Write([]byte("Ok"))
 	}))
+}
+
+// NewServer creates a new Server.
+func NewServer(tb testing.TB, handler http.HandlerFunc) *httptest.Server {
+	tb.Helper()
+
+	server := httptest.NewServer(handler)
+
+	tb.Cleanup(server.Close)
+
+	return server
+}
+
+// NewServerWithResponse creates a new Server with a response.
+func NewServerWithResponse(tb testing.TB, response string) *httptest.Server {
+	tb.Helper()
+
+	return NewServer(tb, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(response))
+	})
+}
+
+// NewServerWithCount creates a new Server with a call counter.
+func NewServerWithCount(tb testing.TB, count *atomic.Int32) *httptest.Server {
+	tb.Helper()
+
+	return NewServer(tb, func(w http.ResponseWriter, _ *http.Request) {
+		count.Add(1)
+
+		_, _ = w.Write([]byte("Ok"))
+	})
 }
 
 // MustParseRequestURI is the version of url.ParseRequestURI that panics if incorrect, helpful to shorten the tests.

@@ -56,7 +56,7 @@ func TestRoundRobin_customErrHandler(t *testing.T) {
 }
 
 func TestRoundRobin_oneServer(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
+	a := testutils.NewServerWithResponse(t, "a")
 
 	fwd := forward.New(false)
 
@@ -72,8 +72,8 @@ func TestRoundRobin_oneServer(t *testing.T) {
 }
 
 func TestRoundRobin__imple(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -90,8 +90,8 @@ func TestRoundRobin__imple(t *testing.T) {
 }
 
 func TestRoundRobin_removeServer(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -113,7 +113,7 @@ func TestRoundRobin_removeServer(t *testing.T) {
 }
 
 func TestRoundRobin_upsertSame(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
+	a := testutils.NewServerWithResponse(t, "a")
 
 	fwd := forward.New(false)
 
@@ -130,8 +130,8 @@ func TestRoundRobin_upsertSame(t *testing.T) {
 }
 
 func TestRoundRobin_upsertWeight(t *testing.T) {
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -156,9 +156,9 @@ func TestRoundRobin_weighted(t *testing.T) {
 
 	defer func() { _ = SetDefaultWeight(1) }()
 
-	a := testutils.NewResponder(t, "a")
-	b := testutils.NewResponder(t, "b")
-	z := testutils.NewResponder(t, "z")
+	a := testutils.NewServerWithResponse(t, "a")
+	b := testutils.NewServerWithResponse(t, "b")
+	z := testutils.NewServerWithResponse(t, "z")
 
 	fwd := forward.New(false)
 
@@ -192,8 +192,8 @@ func TestRoundRobin_weighted(t *testing.T) {
 }
 
 func TestRoundRobinRequestRewriteListener(t *testing.T) {
-	testutils.NewResponder(t, "a")
-	testutils.NewResponder(t, "b")
+	testutils.NewServerWithResponse(t, "a")
+	testutils.NewServerWithResponse(t, "b")
 
 	fwd := forward.New(false)
 
@@ -211,13 +211,11 @@ func TestRoundRobinFailWell(t *testing.T) {
 
 	var oneCount atomic.Int32
 
-	oneServer := testutils.NewResponderWithCount(&oneCount)
-
-	t.Cleanup(func() { oneServer.Close() })
+	oneServer := testutils.NewServerWithCount(t, &oneCount)
 
 	var twoCount atomic.Int32
 
-	twoServer := testutils.NewResponderWithCount(&twoCount)
+	twoServer := testutils.NewServerWithCount(t, &twoCount)
 
 	// explicit close now
 	twoServer.Close()

@@ -18,10 +18,7 @@ import (
 )
 
 func TestStream_simple(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -51,7 +48,7 @@ func TestStream_chunkedEncodingSuccess(t *testing.T) {
 		contentLength int64
 	)
 
-	srv := testutils.NewHandler(func(w http.ResponseWriter, req *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
 
@@ -79,7 +76,6 @@ func TestStream_chunkedEncodingSuccess(t *testing.T) {
 
 		flusher.Flush()
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -120,10 +116,7 @@ func TestStream_chunkedEncodingSuccess(t *testing.T) {
 }
 
 func TestStream_requestLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -147,10 +140,7 @@ func TestStream_requestLimitReached(t *testing.T) {
 }
 
 func TestStream_responseLimitReached(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello, this response is too large"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello, this response is too large")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -174,10 +164,7 @@ func TestStream_responseLimitReached(t *testing.T) {
 }
 
 func TestStream_fileStreamingResponse(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello, this response is too large to fit in memory"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello, this response is too large to fit in memory")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -202,10 +189,7 @@ func TestStream_fileStreamingResponse(t *testing.T) {
 }
 
 func TestStream_customErrorHandler(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("hello, this response is too large"))
-	})
-	t.Cleanup(srv.Close)
+	srv := testutils.NewServerWithResponse(t, "hello, this response is too large")
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -228,10 +212,9 @@ func TestStream_customErrorHandler(t *testing.T) {
 }
 
 func TestStream_notModified(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -255,10 +238,9 @@ func TestStream_notModified(t *testing.T) {
 }
 
 func TestStream_noBody(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
@@ -283,11 +265,10 @@ func TestStream_noBody(t *testing.T) {
 
 // Make sure that stream handler preserves TLS settings.
 func TestStream_preservesTLS(t *testing.T) {
-	srv := testutils.NewHandler(func(w http.ResponseWriter, _ *http.Request) {
+	srv := testutils.NewServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	t.Cleanup(srv.Close)
 
 	// forwarder will proxy the request to whatever destination
 	fwd := forward.New(false)
