@@ -53,7 +53,6 @@ func TestSeekWithFile(t *testing.T) {
 	r, hash := createReaderOfSize(t, tlen)
 
 	bb, err := New(r, MemBytes(1))
-
 	require.NoError(t, err)
 	assert.Equal(t, hash, hashOfReader(bb))
 
@@ -71,7 +70,9 @@ func TestSeekWithFile(t *testing.T) {
 
 func TestSeekFirst(t *testing.T) {
 	tlen := int64(1057576)
+
 	r, hash := createReaderOfSize(t, tlen)
+
 	bb, err := New(r)
 	require.NoError(t, err)
 
@@ -84,6 +85,7 @@ func TestSeekFirst(t *testing.T) {
 	_, _ = bb.Seek(0, 0)
 
 	assert.Equal(t, hash, hashOfReader(bb))
+
 	l, err = bb.Size()
 	require.NoError(t, err)
 	assert.Equal(t, tlen, l)

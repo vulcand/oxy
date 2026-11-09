@@ -20,16 +20,10 @@ const (
 type cleanupFunc func() error
 
 func newBuf(length int64, cleanup cleanupFunc, readers ...io.ReadSeeker) *multiReaderSeek {
-	converted := make([]io.Reader, len(readers))
-	for i, r := range readers {
-		// This conversion is safe as ReadSeeker includes Reader
-		converted[i] = r.(io.Reader)
-	}
-
 	return &multiReaderSeek{
 		length:  length,
 		readers: readers,
-		mr:      io.MultiReader(converted...),
+		mr:      io.MultiReader(toReader(readers)...),
 		cleanup: cleanup,
 	}
 }
@@ -91,11 +85,11 @@ func (mr *multiReaderSeek) Size() (int64, error) {
 
 func (mr *multiReaderSeek) Seek(offset int64, whence int) (int64, error) {
 	// TODO: implement other whence
-	// TODO: implement real offsets
 	if whence != 0 {
 		return 0, errors.New("multiReaderSeek: unsupported whence")
 	}
 
+	// TODO: implement real offsets
 	if offset != 0 {
 		return 0, errors.New("multiReaderSeek: unsupported offset")
 	}
@@ -104,12 +98,18 @@ func (mr *multiReaderSeek) Seek(offset int64, whence int) (int64, error) {
 		_, _ = seeker.Seek(0, 0)
 	}
 
-	ior := make([]io.Reader, len(mr.readers))
-	for i, arg := range mr.readers {
-		ior[i] = arg.(io.Reader)
-	}
-
-	mr.mr = io.MultiReader(ior...)
+	mr.mr = io.MultiReader(toReader(mr.readers)...)
 
 	return 0, nil
+}
+
+func toReader(seekers []io.ReadSeeker) []io.Reader {
+	readers := make([]io.Reader, len(seekers))
+
+	for i, arg := range seekers {
+		// This conversion is safe as ReadSeeker includes Reader
+		readers[i] = arg.(io.Reader)
+	}
+
+	return readers
 }

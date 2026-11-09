@@ -3,9 +3,9 @@ package multibuf
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
 	"io"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,12 +14,9 @@ import (
 func createReaderOfSize(t *testing.T, size int64) (reader io.Reader, hash string) {
 	t.Helper()
 
-	f, err := os.Open("/dev/urandom")
-	require.NoError(t, err)
-
 	b := make([]byte, int(size))
 
-	_, err = io.ReadFull(f, b)
+	_, err := io.ReadFull(rand.Reader, b)
 	require.NoError(t, err)
 
 	h := md5.New()

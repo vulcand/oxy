@@ -33,7 +33,6 @@ linters:
     - prealloc
     - rowserrcheck # not relevant (SQL)
     - sqlclosecheck # not relevant (SQL)
-    - tagliatelle
     - testpackage
     - tparallel
     - varnamelen
@@ -92,6 +91,10 @@ linters:
       errorf: true
       sprintf1: true
       strconcat: false
+    tagliatelle:
+      case:
+        rules:
+          json: snake
     testifylint:
       disable:
         - go-require

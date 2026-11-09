@@ -95,56 +95,6 @@ func (w *writerOnce) Reader() (MultiReader, error) {
 }
 
 func (w *writerOnce) Write(p []byte) (int, error) {
-	return w.write(p)
-}
-
-func (w *writerOnce) Close() error {
-	if w.file == nil {
-		return nil
-	}
-
-	// We are still responsible for the file.
-	if w.state != writerCalledRead && w.cleanupFn != nil {
-		return w.cleanupFn()
-	}
-
-	return w.file.Close()
-}
-
-func (w *writerOnce) initFile() error {
-	file, err := os.CreateTemp(w.o.tempDir, tempFilePrefix)
-	if err != nil {
-		return err
-	}
-
-	w.file = file
-
-	w.cleanupFn = func() error {
-		_ = file.Close()
-		_ = os.Remove(file.Name())
-
-		return nil
-	}
-
-	return nil
-}
-
-// how many bytes we can still write to memory.
-func (w *writerOnce) writeToMem(p []byte) int {
-	left := w.o.memBytes - w.total
-	if left <= 0 {
-		return 0
-	}
-
-	bufLen := len(p)
-	if int64(bufLen) < left {
-		return bufLen
-	}
-
-	return int(left)
-}
-
-func (w *writerOnce) write(p []byte) (int, error) {
 	if w.o.maxBytes > 0 && int64(len(p))+w.total > w.o.maxBytes {
 		return 0, fmt.Errorf("total size of %d exceeded allowed %d", int64(len(p))+w.total, w.o.maxBytes)
 	}
@@ -198,4 +148,51 @@ func (w *writerOnce) write(p []byte) (int, error) {
 	}
 
 	return 0, fmt.Errorf("unsupported state: %d", w.state)
+}
+
+func (w *writerOnce) Close() error {
+	if w.file == nil {
+		return nil
+	}
+
+	// If the file exists, we are still responsible for the file.
+	// See the method [writerOnce.Reader].
+	if w.cleanupFn != nil {
+		return w.cleanupFn()
+	}
+
+	return w.file.Close()
+}
+
+func (w *writerOnce) initFile() error {
+	file, err := os.CreateTemp(w.o.tempDir, tempFilePrefix)
+	if err != nil {
+		return err
+	}
+
+	w.file = file
+
+	w.cleanupFn = func() error {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+
+		return nil
+	}
+
+	return nil
+}
+
+// how many bytes we can still write to memory.
+func (w *writerOnce) writeToMem(p []byte) int {
+	left := w.o.memBytes - w.total
+	if left <= 0 {
+		return 0
+	}
+
+	bufLen := len(p)
+	if int64(bufLen) < left {
+		return bufLen
+	}
+
+	return int(left)
 }
