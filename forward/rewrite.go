@@ -36,11 +36,24 @@ func (rw *HeaderRewriter) Rewrite(req *http.Request) {
 		utils.RemoveHeaders(req.Header, XHeaders...)
 	}
 
-	if clientIP, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
-		clientIP = ipv6fix(clientIP)
+	clientIP, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		clientIP = req.RemoteAddr
+	}
+	clientIP = ipv6fix(clientIP)
 
+	if clientIP != "" {
 		if req.Header.Get(XRealIP) == "" {
 			req.Header.Set(XRealIP, clientIP)
+		}
+
+		prior, ok := req.Header[XForwardedFor]
+		omit := ok && prior == nil
+		if len(prior) > 0 {
+			clientIP = strings.Join(prior, ", ") + ", " + clientIP
+		}
+		if !omit {
+			req.Header.Set(XForwardedFor, clientIP)
 		}
 	}
 

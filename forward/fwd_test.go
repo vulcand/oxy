@@ -91,3 +91,34 @@ func TestForwardedProto(t *testing.T) {
 	assert.Equal(t, http.StatusOK, re.StatusCode)
 	assert.Equal(t, "https", proto)
 }
+
+func TestForwardedFor(t *testing.T) {
+	var forwardedFor string
+	var realIP string
+
+	srv := testutils.NewServer(t, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		forwardedFor = req.Header.Get(XForwardedFor)
+		realIP = req.Header.Get(XRealIP)
+		_, _ = w.Write([]byte("hello"))
+	}))
+
+	f := New(true)
+
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		req.URL = testutils.MustParseRequestURI(srv.URL)
+		f.ServeHTTP(w, req)
+	}))
+	t.Cleanup(proxy.Close)
+
+	req, err := http.NewRequest(http.MethodGet, proxy.URL, nil)
+	require.NoError(t, err)
+	req.Header.Set(XForwardedFor, "203.0.113.195")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	assert.Contains(t, forwardedFor, "203.0.113.195, 127.0.0.1")
+	assert.Equal(t, "127.0.0.1", realIP)
+}
